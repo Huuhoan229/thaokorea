@@ -26,7 +26,7 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
 // 4. Khởi tạo Gemini
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
 // -------------------------------------------------------------------
 // Endpoint 1: Xác thực Webhook (Facebook)
@@ -285,7 +285,7 @@ async function callGemini(userMessage, userName, userState) {
     console.error("Lỗi khi gọi Gemini API hoặc parse JSON:", error);
     // Trả về một lỗi an toàn để bot không bị crash
     return {
-      response_message: "Dạ, hiện tại đang chưa có nhân viên nào trực tuyến, Bác chờ Shop vài phút ạ. 😥"
+      response_message: "Dạ, hệ thống AI đang gặp chút trục trặc, Bác chờ Shop vài phút ạ. 😥",
       new_state: userState // Trả lại state cũ
     };
   }
