@@ -148,21 +148,68 @@ async function saveState(psid, newState, userMessage, botMessage) {
 
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI (Phiên bản SỬA LỖI "BÁC BÁC" + YÊU CẦU MỚI)
+// HÀM GỌI GEMINI (Phiên bản "NẠP KIẾN THỨC SẢN PHẨM")
 // -------------------------------------------------------------------
 async function callGemini(userMessage, userName, userState) {
   try {
     const historyString = userState.history.map(h => `${h.role}: ${h.content}`).join('\n');
     
-    // ----- BẮT ĐẦU SỬA LỖI "BÁC BÁC" -----
-    // Logic mới:
-    // 1. Nếu `userName` có tên (ví dụ: "Si Gia Dung") -> `greetingName` = "Bác Si Gia Dung"
-    // 2. Nếu `userName` là `null` (do lỗi) -> `greetingName` = "Bác"
-    const greetingName = userName ? "Bác " + userName : "Bác";
-    // ----- KẾT THÚC SỬA LỖI -----
+    // Logic tên chào (Giữ nguyên)
+    const greetingName = userName ? "Bác " + userName : "Bác"; 
+
+    // ----- BẮT ĐẦU KHỐI KIẾN THỨC SẢN PHẨM -----
+    let productKnowledge = "**KHỐI KIẾN THỨC SẢN PHẨM (DÙNG ĐỂ TRA CỨU):**\n\n";
+    productKnowledge += "Tên: An Cung Ngưu Hoàng Samsung Hộp Gỗ 60 viên (Hàn Quốc)\n";
+    productKnowledge += "Mô tả: Sản phẩm nổi tiếng Hàn Quốc, giúp bổ não, tăng tuần hoàn não, ổn định huyết áp, phòng ngừa nguy cơ bị tai biến, đột quỵ. Phù hợp cho người có tiền sử tim mạch, cao huyết áp, thiếu máu não, rối loạn tiền đình, thần kinh yếu.\n";
+    
+    productKnowledge += "\n**Công Dụng Chính:**\n";
+    productKnowledge += "- Hỗ trợ cải thiện ở người bị rối loạn tiền đình, đau nửa đầu, thiếu máu não, tắc động mạch vành, phụ nữ tiền mãn kinh.\n";
+    productKnowledge += "- Phòng bệnh cho người có nguy cơ đột quỵ (cao huyết áp, tiền sử tai biến, đái tháo đường, tim mạch).\n";
+    productKnowledge += "- Hỗ trợ giảm nguy cơ xuất huyết não, hỗ trợ phục hồi hệ thần kinh cho bệnh nhân sau tai biến.\n";
+    productKnowledge += "- Tốt cho người suy nhược thần kinh vì áp lực công việc, lao động trí óc cường độ cao.\n";
+    productKnowledge += "- Hỗ trợ phục hồi biến chứng đột quỵ, các vấn đề do khí huyết (tức ngực, khó thở, nhức đầu, hoa mắt, đi lại nói năng khó khăn).\n";
+
+    productKnowledge += "\n**Hướng dẫn chung (Cách dùng):**\n";
+    productKnowledge += "- Đối với người bị tai biến: 30 ngày đầu, 1 viên/ngày. Một đợt 5-10 hộp. Nhai hoặc pha nước ấm.\n";
+    productKnowledge += "- Người lớn và trẻ trên 15 tuổi: 1 viên / ngày.\n";
+    productKnowledge += "- Trẻ em: Dùng theo chỉ định của bác sĩ.\n";
+    productKnowledge += "- Với người mới dùng lần đầu: nên dùng từ nửa viên – 1 viên trước.\n";
+    productKnowledge += "- Liều dùng cho dự phòng: Mỗi đợt 20–30 ngày, 1-2 đợt/năm.\n";
+
+    productKnowledge += "\n**Lưu ý (Rất quan trọng):**\n";
+    productKnowledge += "- SẢN PHẨM NÀY KHÔNG PHẢI LÀ THUỐC VÀ KHÔNG CÓ TÁC DỤNG THAY THẾ THUỐC CHỮA BỆNH.\n";
+    productKnowledge += "- Không nên dùng vào buổi tối (dễ gây mất ngủ).\n";
+    productKnowledge += "- Tuyệt đối không dùng khi thân nhiệt lạnh, vã mồ hôi lạnh, da mẩn đỏ, nôn mửa, dị ứng.\n";
+    productKnowledge += "- Tuyệt đối không dùng khi bụng đói.\n";
+    productKnowledge += "- Không dùng khi cơ thể đang có hiện tượng xuất huyết.\n";
+    productKnowledge += "- Người huyết áp: Ăn hoặc uống nhẹ sau 2-3h dùng An cung.\n";
+    
+    productKnowledge += "\n**Thông tin khác:**\n";
+    productKnowledge += "- Quy cách: Hộp gỗ 60 viên * 3.75g. Xuất xứ: Hàn Quốc.\n";
+    productKnowledge += "- Thương hiệu: Samsung Pharma (Hàn Quốc).\n";
+    productKnowledge += "- Thành phần chính: Gần 20 loại thảo dược (Mẫu đơn 13%, Đương quy 11%, Thương truật 10.9%, Vỏ cam đỏ 10.9%, Cam thảo 10.9%, Táo tàu đỏ 10%, Địa hoàng 9%, Vỏ quế 4.3%, Nhung hươu, nhân sâm đỏ, trầm hương, mầm đậu nành...). Mật ong nguyên chất...\n";
+
+    productKnowledge += "\n**Tác dụng chi tiết:**\n";
+    productKnowledge += "1. Giảm mệt mỏi, stress, rối loạn tiền đình, mất ngủ. Cải thiện tập trung, ngăn suy giảm trí nhớ.\n";
+    productKnowledge += "2. Điều hoà và lưu thông khí huyết, thúc đẩy trao đổi chất.\n";
+    productKnowledge += "3. Cải thiện sức đề kháng, giảm bệnh vặt.\n";
+    productKnowledge += "4. Bảo vệ tim mạch, hỗ trợ người nhồi máu cơ tim, cao huyết áp, tiền sử đột quỵ.\n";
+    productKnowledge += "5. Phục hồi thể trạng cho người mới ốm dậy, sau phẫu thuật. Nâng cao xương khớp người cao tuổi.\n";
+
+    productKnowledge += "\n**Hướng dẫn cách dùng (Chi tiết theo đối tượng):**\n";
+    productKnowledge += "- Người mệt mỏi, suy nhược, đau đầu: 2 ngày / 1 viên. Mỗi đợt 3-4 tuần. 3-4 đợt/năm.\n";
+    productKnowledge += "- Người cao huyết áp, tai biến nhẹ: 1 viên / ngày. Dùng 15-20 ngày, nghỉ 15 ngày, rồi lặp lại chu kì.\n";
+    productKnowledge += "- Người bình thường (bổ trợ sức khoẻ): 2 viên / tuần. Mỗi đợt 2-3 tuần. 2-3 đợt/năm.\n";
+    productKnowledge += "\n----- HẾT KHỐI KIẾN THỨC -----\n\n";
+    // ----- KẾT THÚC KHỐI KIẾN THỨC SẢN PHẨM -----
+
 
     // XÂY DỰNG PROMPT BẰNG CÁCH NỐI CHUỖI (AN TOÀN)
     let prompt = "**Nhiệm vụ:** Bạn là bot tư vấn. Bạn PHẢI trả lời tin nhắn của khách và CẬP NHẬT TRẠNG THÁI (state) của họ.\n\n";
+    
+    // NẠP KIẾN THỨC VÀO PROMPT
+    prompt += productKnowledge; 
+
     prompt += "**Lịch sử chat (10 tin nhắn gần nhất):**\n";
     prompt += (historyString || "(Chưa có lịch sử chat)") + "\n\n";
     prompt += "**Trạng thái ghi nhớ (State) của khách TRƯỚC KHI trả lời:**\n";
@@ -174,28 +221,33 @@ async function callGemini(userMessage, userName, userState) {
     prompt += "    - Nếu không, `new_price_asked_count` = " + userState.price_asked_count + ".\n";
     prompt += "3.  **Luật Trả Lời (dựa trên State MỚI):**\n";
     
-    // ----- ĐÃ CẬP NHẬT TÊN CHÀO (greetingName) -----
     prompt += "    - **Luật Giá (Quan trọng nhất):**\n";
     prompt += "      - Nếu khách hỏi giá (CÓ) VÀ `new_price_asked_count >= 2`:\n";
-    prompt += "        -> Trả lời: \"Dạ " + greetingName + ", giá hiện tại là 790.000đ/hộp ạ. | Shop FREESHIP mọi đơn; và nếu Bác lấy từ 2 hộp Shop sẽ tặng 1 phần quà sức khỏe ạ. | Bác có muốn Shop tư vấn thêm về quà tặng không ạ?\"\n"; // (Đã thêm câu hỏi ngược)
+    prompt += "        -> Trả lời: \"Dạ " + greetingName + ", giá hiện tại là 790.000đ/hộp ạ. | Shop FREESHIP mọi đơn; và nếu Bác lấy từ 2 hộp Shop sẽ tặng 1 phần quà sức khỏe ạ. | Bác có muốn Shop tư vấn thêm về quà tặng không ạ?\"\n";
     prompt += "      - Nếu khách hỏi giá (CÓ) VÀ `new_price_asked_count == 1`:\n";
-    prompt += "        -> Trả lời: \"Dạ " + greetingName + ", về giá thì tuỳ ưu đãi từng đợt Bác ạ. | Bác để SĐT + giờ rảnh, shop gọi 1-2 phút giải thích cặn kẽ hơn ạ.\"\n"; // (Đây là nơi duy nhất chủ động xin SĐT)
+    prompt += "        -> Trả lời: \"Dạ " + greetingName + ", về giá thì tuỳ ưu đãi từng đợt Bác ạ. | Bác để SĐT + giờ rảnh, shop gọi 1-2 phút giải thích cặn kẽ hơn ạ.\"\n";
     prompt += "    - **Luật SĐT (chỉ áp dụng nếu KHÔNG HỎI GIÁ):**\n";
     prompt += "      - Nếu tin nhắn '" + userMessage + "' chỉ chứa số, hoặc trông giống SĐT (7-11 số) -> Hiểu là khách gửi SĐT.\n";
     prompt += "      -> Trả lời: \"Dạ Shop cảm ơn " + greetingName + " ạ. | Shop sẽ gọi Bác trong ít phút nữa, hoặc Bác muốn Shop gọi vào giờ nào ạ?\"\n";
     
-    // ----- ĐÃ CẬP NHẬT LUẬT CHUNG (THEO YÊU CẦU MỚI) -----
+    prompt += "    - **Luật Quà Tặng (RẤT QUAN TRỌNG):**\n";
+    prompt += "      - (Áp dụng khi tin nhắn của khách là 'Có', 'quà tặng là gì?', 'quà gì', 'khuyến mãi', 'ưu đãi').\n";
+    prompt += "      - **TUYỆT ĐỐI KHÔNG** tự bịa ra tên quà tặng (như 'hồng sâm').\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", quà tặng bên Shop rất đa dạng ạ, thường là các sản phẩm sức khỏe đi kèm. | Tuy nhiên, Shop cần trao đổi nhanh với Bác để chọn quà phù hợp nhất với sức khỏe của Bác ạ. | Bác để SĐT + giờ rảnh, shop gọi 1–2 phút tư vấn kỹ hơn cho Bác nhé?\"\n";
+
     prompt += "    - **Luật Chung (Mặc định):**\n";
-    prompt += "      - (Áp dụng khi không dính Luật Giá/Luật SĐT)\n";
-    prompt += "      - **YÊU CẦU 1 (Hỏi ngược):** Luôn kết thúc câu trả lời bằng một câu hỏi gợi mở. Ví dụ: 'Bác cần Shop tư vấn thêm gì không ạ?', 'Bác còn thắc mắc gì về cách dùng không ạ?', 'Bác muốn hỏi thêm về công dụng nào khác không ạ?'.\n";
-    prompt += "      - **YÊU CẦU 2 (Tần suất SĐT):** TUYỆT ĐỐI KHÔNG xin SĐT trong luật này. Chỉ được xin SĐT khi dính 'Luật Giá (lần 1)'.\n";
+    prompt += "      - (Áp dụng khi không dính Luật Giá/SĐT/Quà Tặng)\n";
+    // ----- ĐÃ CẬP NHẬT LUẬT TRA CỨU -----
+    prompt += "      - **YÊU CẦU 0 (Tra cứu):** Nếu khách hỏi về công dụng, cách dùng, thành phần, đối tượng... -> Hãy tìm câu trả lời TRONG 'KHỐI KIẾN THỨC SẢN PHẨM' ở trên. PHẢI NHẮC LẠI: 'Sản phẩm không phải là thuốc'.\n";
+    // ----- KẾT THÚC CẬP NHẬT -----
+    prompt += "      - **YÊU CẦU 1 (Hỏi ngược):** Luôn kết thúc câu trả lời bằng một câu hỏi gợi mở...\n";
+    prompt += "      - **YÊU CẦU 2 (Tần suất SĐT):** TUYỆT ĐỐI KHÔNG xin SĐT trong luật này. (Chỉ xin SĐT khi dính Luật Giá 1 hoặc Luật Quà Tặng).\n"; 
     prompt += "      - Nếu tin nhắn khó hiểu (như 'È', 'Hả', 'Lô'):\n";
     prompt += "        -> Trả lời: \"Dạ " + greetingName + ", Shop chưa hiểu ý Bác lắm ạ. | Bác có thể nói rõ hơn Bác đang cần hỗ trợ gì không ạ?\"\n";
     prompt += "      - Nếu khách chào (như 'Alo shop'):\n";
     prompt += "        -> Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | Bác cần Shop hỗ trợ gì về An Cung Ngưu Hoàng Hoàn ạ?\"\n";
     prompt += "      - Nếu khách hỏi về 1 triệu chứng (như 'Tôi bị đau đầu'):\n";
-    prompt += "        -> Trả lời: \"Dạ Shop hiểu " + greetingName + " đang bị đau đầu ạ. | Sản phẩm An Cung này hỗ trợ rất tốt cho tuần hoàn máu não, giúp giảm các triệu chứng đau đầu, chóng mặt ạ. | Bác muốn tìm hiểu thêm về cách dùng hay công dụng ạ?\"\n";
-    // ----- KẾT THÚC CẬP NHẬT -----
+    prompt += "        -> Trả lời: (Hãy tra cứu 'KHỐI KIẾN THỨC SẢN PHẨM' về 'đau đầu') -> \"Dạ " + greetingName + ", Shop hiểu " + greetingName + " đang bị đau đầu ạ. | Sản phẩm An Cung này hỗ trợ rất tốt cho tuần hoàn máu não, giúp giảm các triệu chứng đau đầu, chóng mặt ạ. | Bác muốn tìm hiểu thêm về cách dùng hay công dụng ạ?\"\n";
     
     prompt += "      - Luôn xưng hô \"Shop - Bác\", tông ấm áp, câu ngắn, tối đa 1 emoji.\n";
     prompt += "      - Tách câu trả lời bằng dấu |\n\n";
@@ -233,7 +285,7 @@ async function callGemini(userMessage, userName, userState) {
     console.error("Lỗi khi gọi Gemini API hoặc parse JSON:", error);
     // Trả về một lỗi an toàn để bot không bị crash
     return {
-      response_message: "Dạ, hệ thống AI đang gặp chút trục trặc, Bác chờ Shop vài phút ạ. 😥",
+      response_message: "Dạ, hiện tại đang chưa có nhân viên nào trực tuyến, Bác chờ Shop vài phút ạ. 😥"
       new_state: userState // Trả lại state cũ
     };
   }
