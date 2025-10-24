@@ -26,7 +26,7 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
 // 4. Khởi tạo Gemini
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 // -------------------------------------------------------------------
 // Endpoint 1: Xác thực Webhook (Facebook)
