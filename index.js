@@ -343,7 +343,7 @@ async function callGemini(userMessage, userName, userState, productKnowledge) {
   } catch (error) {
     console.error("Lỗi khi gọi Gemini API hoặc parse JSON:", error);
     return {
-      response_message: "Dạ, hệ thống AI đang gặp chút trục trặc, Bác chờ Shop vài phút ạ. 😥",
+      response_message: "Dạ, hiện tại nhân viên đang chưa trực tuyến, Bác chờ Shop vài phút ạ. 😥",
       new_state: userState, // Trả lại state cũ
       quick_replies: []
     };
