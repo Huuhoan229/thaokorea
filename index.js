@@ -273,9 +273,10 @@ async function callGemini(userMessage, userName, userState, productKnowledge) {
     prompt += "      - Nếu tin nhắn ('" + userMessage + "') chứa SĐT hợp lệ (VÀ KHÔNG PHẢI LUẬT 1):\n";
     prompt += "        -> Trả lời: \"Dạ Shop cảm ơn " + greetingName + " ạ. Shop đã nhận được SĐT của Bác. | Shop sẽ gọi Bác trong ít phút nữa, hoặc Bác muốn Shop gọi vào giờ nào ạ?\"\n";
 
-    prompt += "    - **Luật Quà Tặng:**\n";
-    prompt += "      - (Áp dụng khi khách hỏi về 'quà tặng', 'khuyến mãi').\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", quà tặng bên Shop rất đa dạng ạ... | Bác để SĐT + giờ rảnh, shop gọi 1–2 phút tư vấn kỹ hơn cho Bác nhé?\"\n";
+    prompt += "    - **Luật SĐT (trong khi chat):**\n";
+    prompt += "      - **(Kiểm tra SĐT):** Một SĐT Việt Nam hợp lệ (10 số, bắt đầu 09, 08, 07, 05, 03).\n";
+    prompt += "      - **(Hành động):** Nếu tin nhắn ('" + userMessage + "') chứa SĐT hợp lệ (VÀ KHÔNG PHẢI LUẬT 1):\n";
+    prompt += "        -> Trả lời: \"Dạ Shop cảm ơn " + greetingName + " ạ. Shop đã nhận được SĐT của Bác. | Shop sẽ gọi Bác trong ít phút nữa, hoặc Bác muốn Shop gọi vào giờ nào ạ?\"\n";
 
     prompt += "    - **Luật Chung (Mặc định):**\n";
     prompt += "      - (Áp dụng khi không dính các luật trên)\n"; 
