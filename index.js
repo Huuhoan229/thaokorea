@@ -268,7 +268,7 @@ async function saveState(psid, newState, userMessage, botMessage) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI (Phiên bản "DANH SÁCH 7 SẢN PHẨM")
+// HÀM GỌI GEMINI (Phiên bản "ĐÃ SỬA LỖI DGY")
 // -------------------------------------------------------------------
 async function callGemini(userMessage, userName, userState, productKnowledge) {
   if (!model) {
@@ -280,7 +280,9 @@ async function callGemini(userMessage, userName, userState, productKnowledge) {
   }
   try {
     const historyString = userState.history.map(h => `${h.role}: ${h.content}`).join('\n');
-    const greetingName = userName ? "Bác "DGY " + userName : "Bác";
+    
+    // ----- ĐÂY LÀ DÒNG ĐÃ SỬA LỖI (XÓA CHỮ "DGY") -----
+    const greetingName = userName ? "Bác " + userName : "Bác"; 
 
     // XÂY DỰNG PROMPT BẰNG CÁCH NỐI CHUỖI
     let prompt = "**Nhiệm vụ:** Bạn là bot tư vấn ĐA SẢN PHẨM. Bạn PHẢI trả lời tin nhắn của khách, tra cứu kiến thức, và CẬP NHẬT TRẠNG THÁI (state) của họ.\n\n";
@@ -349,7 +351,7 @@ async function callGemini(userMessage, userName, userState, productKnowledge) {
     prompt += "{\n";
     prompt += "  \"response_message\": \"Câu trả lời cho khách | tách bằng dấu |\",\n";
     prompt += "  \"new_state\": {\n";
-    prompt += "    \"price_asked_count\": [SỐ LẦN MỚI SAU KHI PHÂN TÍCH]\n";
+    prompt += "    \"price_asked_count\": [SỐ LẦM MỚI SAU KHI PHÂN TÍCH]\n";
     prompt += "  }\n";
     prompt += "}\n";
     prompt += "---\n";
