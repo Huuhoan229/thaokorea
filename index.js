@@ -222,18 +222,27 @@ async function saveState(psid, newState, userMessage, botMessage) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI (Phiên bản "KHÔNG GOOGLE SHEET" + "Nút Bấm")
+// HÀM GỌI GEMINI (Phiên bản "KHÔNG BAO GIỜ CHỦ ĐỘNG XIN SĐT")
 // -------------------------------------------------------------------
 async function callGemini(userMessage, userName, userState, productKnowledge) {
+  // Đảm bảo model đã được khởi tạo
+  if (!model) {
+      console.error("Gemini model chưa được khởi tạo!");
+      return {
+          response_message: "Dạ, Shop xin lỗi, hệ thống AI chưa sẵn sàng ạ. 😥",
+          new_state: userState,
+          quick_replies: []
+      };
+  }
   try {
     const historyString = userState.history.map(h => `${h.role}: ${h.content}`).join('\n');
-    const greetingName = userName ? "Bác " + userName : "Bác"; 
+    const greetingName = userName ? "Bác " + userName : "Bác";
 
     // XÂY DỰNG PROMPT BẰNG CÁCH NỐI CHUỖI
     let prompt = "**Nhiệm vụ:** Bạn là bot tư vấn ĐA SẢN PHẨM. Bạn PHẢI trả lời tin nhắn của khách, tra cứu kiến thức, và CẬP NHẬT TRẠNG THÁI (state) của họ.\n\n";
-    
+
     // NẠP KIẾN THỨC (TỪ CODE)
-    prompt += productKnowledge + "\n\n"; 
+    prompt += productKnowledge + "\n\n";
 
     prompt += "**Lịch sử chat (10 tin nhắn gần nhất):**\n";
     prompt += (historyString || "(Chưa có lịch sử chat)") + "\n\n";
@@ -243,52 +252,48 @@ async function callGemini(userMessage, userName, userState, productKnowledge) {
     prompt += "1.  **Phân tích tin nhắn (RẤT QUAN TRỌNG):**\n";
     prompt += "    - Đọc tin nhắn của khách: \"" + userMessage + "\".\n";
     prompt += "    - **(Kiểm tra SĐT):** Một SĐT Việt Nam hợp lệ (10 số, bắt đầu 09, 08, 07, 05, 03).\n";
-    prompt += "    - **(Ưu tiên 1 - Khách để lại SĐT đầu tiên):** Nếu tin nhắn CHỈ chứa SĐT hợp lệ VÀ Lịch sử chat là (Chưa có lịch sử chat) -> Kích hoạt 'Luật 1: Trả Lời SĐT Ngay'.\n";
-    prompt += "    - **(Ưu tiên 2 - Khách hỏi mơ hồ):** Nếu tin nhắn mơ hồ (như 'Tôi muốn mua', 'shop có gì', 'tư vấn') VÀ Lịch sử chat là (Chưa có lịch sử chat) -> Kích hoạt 'Luật 2: Hỏi Vague & Liệt Kê SP'.\n";
-    prompt += "    - **(Ưu tiên 3 - Tra cứu):** Nếu không, hãy tra cứu 'KHỐI KIẾN THỨC SẢN PHẨM' dựa trên 'Từ Khóa' để tìm sản phẩm/triệu chứng phù hợp.\n";
+    prompt += "    - **(Ưu tiên 1 - Khách tự gửi SĐT):** Nếu tin nhắn CHỈ chứa SĐT hợp lệ HOẶC chứa SĐT hợp lệ trong câu -> Kích hoạt 'Luật 1: Xác Nhận SĐT'.\n"; // Áp dụng mọi lúc
+    prompt += "    - **(Ưu tiên 2 - Khách hỏi mơ hồ lần đầu):** Nếu tin nhắn mơ hồ ('Tôi muốn mua', 'shop có gì'...) VÀ Lịch sử chat là (Chưa có lịch sử chat) -> Kích hoạt 'Luật 2: Hỏi Vague & Liệt Kê SP'.\n";
+    prompt += "    - **(Ưu tiên 3 - Tra cứu):** Nếu không, hãy tra cứu 'KHỐI KIẾN THỨC SẢN PHẨM' dựa trên 'Từ Khóa'.\n";
     prompt += "    - **(Ưu tiên 4 - Phân tích giá):** Khách có hỏi giá lần này không? (Trả lời CÓ hoặc KHÔNG).\n";
-    
+
     prompt += "2.  **Cập nhật State MỚI:**\n";
     prompt += "    - Nếu khách hỏi giá lần này, `new_price_asked_count` = " + userState.price_asked_count + " + 1.\n";
     prompt += "    - Nếu không, `new_price_asked_count` = " + userState.price_asked_count + ".\n";
     prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n";
-    
-    // ----- ĐÃ THÊM KỊCH BẢN MỚI -----
-    prompt += "    - **Luật 1: Trả Lời SĐT Ngay (Theo yêu cầu):**\n";
+
+    // ----- ĐÃ CẬP NHẬT KỊCH BẢN -----
+    prompt += "    - **Luật 1: Xác Nhận SĐT (Khi khách tự gửi):**\n";
     prompt += "      - Trả lời: \"Dạ vâng " + greetingName + " chú ý điện thoại, tư vấn viên gọi lại tư vấn cụ thể Ưu Đãi và Cách Dùng cho Bác ngay đây ạ, cảm ơn bác.\"\n";
-    prompt += "      - (Trong trường hợp này, `quick_replies` phải là [] rỗng).\n";
-    
-    prompt += "    - **Luật 2: Hỏi Vague & Liệt Kê SP (Theo yêu cầu):**\n";
-    prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | Shop có nhiều sản phẩm sức khỏe, Bác đang quan tâm cụ thể về vấn đề gì ạ?\"\n";
-    prompt += "      - (QUAN TRỌNG): Lấy 4 'Tên Sản Phẩm' đầu tiên (chỉ lấy TÊN) từ 'KHỐI KIẾN THỨC SẢN PHẨM' và tạo nút bấm `quick_replies` cho chúng. (Ví dụ: ['AN CUNG SAMSUNG...', 'HỘP CAO HỒNG SÂM...', 'HỘP TINH DẦU...', 'HỘP NƯỚC HỒNG SÂM...']).\n"; // Lấy 4 SP
-    // ----- KẾT THÚC KỊCH BẢN MỚI -----
+    prompt += "      - (`quick_replies` phải là [] rỗng).\n";
 
-    prompt += "    - **Luật Giá (Áp dụng cho mọi sản phẩm):**\n";
+    prompt += "    - **Luật 2: Hỏi Vague & Liệt Kê SP (Khi khách hỏi mơ hồ lần đầu):**\n";
+    prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | Shop có nhiều sản phẩm sức khỏe Hàn Quốc, Bác đang quan tâm cụ thể về vấn đề gì hoặc sản phẩm nào ạ?\"\n";
+    prompt += "      - Lấy 4 'Tên Sản Phẩm' đầu tiên từ 'KHỐI KIẾN THỨC SẢN PHẨM' và tạo nút bấm `quick_replies`.\n";
+
+    // ----- ĐÃ BỎ XIN SĐT TRONG LUẬT GIÁ -----
+    prompt += "    - **Luật Giá (KHÔNG XIN SĐT):**\n";
     prompt += "      - Nếu khách hỏi giá (CÓ) VÀ `new_price_asked_count >= 2`:\n";
-    prompt += "        -> Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP tra cứu được] hiện tại là [Giá SP tra cứu được] ạ. | Shop FREESHIP mọi đơn; và nếu Bác lấy từ 2 hộp Shop sẽ tặng 1 phần quà sức khỏe ạ. | Bác có muốn Shop tư vấn thêm về quà tặng không ạ?\" (Lưu ý: Lấy giá từ 'KHỐI KIẾN THỨC')\n";
+    prompt += "        -> Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP tra cứu được] hiện tại là [Giá SP tra cứu được] ạ. | Shop FREESHIP mọi đơn; và nếu Bác lấy từ 2 hộp Shop sẽ tặng 1 phần quà sức khỏe ạ. | Bác có muốn Shop tư vấn thêm về quà tặng không ạ?\"\n";
     prompt += "      - Nếu khách hỏi giá (CÓ) VÀ `new_price_asked_count == 1`:\n";
-    prompt += "        -> Trả lời: \"Dạ " + greetingName + ", về giá thì tuỳ ưu đãi từng đợt Bác ạ. | Bác để SĐT + giờ rảnh, shop gọi 1-2 phút giải thích cặn kẽ hơn ạ.\"\n";
-    
-    prompt += "    - **Luật SĐT (trong khi chat):**\n";
-    prompt += "      - Nếu tin nhắn ('" + userMessage + "') chứa SĐT hợp lệ (VÀ KHÔNG PHẢI LUẬT 1):\n";
-    prompt += "        -> Trả lời: \"Dạ Shop cảm ơn " + greetingName + " ạ. Shop đã nhận được SĐT của Bác. | Shop sẽ gọi Bác trong ít phút nữa, hoặc Bác muốn Shop gọi vào giờ nào ạ?\"\n";
+    prompt += "        -> Trả lời: \"Dạ " + greetingName + ", về giá thì tuỳ ưu đãi từng đợt và liệu trình Bác dùng ạ. | Để biết giá chính xác và ưu đãi tốt nhất, Bác hỏi lại lần nữa giúp Shop nhé!\"\n"; // Gợi ý hỏi lại thay vì xin SĐT
 
-    prompt += "    - **Luật SĐT (trong khi chat):**\n";
-    prompt += "      - **(Kiểm tra SĐT):** Một SĐT Việt Nam hợp lệ (10 số, bắt đầu 09, 08, 07, 05, 03).\n";
-    prompt += "      - **(Hành động):** Nếu tin nhắn ('" + userMessage + "') chứa SĐT hợp lệ (VÀ KHÔNG PHẢI LUẬT 1):\n";
-    prompt += "        -> Trả lời: \"Dạ Shop cảm ơn " + greetingName + " ạ. Shop đã nhận được SĐT của Bác. | Shop sẽ gọi Bác trong ít phút nữa, hoặc Bác muốn Shop gọi vào giờ nào ạ?\"\n";
+    // ----- ĐÃ BỎ XIN SĐT TRONG LUẬT QUÀ TẶNG -----
+    prompt += "    - **Luật Quà Tặng (KHÔNG XIN SĐT):**\n";
+    prompt += "      - (Áp dụng khi khách hỏi về 'quà tặng', 'khuyến mãi').\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", quà tặng bên Shop rất đa dạng ạ, thường là các sản phẩm sức khỏe đi kèm. | Shop sẽ tư vấn quà tặng phù hợp nhất khi Bác chốt đơn nhé ạ! | Bác muốn hỏi thêm về sản phẩm nào khác không ạ?\"\n"; // Trả lời chung và hỏi ngược
 
-    prompt += "    - **Luật Chung (Mặc định):**\n";
-    prompt += "      - (Áp dụng khi không dính các luật trên)\n"; 
+    prompt += "    - **Luật Chung (Mặc định - KHÔNG XIN SĐT):**\n";
+    prompt += "      - (Áp dụng khi không dính các luật trên)\n";
     prompt += "      - **YÊU CẦU 0 (Tra cứu):** Nếu khách hỏi về công dụng, cách dùng... -> Hãy tìm SẢN PHẨM PHÙ HỢP trong 'KHỐI KIẾN THỨC SẢN PHẨM' và trả lời. PHẢI NHẮC LẠI: 'Sản phẩm không phải là thuốc'.\n";
     prompt += "      - **YÊU CẦU 1 (Hỏi ngược):** Luôn kết thúc câu trả lời bằng một câu hỏi gợi mở.\n";
-    prompt += "      - **YÊU CẦU 2 (Tần suất SĐT):** TUYỆT ĐỐI KHÔNG xin SĐT trong luật này.\n"; 
+    prompt += "      - **YÊU CẦU 2 (KHÔNG XIN SĐT):** TUYỆT ĐỐI KHÔNG xin SĐT trong luật này.\n";
     prompt += "      - Nếu tin nhắn khó hiểu (như 'È', 'Hả', 'Lô'):\n";
     prompt += "        -> Trả lời: \"Dạ " + greetingName + ", Shop chưa hiểu ý Bác lắm ạ. | Bác có thể nói rõ hơn Bác đang cần hỗ trợ gì không ạ?\"\n";
-    
+
     prompt += "      - Luôn xưng hô \"Shop - Bác\", tông ấm áp, câu ngắn, tối đa 1 emoji.\n";
     prompt += "      - Tách câu trả lời bằng dấu |\n\n";
-    
+
     prompt += "**YÊU CẦU ĐẦU RA (JSON):**\n";
     prompt += "Bạn PHẢI trả lời dưới dạng một JSON string duy nhất, không có giải thích, không có \\```json ... \\```.\n";
     prompt += "{\n";
@@ -300,27 +305,35 @@ async function callGemini(userMessage, userName, userState, productKnowledge) {
     prompt += "}\n";
     prompt += "---\n";
     prompt += "**BẮT ĐẦU:**\n";
-    prompt += "- Khách hàng: \"" + (userName || "Khách lạ") + "\"\n"; 
+    prompt += "- Khách hàng: \"" + (userName || "Khách lạ") + "\"\n";
     prompt += "- Tin nhắn: \"" + userMessage + "\"\n";
     prompt += "- State cũ: { \"price_asked_count\": " + userState.price_asked_count + " }\n";
     prompt += "- Lịch sử chat: " + (historyString ? "Đã có" : "(Chưa có lịch sử chat)") + "\n\n";
     prompt += "TRẢ VỀ JSON:";
 
-    const result = await model.generateContent(prompt);
+    const generationConfig = {
+      // temperature: 0.7, // Có thể điều chỉnh độ "sáng tạo" nếu cần
+      // maxOutputTokens: 1000,
+    };
+
+    const result = await model.generateContent(prompt, generationConfig);
     let responseText = await result.response.text();
-    
+
     // "Dọn dẹp" JSON (Cực kỳ quan trọng, giữ nguyên)
     const startIndex = responseText.indexOf('{');
     const endIndex = responseText.lastIndexOf('}') + 1;
     if (startIndex === -1 || endIndex === -1) {
-        throw new Error("Gemini returned invalid data (no JSON found). Response: " + responseText);
+        console.error("Gemini raw response:", responseText); // Log lại để debug
+        throw new Error("Gemini returned invalid data (no JSON found).");
     }
     const cleanJsonString = responseText.substring(startIndex, endIndex);
-    
-    return JSON.parse(cleanJsonString); 
-    
+
+    // Parse JSON đã được "dọn dẹp"
+    return JSON.parse(cleanJsonString);
+
   } catch (error) {
     console.error("Lỗi khi gọi Gemini API hoặc parse JSON:", error);
+    // Trả về một lỗi an toàn để bot không bị crash
     return {
       response_message: "Dạ, hệ thống AI đang gặp chút trục trặc, Bác chờ Shop vài phút ạ. 😥",
       new_state: userState, // Trả lại state cũ
