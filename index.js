@@ -119,13 +119,14 @@ app.post('/webhook', (req, res) => {
 function getProductKnowledge() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (DÙNG ĐỂ TRA CỨU):**\n\n";
 
-    // == SẢN PHẨM 1 ==
+// == SẢN PHẨM 1 (ĐÃ CẬP NHẬT) ==
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN\n";
     knowledgeString += "Từ Khóa: an cung, an cung samsung, an cung 60 viên, an cung hộp gỗ, tai biến, đột quỵ, phòng đột quỵ, huyết áp, cao huyết áp, tiền đình, rối loạn tiền đình, đau đầu, bổ não, tuần hoàn não, hoa mắt, chóng mặt, samsung\n";
     knowledgeString += "Mô Tả Chung: Sản phẩm nổi tiếng Hàn Quốc, giúp bổ não, tăng tuần hoàn não, ổn định huyết áp, phòng ngừa nguy cơ bị tai biến, đột quỵ.\n";
     knowledgeString += "Công Dụng: Hỗ trợ cải thiện rối loạn tiền đình, đau nửa đầu, thiếu máu não; Phòng bệnh cho người có nguy cơ đột quỵ; Hỗ trợ phục hồi sau tai biến.\n";
-    knowledgeString += "Cách Dùng: Người tai biến: 1 viên/ngày. Người dự phòng: 1-2 đợt/năm, mỗi đợt 20-30 ngày. Nhai hoặc pha nước ấm.\n";
+    // ----- ĐÃ CẬP NHẬT DÒNG NÀY -----
+    knowledgeString += "Cách Dùng: Dùng hằng ngày, mỗi ngày 1 viên. Một năm dùng 2-3 hộp. Nhai hoặc pha nước ấm.\n";
     knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Không dùng buổi tối (gây mất ngủ). Không dùng khi bụng đói. Giá: 790.000đ/hộp.\n";
     knowledgeString += "-----------------\n\n";
 
