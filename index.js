@@ -42,8 +42,8 @@ if (!GEMINI_API_KEY || !FB_PAGE_TOKEN || !VERIFY_TOKEN) {
 let model; // Khai báo model ở đây
 try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    console.log("Đã kết nối với Gemini API (Model: gemini-1.5-flash).");
+    model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    console.log("Đã kết nối với Gemini API (Model: gemini-2.5-flash).");
 } catch(error) {
     console.error("LỖI KHI KHỞI TẠO GEMINI:", error);
     process.exit(1);
