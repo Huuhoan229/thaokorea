@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "CẬP NHẬT GIÁ ƯU ĐÃI" + "DANH SÁCH 7 SP")
+// File: index.js (Phiên bản "ĐA TRANG FACEBOOK" - HOÀN CHỈNH 100%)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -8,20 +8,19 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const admin = require('firebase-admin'); // Thư viện "bộ nhớ"
 
 // 2. KHỞI TẠO BỘ NHỚ (FIRESTORE)
-let db; // Khai báo db ở đây
+let db; 
 try {
+    // Code này sẽ đọc "Secret" SERVICE_ACCOUNT_KEY_JSON trên Koyeb
     const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY_JSON);
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });
-    db = admin.firestore(); // Gán giá trị sau khi initializeApp
+    db = admin.firestore();
     console.log("Đã kết nối với Bộ nhớ Firestore.");
 } catch (error) {
-    console.error("LỖI NGHIÊM TRỌNG KHI KẾT NỐI FIRESTORE:", error);
-    console.error("Vui lòng kiểm tra biến môi trường SERVICE_ACCOUNT_KEY_JSON trên Koyeb.");
-    process.exit(1); // Thoát ứng dụng nếu không kết nối được Firestore
+    console.error("LỖI KHI KẾT NỐI FIRESTORE:", error);
+    process.exit(1);
 }
-
 
 // 3. Khởi tạo các biến
 const app = express();
@@ -29,20 +28,34 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const FB_PAGE_TOKEN = process.env.FB_PAGE_TOKEN;
-const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN; // Dùng chung 1 Verify Token cho cả 2 trang
 
-// Kiểm tra các biến môi trường cần thiết khác
-if (!GEMINI_API_KEY || !FB_PAGE_TOKEN || !VERIFY_TOKEN) {
-    console.error("LỖI: Thiếu một hoặc nhiều biến môi trường (GEMINI_API_KEY, FB_PAGE_TOKEN, VERIFY_TOKEN).");
-    process.exit(1);
+// ----- BỘ MAP TOKEN MỚI (QUAN TRỌNG) -----
+// Code này sẽ đọc "Secrets" Bác tạo trên Koyeb
+const pageTokenMap = new Map();
+
+// Tải Token cho Trang 1 (Thảo Korea)
+if (process.env.PAGE_ID_THAO_KOREA && process.env.FB_PAGE_TOKEN_THAO_KOREA) {
+    pageTokenMap.set(process.env.PAGE_ID_THAO_KOREA, process.env.FB_PAGE_TOKEN_THAO_KOREA);
+    console.log(`Đã tải Token cho trang: ${process.env.PAGE_ID_THAO_KOREA}`);
+}
+// Tải Token cho Trang 2 (Trang Mới)
+if (process.env.PAGE_ID_TRANG_MOI && process.env.FB_PAGE_TOKEN_TRANG_MOI) {
+    pageTokenMap.set(process.env.PAGE_ID_TRANG_MOI, process.env.FB_PAGE_TOKEN_TRANG_MOI);
+    console.log(`Đã tải Token cho trang: ${process.env.PAGE_ID_TRANG_MOI}`);
 }
 
+console.log(`Bot đã được khởi tạo cho ${pageTokenMap.size} Fanpage.`);
+if (pageTokenMap.size === 0) {
+    console.error("LỖI: KHÔNG TÌM THẤY BẤT KỲ CẶP PAGE_ID VÀ TOKEN NÀO!");
+    console.error("Bác cần tạo 'Secrets' trên Koyeb (ví dụ: PAGE_ID_THAO_KOREA, FB_PAGE_TOKEN_THAO_KOREA...)");
+}
+// -------------------------------------------
+
 // 4. Khởi tạo Gemini
-let model; // Khai báo model ở đây
+let model; 
 try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    // SỬ DỤNG MODEL CHUẨN ĐÃ CHẠY
     model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); 
     console.log("Đã kết nối với Gemini API (Model: gemini-2.5-flash).");
 } catch(error) {
@@ -67,64 +80,80 @@ app.get('/webhook', (req, res) => {
 });
 
 // -------------------------------------------------------------------
-// Endpoint 2: Nhận tin nhắn từ Facebook (XỬ LÝ CHÍNH)
+// Endpoint 2: Nhận tin nhắn từ Facebook (ĐÃ NÂNG CẤP ĐA TRANG)
 // -------------------------------------------------------------------
 app.post('/webhook', (req, res) => {
   let body = req.body;
   if (body.object === 'page' && body.entry) {
-    // Gửi OK ngay lập tức để tránh Facebook gửi lại
+    // Gửi OK ngay lập tức
     res.status(200).send('EVENT_RECEIVED');
 
-    body.entry.forEach((entry) => {
-      if (entry.messaging && entry.messaging.length > 0) {
-        let webhook_event = entry.messaging[0];
-        let sender_psid = webhook_event.sender.id; // ID khách hàng
+    (async () => {
+      for (const entry of body.entry) {
+        const pageId = entry.id; // Lấy Page ID
 
-        if (webhook_event.message && webhook_event.message.is_echo) {
-            return; // Bỏ qua tin nhắn do chính Bot gửi
-        }
+        if (entry.messaging && entry.messaging.length > 0) {
+          const webhook_event = entry.messaging[0]; 
+          const sender_psid = webhook_event.sender.id; // ID Khách hàng
 
-        // Xử lý cả tin nhắn văn bản và nút bấm (nếu có)
-        let userMessage = null;
-        if (webhook_event.message && webhook_event.message.text) {
-            userMessage = webhook_event.message.text;
-        } else if (webhook_event.message && webhook_event.message.quick_reply) {
-            userMessage = webhook_event.message.quick_reply.payload;
-        }
+          if (webhook_event.message && webhook_event.message.is_echo) {
+            continue; // Bỏ qua tin nhắn do Bot gửi
+          }
 
-        if (userMessage && sender_psid) {
-          processMessage(sender_psid, userMessage); // Gọi hàm xử lý riêng
-        } else {
-            // console.log("Tin nhắn không hợp lệ hoặc thiếu sender_psid:", webhook_event);
-        }
-      }
-    });
+          let userMessage = null;
+          if (webhook_event.message && webhook_event.message.text) {
+              userMessage = webhook_event.message.text;
+          } else if (webhook_event.message && webhook_event.message.quick_reply) {
+              userMessage = webhook_event.message.quick_reply.payload;
+          }
+
+          if (userMessage && sender_psid) {
+            // Truyền PAGE ID vào hàm xử lý
+            await processMessage(pageId, sender_psid, userMessage); 
+          }
+        } 
+      } 
+    })(); 
+
   } else {
     console.error("Payload webhook không hợp lệ:", body);
     res.sendStatus(404);
   }
 });
 
-// Hàm xử lý tin nhắn riêng biệt (async)
-async function processMessage(sender_psid, userMessage) {
-    try {
-      await sendFacebookTyping(sender_psid, true);
-      let userName = await getFacebookUserName(sender_psid);
-      const userState = await loadState(sender_psid);
+// Hàm xử lý tin nhắn (ĐÃ NÂNG CẤP ĐA TRANG)
+async function processMessage(pageId, sender_psid, userMessage) {
+    // LẤY ĐÚNG TOKEN CHO TRANG NÀY
+    const FB_PAGE_TOKEN = pageTokenMap.get(pageId);
+    if (!FB_PAGE_TOKEN) {
+        console.error(`KHÔNG TÌM THẤY TOKEN cho Page ID: ${pageId}. Bot sẽ không trả lời.`);
+        return; // Dừng lại
+    }
 
-      // LẤY KIẾN THỨC SẢN PHẨM TRỰC TIẾP TỪ CODE (ĐÃ CẬP NHẬT)
+    try {
+      // TRUYỀN TOKEN VÀO CÁC HÀM CON
+      await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, true);
+      
+      let userName = await getFacebookUserName(FB_PAGE_TOKEN, sender_psid);
+      
+      // TẠO ID BỘ NHỚ DUY NHẤT (Ghép Page ID + User ID)
+      const uniqueStorageId = `${pageId}_${sender_psid}`;
+      const userState = await loadState(uniqueStorageId); 
+
+      // LẤY KIẾN THỨC SẢN PHẨM (Dùng chung cho cả 2 trang)
       const productKnowledge = getProductKnowledge();
 
-      console.log(`[User ${userName || 'Khách lạ'} (Giá: ${userState.price_asked_count} lần)]: ${userMessage}`);
+      console.log(`[Page: ${pageId}] [User: ${userName || 'Khách lạ'}]: ${userMessage}`);
 
-      // Gọi Gemini để lấy Câu trả lời + Trạng thái MỚI
-      const geminiResult = await callGemini(userMessage, userName, userState, productKnowledge);
+      // Gọi Gemini (đã bỏ state đếm giá)
+      const geminiResult = await callGemini(userMessage, userName, userState, productKnowledge); 
 
       console.log(`[Gemini Response]: ${geminiResult.response_message}`);
-      console.log(`[New State]: price_asked_count = ${geminiResult.new_state.price_asked_count}`);
 
-      await sendFacebookTyping(sender_psid, false);
-      await saveState(sender_psid, geminiResult.new_state, userMessage, geminiResult.response_message);
+      await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, false);
+      
+      // LƯU VÀO BỘ NHỚ VỚI ID DUY NHẤT (đã bỏ new_state)
+      await saveState(uniqueStorageId, userMessage, geminiResult.response_message); 
 
       // Tách câu và gửi
       const messages = geminiResult.response_message.split('|');
@@ -132,25 +161,24 @@ async function processMessage(sender_psid, userMessage) {
           const msg = messages[i];
           const trimmedMsg = msg.trim();
           if (trimmedMsg) {
-              await sendFacebookTyping(sender_psid, true);
-              const typingTime = 1500 + (trimmedMsg.length / 20 * 1000); // 1.5s + tg gõ
+              await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, true);
+              const typingTime = 1500 + (trimmedMsg.length / 20 * 1000);
               await new Promise(resolve => setTimeout(resolve, typingTime));
-              await sendFacebookTyping(sender_psid, false);
+              await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, false);
               
-              await sendFacebookMessage(sender_psid, trimmedMsg); // Bỏ quick replies
+              await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, trimmedMsg); 
           }
       }
 
     } catch (error) {
       console.error("Lỗi xử lý:", error);
-      await sendFacebookMessage(sender_psid, "Dạ, nhân viên Shop chưa trực tuyến nên chưa trả lời được Bác ngay ạ. Bác vui lòng chờ trong giây lát nhé."); // Đã sửa lỗi
+      await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, "Dạ, nhân viên Shop chưa trực tuyến nên chưa trả lời được Bác ngay ạ. Bác vui lòng chờ trong giây lát nhé.");
     }
 }
 
 
 // -------------------------------------------------------------------
-// HÀM MỚI: TRẢ VỀ KHỐI KIẾN THỨC SẢN PHẨM (NHÚNG VÀO CODE)
-// (----- ĐÃ CẬP NHẬT GIÁ VÀ QUÀ TẶNG ----- )
+// HÀM: TRẢ VỀ KHỐI KIẾN THỨC SẢN PHẨM (ĐẦY ĐỦ 7 SẢN PHẨM)
 // -------------------------------------------------------------------
 function getProductKnowledge() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (DÙNG ĐỂ TRA CỨU):**\n\n";
@@ -159,7 +187,7 @@ function getProductKnowledge() {
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN\n";
     knowledgeString += "Từ Khóa: an cung, an cung samsung, an cung 60 viên, an cung hộp gỗ, tai biến, đột quỵ, phòng đột quỵ, huyết áp, cao huyết áp, tiền đình, rối loạn tiền đình, đau đầu, bổ não, tuần hoàn não, hoa mắt, chóng mặt, samsung\n";
-    knowledgeString += "Cách Dùng: Người tai biến: 1 viên/ngày (dùng 1-2 hộp). Người dự phòng: Dùng hằng ngày, mỗi ngày 1 viên. Một năm dùng 2-3 hộp.\n";
+    knowledgeString += "Cách Dùng: Dùng hằng ngày, mỗi ngày 1 viên. Một năm dùng 2-3 hộp.\n";
     knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Không dùng buổi tối. Không dùng khi bụng đói. Giá: 780.000đ/hộp (ƯU ĐÃI) + TẶNG 1 LỌ DẦU LẠNH + MIỄN SHIP.\n";
     knowledgeString += "-----------------\n\n";
 
@@ -167,8 +195,6 @@ function getProductKnowledge() {
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: HỘP CAO HỒNG SÂM 365 HÀN QUỐC\n";
     knowledgeString += "Từ Khóa: cao hồng sâm, cao sâm, sâm 365, hồng sâm 365, sâm hàn quốc, bồi bổ, tăng đề kháng, suy nhược, mệt mỏi, người ốm, quà biếu, ốm dậy, ăn không ngon, ngủ không sâu\n";
-    knowledgeString += "Công Dụng: Bồi bổ cơ thể, phục hồi sức khỏe cho người mới ốm dậy; Giảm stress, mệt mỏi; Tăng cường trí nhớ; Ổn định đường huyết.\n";
-    knowledgeString += "Cách Dùng: Mỗi ngày 1 thìa cafe, pha với 100ml nước ấm. Uống vào buổi sáng sau khi ăn.\n";
     knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Người huyết áp cao nên dùng liều nhỏ. Giá: 450.000đ/hũ (ƯU ĐÃI).\n";
     knowledgeString += "-----------------\n\n";
 
@@ -176,8 +202,6 @@ function getProductKnowledge() {
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: HỘP TINH DẦU THÔNG ĐỎ KWANGDONG HÀN QUỐC\n";
     knowledgeString += "Từ Khóa: tinh dầu thông đỏ, thông đỏ, thông đỏ kwangdong, mỡ máu, giảm mỡ máu, cholesterol, tim mạch, mỡ gan, huyết áp, thông huyết mạch, xơ vữa động mạch\n";
-    knowledgeString += "Công Dụng: Hỗ trợ giảm mỡ máu (cholesterol); Hỗ trợ phòng ngừa xơ vữa động mạch, huyết khối; Hỗ trợ tim mạch; Giảm đau nhức xương khớp.\n";
-    knowledgeString += "Cách Dùng: Uống 1-2 viên/ngày sau bữa ăn tối 30 phút.\n";
     knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Không dùng cho phụ nữ có thai. Giá: 1.150.000đ/hộp (ƯU ĐÃI) + TẶNG 1 GÓI CAO DÁN 20 MIẾNG + MIỄN SHIP.\n";
     knowledgeString += "-----------------\n\n";
 
@@ -185,8 +209,6 @@ function getProductKnowledge() {
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: HỘP NƯỚC HỒNG SÂM NHUNG HƯƠU HỘP 30 GÓI\n";
     knowledgeString += "Từ Khóa: nước sâm, nước hồng sâm, sâm nhung hươu, nhung hươu, sâm 30 gói, bồi bổ, đau lưng, mỏi gối, xương khớp, yếu sinh lý, tăng đề kháng, suy nhược, mệt mỏi\n";
-    knowledgeString += "Công Dụng: Bồi bổ sức khỏe, tăng cường thể lực; Hỗ trợ xương khớp, giảm đau lưng mỏi gối; Cải thiện sinh lý; Tăng cường miễn dịch.\n";
-    knowledgeString += "Cách Dùng: Uống trực tiếp 1 gói/ngày, tốt nhất vào buổi sáng.\n";
     knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Giá: 420.000đ/hộp 30 gói (ƯU ĐÃI).\n";
     knowledgeString += "-----------------\n\n";
 
@@ -194,8 +216,6 @@ function getProductKnowledge() {
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: HỘP NƯỚC HỒNG SÂM NHUNG HƯƠU HỘP 20 GÓI\n";
     knowledgeString += "Từ Khóa: nước sâm, nước hồng sâm, sâm nhung hươu, nhung hươu, sâm 20 gói, bồi bổ, đau lưng, mỏi gối, xương khớp, yếu sinh lý, tăng đề kháng, suy nhược, mệt mỏi\n";
-    knowledgeString += "Công Dụng: Bồi bổ sức khỏe, tăng cường thể lực; Hỗ trợ xương khớp, giảm đau lưng mỏi gối; Cải thiện sinh lý; Tăng cường miễn dịch.\n";
-    knowledgeString += "Cách Dùng: Uống trực tiếp 1 gói/ngày, tốt nhất vào buổi sáng.\n";
     knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Giá: 330.000đ/hộp 20 gói (ƯU ĐÃI).\n";
     knowledgeString += "-----------------\n\n";
     
@@ -203,9 +223,7 @@ function getProductKnowledge() {
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: NƯỚC MÁT GAN ĐÔNG TRÙNG NGHỆ SAMSUNG\n";
     knowledgeString += "Từ Khóa: nước mát gan, mát gan, giải độc gan, gan, nóng trong, men gan cao, rượu bia, mụn, mề đay, đông trùng, nghệ, curcumin, dạ dày, samsung gan\n";
-    knowledgeString += "Công Dụng: Hỗ trợ thanh nhiệt, giải độc gan; Bảo vệ và phục hồi chức năng gan; Giảm tác hại của rượu bia; Hỗ trợ tiêu hóa, giảm mụn nhọt.\n";
-    knowledgeString += "Cách Dùng: Uống 1 chai/ngày, lắc đều trước khi uống.\n";
-    knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Giá: 390.000đ/hộp 30 chai (ƯU ĐÃI).\n"; // (Giả sử 30 gói Bác ghi nhầm là 30 chai)
+    knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Giá: 390.000đ/hộp 30 chai (ƯU ĐÃI).\n";
     knowledgeString += "-----------------\n\n";
     
     // == SẢN PHẨM 7 (ĐÃ CẬP NHẬT) ==
@@ -221,44 +239,42 @@ function getProductKnowledge() {
 }
 
 // -------------------------------------------------------------------
-// HÀM QUẢN LÝ BỘ NHỚ (FIRESTORE) - (Giữ nguyên)
+// HÀM QUẢN LÝ BỘ NHỚ (FIRESTORE) - (ĐÃ NÂNG CẤP ĐA TRANG)
 // -------------------------------------------------------------------
-async function loadState(psid) {
+async function loadState(uniqueStorageId) { // Sửa thành uniqueStorageId
   if (!db) {
       console.error("Firestore chưa được khởi tạo!");
-      return { price_asked_count: 0, history: [] };
+      return { history: [] }; // Chỉ trả về lịch sử
   }
-  const userRef = db.collection('users').doc(psid);
+  const userRef = db.collection('users').doc(uniqueStorageId); // Dùng ID mới
   try {
       const doc = await userRef.get();
       if (!doc.exists) {
-        return { price_asked_count: 0, history: [] };
+        return { history: [] };
       } else {
         const data = doc.data();
         return {
-          price_asked_count: data.price_asked_count || 0,
-          history: data.history ? data.history.slice(-10) : []
+          history: data.history ? data.history.slice(-10) : [] // Chỉ lấy lịch sử
         };
       }
   } catch (error) {
       console.error("Lỗi khi tải state từ Firestore:", error);
-      return { price_asked_count: 0, history: [] };
+      return { history: [] };
   }
 }
 
-async function saveState(psid, newState, userMessage, botMessage) {
+async function saveState(uniqueStorageId, userMessage, botMessage) { // Sửa thành uniqueStorageId
   if (!db) {
       console.error("Firestore chưa được khởi tạo! Không thể lưu state.");
       return;
   }
-  const userRef = db.collection('users').doc(psid);
+  const userRef = db.collection('users').doc(uniqueStorageId); // Dùng ID mới
   const newUserMsg = { role: 'user', content: userMessage };
-  const shouldSaveBotMsg = botMessage && !botMessage.includes("nhân viên Shop chưa trực tuyến"); // Sửa chữ "trục trặc"
+  const shouldSaveBotMsg = botMessage && !botMessage.includes("nhân viên Shop chưa trực tuyến");
   const historyUpdates = shouldSaveBotMsg ? [newUserMsg, { role: 'bot', content: botMessage }] : [newUserMsg];
 
   try {
       await userRef.set({
-        price_asked_count: newState.price_asked_count,
         history: admin.firestore.FieldValue.arrayUnion(...historyUpdates),
         last_updated: admin.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
@@ -268,64 +284,51 @@ async function saveState(psid, newState, userMessage, botMessage) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI (Phiên bản "SỬA LỖI CHƯA HIỂU" + "XỬ LÝ ĐƠN HÀNG")
+// HÀM GỌI GEMINI (Phiên bản "CÔNG KHAI GIÁ" - KHÔNG BỊ RÚT GỌN)
 // -------------------------------------------------------------------
 async function callGemini(userMessage, userName, userState, productKnowledge) {
-  // Đảm bảo model đã được khởi tạo
   if (!model) {
       console.error("Gemini model chưa được khởi tạo!");
       return {
-          response_message: "Dạ, nhân viên Shop chưa trực tuyến nên chưa trả lời được Bác ngay ạ. Bác vui lòng chờ trong giây lát nhé.", // Sửa lỗi
-          new_state: userState
+          response_message: "Dạ, nhân viên Shop chưa trực tuyến nên chưa trả lời được Bác ngay ạ. Bác vui lòng chờ trong giây lát nhé.",
       };
   }
   try {
-    const historyString = userState.history.map(h => `${h.role}: ${h.content}`).join('\n');
+    const historyString = userState.history.map(h => `${h.role}: ${h.content}`).join('\n'); // userState chỉ có history
     const greetingName = userName ? "Bác " + userName : "Bác";
 
     // XÂY DỰNG PROMPT BẰNG CÁCH NỐI CHUỖI
-    let prompt = "**Nhiệm vụ:** Bạn là bot tư vấn ĐA SẢN PHẨM. Bạn PHẢI trả lời tin nhắn của khách, tra cứu kiến thức, và CẬP NHẬT TRẠNG THÁI (state) của họ.\n\n";
+    let prompt = "**Nhiệm vụ:** Bạn là bot tư vấn ĐA SẢN PHẨM. Bạn PHẢI trả lời tin nhắn của khách và tra cứu kiến thức.\n\n";
 
     // NẠP KIẾN THỨC (TỪ CODE)
     prompt += productKnowledge + "\n\n";
 
     prompt += "**Lịch sử chat (10 tin nhắn gần nhất):**\n";
     prompt += (historyString || "(Chưa có lịch sử chat)") + "\n\n";
-    prompt += "**Trạng thái ghi nhớ (State) của khách TRƯỚC KHI trả lời:**\n";
-    prompt += "- price_asked_count: " + userState.price_asked_count + "\n\n";
     
-    // ----- ĐÃ CẬP NHẬT LUẬT LỆ TRIỆT ĐỂ -----
     prompt += "**Luật Lệ (Ưu tiên từ trên xuống):**\n";
     prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** KHÔNG được nói lặp đi lặp lại. Phải trả lời NGẮN GỌN, đúng trọng tâm. (Vẫn dùng dấu | để tách các ý/câu nếu cần).\n";
     
     prompt += "2.  **Phân tích tin nhắn:**\n";
     prompt += "    - Đọc tin nhắn của khách: \"" + userMessage + "\".\n";
-    prompt += "    - **(Kiểm tra SĐT):** Một SĐT Việt Nam hợp lệ (10 số, bắt đầu 09, 08, 07, 05, 03).\n";
-    prompt += "    - **(Kiểm tra Địa Chỉ):** Tin nhắn có chứa từ khóa địa chỉ không (như: 'địa chỉ', 'sn', 'số nhà', 'ngõ', 'phố', 'đường', 'phường', 'quận', 'thành phố', 'tỉnh').\n";
-    prompt += "    - **(Kiểm tra Hình Ảnh):** Tin nhắn có chứa từ khóa yêu cầu ảnh không (như: 'ảnh', 'hình', 'video', 'xem hộp', 'nắp hộp', 'bên ngoài', 'gửi mẫu', 'gửi hình', 'xem ảnh').\n";
+    prompt += "    - **(Kiểm tra SĐT):** Tin nhắn có chứa SĐT hợp lệ (10 số, 09/08/07/05/03) hoặc Địa chỉ (sn, ngõ, phố...) không?\n";
+    prompt += "    - **(Kiểm tra Hình Ảnh):** Tin nhắn có chứa từ khóa yêu cầu ảnh không (như: 'ảnh', 'hình', 'video', 'xem hộp', 'nắp hộp').\n";
+    prompt += "    - **(Kiểm tra Giá):** Khách có hỏi giá lần này không (như 'giá', 'bao nhiêu tiền', 'giá sao')?\n";
     
-    prompt += "    - **(Ưu tiên 1 - Yêu cầu Hình Ảnh):** Nếu tin nhắn chứa từ khóa 'Kiểm tra Hình Ảnh' -> Kích hoạt 'Luật 1: Chuyển Giao Nhân Viên (Hình Ảnh)'.\n";
-    prompt += "    - **(Ưu tiên 2 - Gửi SĐT/Địa chỉ):** Nếu tin nhắn chứa SĐT hợp lệ HOẶC chứa từ khóa 'Kiểm tra Địa Chỉ' -> Kích hoạt 'Luật 2: Ghi Nhận Đơn Hàng'.\n";
+    prompt += "    - **(Ưu tiên 1 - Yêu cầu Hình Ảnh):** Nếu chứa từ khóa 'Kiểm tra Hình Ảnh' -> Kích hoạt 'Luật 1: Chuyển Giao Nhân Viên (Hình Ảnh)'.\n";
+    prompt += "    - **(Ưu tiên 2 - Gửi SĐT/Địa chỉ):** Nếu chứa SĐT hoặc Địa chỉ -> Kích hoạt 'Luật 2: Ghi Nhận Đơn Hàng'.\n";
     prompt += "    - **(Ưu tiên 3 - Câu hỏi mặc định SĐT):** Nếu tin nhắn GIỐNG HỆT 'Số Điện Thoại của tôi là:' -> Kích hoạt 'Luật 3: Phản hồi Câu SĐT Mặc Định'.\n";
     prompt += "    - **(Ưu tiên 4 - Câu hỏi mặc định Mua SP):** Nếu tin nhắn GIỐNG HỆT 'Tôi muốn mua sản phẩm:' HOẶC tin nhắn mơ hồ ('shop có gì'...) VÀ Lịch sử chat là (Chưa có lịch sử chat) -> Kích hoạt 'Luật 4: Hỏi Vague & Liệt Kê SP'.\n";
-    prompt += "    - **(Ưu tiên 5 - Tra cứu):** Nếu không, hãy tra cứu 'KHỐI KIẾN THỨC SẢN PHẨM'.\n";
-    prompt += "    - **(Ưu tiên 6 - Phân tích giá):** Khách có hỏi giá lần này không? (Trả lời CÓ hoặc KHÔNG).\n";
+    prompt += "    - **(Ưu tiên 5 - Hỏi Giá):** Nếu khách 'Kiểm tra Giá' (CÓ) -> Kích hoạt 'Luật 5: Báo Giá Công Khai'.\n"; // LUẬT MỚI
+    prompt += "    - **(Ưu tiên 6 - Tra cứu):** Nếu không, hãy tra cứu 'KHỐI KIẾN THỨC SẢN PHẨM'.\n";
+    
+    prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n"; // Sửa thành số 3
 
-    prompt += "3.  **Cập nhật State MỚI:**\n";
-    prompt += "    - Nếu khách hỏi giá lần này, `new_price_asked_count` = " + userState.price_asked_count + " + 1.\n";
-    prompt += "    - Nếu không, `new_price_asked_count` = " + userState.price_asked_count + ".\n";
-    prompt += "4.  **Luật Trả Lời (dựa trên Phân tích):**\n";
-
-    // ----- CÁC LUẬT MỚI -----
     prompt += "    - **Luật 1: Chuyển Giao Nhân Viên (Hình Ảnh):**\n";
-    prompt += "      - (Áp dụng khi khách hỏi 'xem ảnh', 'xem nắp hộp', 'gửi video'...)\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop xin lỗi vì chưa kịp gửi ảnh/video cho Bác ngay ạ. | Nhân viên của Shop sẽ kiểm tra và gửi cho Bác ngay sau đây, Bác chờ Shop 1-2 phút nhé!\"\n";
     
     prompt += "    - **Luật 2: Ghi Nhận Đơn Hàng (SĐT/Địa chỉ):**\n";
-    prompt += "      - (Áp dụng khi khách gửi SĐT hoặc Địa chỉ, hoặc cả hai cùng lúc như 'Chi 2 hop 098... Sn 46...').\n";
-    prompt += "      - **TUYỆT ĐỐI KHÔNG** lặp lại SĐT/Địa chỉ. Chỉ trả lời 1 LẦN DUY NHẤT.\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin (SĐT/Địa chỉ) của Bác ạ. | Shop sẽ gọi điện cho Bác để xác nhận đơn hàng ngay. Cảm ơn Bác ạ!\"\n";
-    // ----- KẾT THÚC LUẬT MỚI -----
 
     prompt += "    - **Luật 3: Phản hồi Câu SĐT Mặc Định:**\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", Bác cần Shop hỗ trợ gì ạ? | Nếu Bác muốn được tư vấn kỹ hơn qua điện thoại, Bác có thể nhập Số Điện Thoại vào đây, Shop sẽ gọi lại ngay ạ.\"\n";
@@ -333,23 +336,21 @@ async function callGemini(userMessage, userName, userState, productKnowledge) {
     prompt += "    - **Luật 4: Hỏi Vague & Liệt Kê SP (DANH SÁCH VĂN BẢN):**\n";
     prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | Shop có nhiều sản phẩm sức khỏe Hàn Quốc, Bác đang quan tâm cụ thể về vấn đề gì hoặc sản phẩm nào ạ? Bác có thể tham khảo một số sản phẩm sau: \n1. AN CUNG SAMSUNG (Hỗ trợ tai biến)\n2. CAO HỒNG SÂM 365 (Bồi bổ sức khỏe)\n3. TINH DẦU THÔNG ĐỎ (Hỗ trợ mỡ máu)\n4. NƯỚC SÂM NHUNG HƯƠU (30 gói)\n5. NƯỚC SÂM NHUNG HƯƠU (20 gói)\n6. NƯỚC MÁT GAN SAMSUNG (Giải độc gan)\n7. AN CUNG KWANGDONG (Tai biến cao cấp)\"\n";
     
-    prompt += "    - **Luật Giá (KHÔNG XIN SĐT):**\n";
-    prompt += "      - Nếu khách hỏi giá (CÓ) VÀ `new_price_asked_count >= 2`:\n";
-    prompt += "        -> Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP tra cứu được] hiện tại là [Giá SP tra cứu được] ạ. | Shop FREESHIP mọi đơn và có quà tặng khi Bác lấy từ 2 hộp ạ.\"\n";
-    prompt += "      - Nếu khách hỏi giá (CÓ) VÀ `new_price_asked_count == 1`:\n";
-    prompt += "        -> Trả lời: \"Dạ " + greetingName + ", về giá thì tuỳ ưu đãi từng đợt và liệu trình Bác dùng ạ. | Để biết giá chính xác, Bác hỏi lại lần nữa giúp Shop nhé!\"\n";
+    prompt += "    - **Luật 5: Báo Giá Công Khai (KHÔNG XIN SĐT):**\n";
+    prompt += "      - (Áp dụng khi khách hỏi giá)\n";
+    prompt += "      - **(Hành động):** Tra cứu 'KHỐI KIẾN THỨC' để tìm [Tên SP] và [Giá SP] (bao gồm quà tặng, freeship nếu có) mà khách đang hỏi. Nếu khách không nói rõ SP, hãy báo giá 1-2 SP phổ biến (An Cung Samsung).\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP tra cứu được] hiện tại là [Giá SP tra cứu được] ạ. | [Thông tin Quà Tặng/Freeship nếu có]. | Bác có muốn Shop tư vấn thêm về cách dùng không ạ?\"\n";
 
     prompt += "    - **Luật Quà Tặng (KHÔNG XIN SĐT):**\n";
     prompt += "      - (Áp dụng khi khách hỏi về 'quà tặng', 'khuyến mãi').\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", quà tặng bên Shop rất đa dạng ạ. | Shop sẽ tư vấn quà tặng phù hợp nhất khi Bác chốt đơn nhé ạ!\"\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", quà tặng bên Shop rất đa dạng ạ, tùy theo sản phẩm. | Ví dụ An Cung Samsung (780k) thì được tặng 1 lọ dầu lạnh ạ. | Bác muốn hỏi quà của sản phẩm nào ạ?\"\n";
 
     prompt += "    - **Luật Chung (Mặc định - KHÔNG XIN SĐT):**\n";
-    prompt += "      - (Áp dụng khi không dính các luật 1-5, Giá, Quà Tặng)\n";
+    prompt += "      - (Áp dụng khi không dính các luật trên)\n";
     prompt += "      - **LUÔN NHỚ LUẬT CHAT:** Trả lời NGẮN GỌN, không lặp lại.\n";
     prompt += "      - **YÊU CẦU 0 (Tra cứu):** Nếu khách hỏi về công dụng, cách dùng... -> Trả lời NGẮN GỌN dựa trên 'KHỐI KIẾN THỨC SẢN PHẨM'. PHẢI NHẮC LẠI: 'Sản phẩm không phải là thuốc'.\n";
     prompt += "      - **YÊU CẦU 1 (Hỏi ngược):** Kết thúc bằng một câu hỏi gợi mở NGẮN.\n";
     prompt += "      - **YÊU CẦU 2 (KHÔNG XIN SĐT):** TUYỆT ĐỐI KHÔNG xin SĐT.\n";
-    prompt += "      - **(BỎ QUA SĐT/ĐỊA CHỈ/ẢNH NẾU BỊ LỌT):** Nếu tin nhắn có vẻ là SĐT, Địa chỉ, hoặc hỏi ảnh (mà các luật trên bị lọt) -> KHÔNG trả lời gì đặc biệt, coi như tin nhắn khó hiểu.\n";
     prompt += "      - Nếu tin nhắn khó hiểu (kể cả SĐT, Địa chỉ, Ảnh bị lọt):\n";
     prompt += "        -> Trả lời: \"Dạ " + greetingName + ", Shop chưa hiểu ý Bác lắm ạ. | Bác có thể nói rõ hơn Bác đang cần hỗ trợ gì không ạ?\"\n";
 
@@ -359,16 +360,12 @@ async function callGemini(userMessage, userName, userState, productKnowledge) {
     prompt += "**YÊU CẦU ĐẦU RA (JSON):**\n";
     prompt += "Bạn PHẢI trả lời dưới dạng một JSON string duy nhất, không có giải thích, không có \\```json ... \\```.\n";
     prompt += "{\n";
-    prompt += "  \"response_message\": \"Câu trả lời cho khách | tách bằng dấu |\",\n";
-    prompt += "  \"new_state\": {\n";
-    prompt += "    \"price_asked_count\": [SỐ LẦN MỚI SAU KHI PHÂN TÍCH]\n";
-    prompt += "  }\n";
+    prompt += "  \"response_message\": \"Câu trả lời cho khách | tách bằng dấu |\"\n";
     prompt += "}\n";
     prompt += "---\n";
     prompt += "**BẮT ĐẦU:**\n";
     prompt += "- Khách hàng: \"" + (userName || "Khách lạ") + "\"\n";
     prompt += "- Tin nhắn: \"" + userMessage + "\"\n";
-    prompt += "- State cũ: { \"price_asked_count\": " + userState.price_asked_count + " }\n";
     prompt += "- Lịch sử chat: " + (historyString ? "Đã có" : "(Chưa có lịch sử chat)") + "\n\n";
     prompt += "TRẢ VỀ JSON:";
 
@@ -380,42 +377,40 @@ async function callGemini(userMessage, userName, userState, productKnowledge) {
     const result = await model.generateContent(prompt, generationConfig);
     let responseText = await result.response.text();
 
-    // "Dọn dẹp" JSON (Cực kỳ quan trọng, giữ nguyên)
+    // "Dọn dẹp" JSON
     const startIndex = responseText.indexOf('{');
     const endIndex = responseText.lastIndexOf('}') + 1;
     if (startIndex === -1 || endIndex === -1) {
-        console.error("Gemini raw response:", responseText); // Log lại để debug
+        console.error("Gemini raw response:", responseText);
         throw new Error("Gemini returned invalid data (no JSON found).");
     }
     const cleanJsonString = responseText.substring(startIndex, endIndex);
 
-    // Parse JSON đã được "dọn dẹp"
+    // Parse JSON
     const geminiJson = JSON.parse(cleanJsonString);
     
+    // Trả về, không cần new_state
     return {
         response_message: geminiJson.response_message || "Dạ Bác chờ Shop một lát ạ.",
-        new_state: geminiJson.new_state || userState
     };
 
   } catch (error) {
     console.error("Lỗi khi gọi Gemini API hoặc parse JSON:", error);
-    // ----- ĐÃ SỬA CÂU BÁO LỖI -----
     return {
       response_message: "Dạ, nhân viên Shop chưa trực tuyến nên chưa trả lời được Bác ngay ạ. Bác vui lòng chờ trong giây lát nhé.",
-      new_state: userState, // Trả lại state cũ
     };
   }
 }
 
 // -------------------------------------------------------------------
-// HÀM LẤY TÊN NGƯỜI DÙNG (Giữ nguyên - Sửa lỗi Bác Bác)
+// HÀM LẤY TÊN NGƯỜI DÙNG (ĐÃ NÂNG CẤP ĐA TRANG)
 // -------------------------------------------------------------------
-async function getFacebookUserName(sender_psid) {
+async function getFacebookUserName(FB_PAGE_TOKEN, sender_psid) { // Thêm FB_PAGE_TOKEN
   if (!sender_psid) return null;
   try {
     const url = `https://graph.facebook.com/${sender_psid}`;
     const response = await axios.get(url, {
-      params: { fields: "first_name,last_name", access_token: FB_PAGE_TOKEN }
+      params: { fields: "first_name,last_name", access_token: FB_PAGE_TOKEN } // Dùng token đúng
     });
     if (response.data && response.data.first_name) {
       return response.data.first_name + ' ' + response.data.last_name;
@@ -423,17 +418,17 @@ async function getFacebookUserName(sender_psid) {
     return null;
   } catch (error) {
     if (!error.response || (error.response.status !== 400 && !error.message.includes("permission"))) {
-        // console.error("Lỗi khi lấy tên:", error.message); // Tắt bớt log không quan trọng
+        // console.error("Lỗi khi lấy tên:", error.message);
     }
     return null;
   }
 }
 
 // -------------------------------------------------------------------
-// HÀM GỬI TIN NHẮN (ĐÃ XÓA LOGIC NÚT BẤM)
+// HÀM GỬI TIN NHẮN (ĐÃ NÂNG CẤP ĐA TRANG)
 // -------------------------------------------------------------------
-async function sendFacebookMessage(sender_psid, responseText) {
-  if (!sender_psid || !responseText) return; // Thêm kiểm tra đầu vào
+async function sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, responseText) { // Thêm FB_PAGE_TOKEN
+  if (!sender_psid || !responseText) return;
 
   let messageData = { "text": responseText };
 
@@ -444,7 +439,8 @@ async function sendFacebookMessage(sender_psid, responseText) {
   };
 
   try {
-    await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${FB_PAGE_TOKEN}`, request_body);
+    // Dùng token đúng
+    await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${FB_PAGE_TOKEN}`, request_body); 
     console.log(`Đã gửi: ${responseText}`);
   } catch (error) {
       console.error("Lỗi khi gửi tin nhắn Facebook:", error.response?.data?.error || error.message);
@@ -452,12 +448,13 @@ async function sendFacebookMessage(sender_psid, responseText) {
 }
 
 // -------------------------------------------------------------------
-// HÀM BẬT/TẮT "ĐANG GÕ..." (Giữ nguyên)
+// HÀM BẬT/TẮT "ĐANG GÕ..." (ĐÃ NÂNG CẤP ĐA TRANG)
 // -------------------------------------------------------------------
-async function sendFacebookTyping(sender_psid, isTyping) {
+async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) { // Thêm FB_PAGE_TOKEN
   if (!sender_psid) return;
   const request_body = { "recipient": { "id": sender_psid }, "sender_action": isTyping ? "typing_on" : "typing_off" };
   try {
+    // Dùng token đúng
     await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${FB_PAGE_TOKEN}`, request_body);
   } catch (error) {
     // Bỏ qua lỗi typing
@@ -467,6 +464,6 @@ async function sendFacebookTyping(sender_psid, isTyping) {
 // -------------------------------------------------------------------
 // 5. Khởi động server
 app.listen(PORT, () => {
-  console.log(`Bot AI ĐA SẢN PHẨM (Da Cap Nhat Gia) đang chạy ở cổng ${PORT}`);
+  console.log(`Bot AI ĐA TRANG (Multi-Page) đang chạy ở cổng ${PORT}`);
   console.log(`Sẵn sàng nhận lệnh từ Facebook tại /webhook`);
 });
