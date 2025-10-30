@@ -268,9 +268,10 @@ async function saveState(psid, newState, userMessage, botMessage) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI (Phiên bản "ĐÃ SỬA LỖI DGY")
+// HÀM GỌI GEMINI (Phiên bản "SỬA LỖI CHƯA HIỂU" + "XỬ LÝ ĐƠN HÀNG")
 // -------------------------------------------------------------------
 async function callGemini(userMessage, userName, userState, productKnowledge) {
+  // Đảm bảo model đã được khởi tạo
   if (!model) {
       console.error("Gemini model chưa được khởi tạo!");
       return {
@@ -280,9 +281,7 @@ async function callGemini(userMessage, userName, userState, productKnowledge) {
   }
   try {
     const historyString = userState.history.map(h => `${h.role}: ${h.content}`).join('\n');
-    
-    // ----- ĐÂY LÀ DÒNG ĐÃ SỬA LỖI (XÓA CHỮ "DGY") -----
-    const greetingName = userName ? "Bác " + userName : "Bác"; 
+    const greetingName = userName ? "Bác " + userName : "Bác";
 
     // XÂY DỰNG PROMPT BẰNG CÁCH NỐI CHUỖI
     let prompt = "**Nhiệm vụ:** Bạn là bot tư vấn ĐA SẢN PHẨM. Bạn PHẢI trả lời tin nhắn của khách, tra cứu kiến thức, và CẬP NHẬT TRẠNG THÁI (state) của họ.\n\n";
@@ -295,32 +294,43 @@ async function callGemini(userMessage, userName, userState, productKnowledge) {
     prompt += "**Trạng thái ghi nhớ (State) của khách TRƯỚC KHI trả lời:**\n";
     prompt += "- price_asked_count: " + userState.price_asked_count + "\n\n";
     
+    // ----- ĐÃ CẬP NHẬT LUẬT LỆ TRIỆT ĐỂ -----
     prompt += "**Luật Lệ (Ưu tiên từ trên xuống):**\n";
     prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** KHÔNG được nói lặp đi lặp lại. Phải trả lời NGẮN GỌN, đúng trọng tâm. (Vẫn dùng dấu | để tách các ý/câu nếu cần).\n";
     
     prompt += "2.  **Phân tích tin nhắn:**\n";
     prompt += "    - Đọc tin nhắn của khách: \"" + userMessage + "\".\n";
-    prompt += "    - **(Ưu tiên 1 - Xử lý Đơn Hàng):** Nếu tin nhắn của khách chứa SĐT + Địa chỉ + Tên SP (như 'mua 1 hop an cung hoan dt 079...'): Kích hoạt 'Luật 1: Xử Lý Đơn Hàng'.\n";
-    prompt += "    - **(Ưu tiên 2 - Câu hỏi mặc định SĐT):** Nếu tin nhắn GIỐNG HỆT 'Số Điện Thoại của tôi là:' -> Kích hoạt 'Luật 2: Phản hồi Câu SĐT Mặc Định'.\n";
-    prompt += "    - **(Ưu tiên 3 - Câu hỏi mặc định Mua SP):** Nếu tin nhắn GIỐNG HỆT 'Tôi muốn mua sản phẩm:' HOẶC tin nhắn mơ hồ ('shop có gì'...) VÀ Lịch sử chat là (Chưa có lịch sử chat) -> Kích hoạt 'Luật 3: Hỏi Vague & Liệt Kê SP'.\n";
-    prompt += "    - **(Ưu tiên 4 - Tra cứu):** Nếu không, hãy tra cứu 'KHỐI KIẾN THỨC SẢN PHẨM'.\n";
-    prompt += "    - **(Ưu tiên 5 - Phân tích giá):** Khách có hỏi giá lần này không? (Trả lời CÓ hoặc KHÔNG).\n";
+    prompt += "    - **(Kiểm tra SĐT):** Một SĐT Việt Nam hợp lệ (10 số, bắt đầu 09, 08, 07, 05, 03).\n";
+    prompt += "    - **(Kiểm tra Địa Chỉ):** Tin nhắn có chứa từ khóa địa chỉ không (như: 'địa chỉ', 'sn', 'số nhà', 'ngõ', 'phố', 'đường', 'phường', 'quận', 'thành phố', 'tỉnh').\n";
+    prompt += "    - **(Kiểm tra Hình Ảnh):** Tin nhắn có chứa từ khóa yêu cầu ảnh không (như: 'ảnh', 'hình', 'video', 'xem hộp', 'nắp hộp', 'bên ngoài', 'gửi mẫu', 'gửi hình', 'xem ảnh').\n";
+    
+    prompt += "    - **(Ưu tiên 1 - Yêu cầu Hình Ảnh):** Nếu tin nhắn chứa từ khóa 'Kiểm tra Hình Ảnh' -> Kích hoạt 'Luật 1: Chuyển Giao Nhân Viên (Hình Ảnh)'.\n";
+    prompt += "    - **(Ưu tiên 2 - Gửi SĐT/Địa chỉ):** Nếu tin nhắn chứa SĐT hợp lệ HOẶC chứa từ khóa 'Kiểm tra Địa Chỉ' -> Kích hoạt 'Luật 2: Ghi Nhận Đơn Hàng'.\n";
+    prompt += "    - **(Ưu tiên 3 - Câu hỏi mặc định SĐT):** Nếu tin nhắn GIỐNG HỆT 'Số Điện Thoại của tôi là:' -> Kích hoạt 'Luật 3: Phản hồi Câu SĐT Mặc Định'.\n";
+    prompt += "    - **(Ưu tiên 4 - Câu hỏi mặc định Mua SP):** Nếu tin nhắn GIỐNG HỆT 'Tôi muốn mua sản phẩm:' HOẶC tin nhắn mơ hồ ('shop có gì'...) VÀ Lịch sử chat là (Chưa có lịch sử chat) -> Kích hoạt 'Luật 4: Hỏi Vague & Liệt Kê SP'.\n";
+    prompt += "    - **(Ưu tiên 5 - Tra cứu):** Nếu không, hãy tra cứu 'KHỐI KIẾN THỨC SẢN PHẨM'.\n";
+    prompt += "    - **(Ưu tiên 6 - Phân tích giá):** Khách có hỏi giá lần này không? (Trả lời CÓ hoặc KHÔNG).\n";
 
     prompt += "3.  **Cập nhật State MỚI:**\n";
     prompt += "    - Nếu khách hỏi giá lần này, `new_price_asked_count` = " + userState.price_asked_count + " + 1.\n";
     prompt += "    - Nếu không, `new_price_asked_count` = " + userState.price_asked_count + ".\n";
     prompt += "4.  **Luật Trả Lời (dựa trên Phân tích):**\n";
 
-    prompt += "    - **Luật 1: Xử Lý Đơn Hàng (NGẮN GỌN):**\n";
-    prompt += "      - **TUYỆT ĐỐI KHÔNG** lặp lại SĐT hoặc Địa chỉ của khách.\n";
-    prompt += "      - Nếu Tên SP rõ ràng (ví dụ 'Cao Hồng Sâm'): Chỉ trả lời 1 câu: \"Dạ Shop đã nhận được đơn hàng [Tên SP] của Bác " + greetingName + " ạ. Shop sẽ gọi Bác để xác nhận ngay nhé.\"\n";
-    prompt += "      - Nếu Tên SP chung chung (ví dụ 'an cung'): PHẢI hỏi 1 câu duy nhất để làm rõ (bao gồm giá): \"Dạ " + greetingName + ", Shop đã nhận được thông tin. Bác vui lòng xác nhận giúp Shop là Bác muốn đặt An Cung Samsung (780.000đ) hay An Cung Kwangdong (1.290.000đ) ạ?\"\n"; // (Cập nhật giá ở đây)
+    // ----- CÁC LUẬT MỚI -----
+    prompt += "    - **Luật 1: Chuyển Giao Nhân Viên (Hình Ảnh):**\n";
+    prompt += "      - (Áp dụng khi khách hỏi 'xem ảnh', 'xem nắp hộp', 'gửi video'...)\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop xin lỗi vì chưa kịp gửi ảnh/video cho Bác ngay ạ. | Nhân viên của Shop sẽ kiểm tra và gửi cho Bác ngay sau đây, Bác chờ Shop 1-2 phút nhé!\"\n";
+    
+    prompt += "    - **Luật 2: Ghi Nhận Đơn Hàng (SĐT/Địa chỉ):**\n";
+    prompt += "      - (Áp dụng khi khách gửi SĐT hoặc Địa chỉ, hoặc cả hai cùng lúc như 'Chi 2 hop 098... Sn 46...').\n";
+    prompt += "      - **TUYỆT ĐỐI KHÔNG** lặp lại SĐT/Địa chỉ. Chỉ trả lời 1 LẦN DUY NHẤT.\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin (SĐT/Địa chỉ) của Bác ạ. | Shop sẽ gọi điện cho Bác để xác nhận đơn hàng ngay. Cảm ơn Bác ạ!\"\n";
+    // ----- KẾT THÚC LUẬT MỚI -----
 
-    prompt += "    - **Luật 2: Phản hồi Câu SĐT Mặc Định:**\n";
+    prompt += "    - **Luật 3: Phản hồi Câu SĐT Mặc Định:**\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", Bác cần Shop hỗ trợ gì ạ? | Nếu Bác muốn được tư vấn kỹ hơn qua điện thoại, Bác có thể nhập Số Điện Thoại vào đây, Shop sẽ gọi lại ngay ạ.\"\n";
 
-    // ----- ĐÃ CẬP NHẬT DANH SÁCH 7 SẢN PHẨM -----
-    prompt += "    - **Luật 3: Hỏi Vague & Liệt Kê SP (DANH SÁCH VĂN BẢN):**\n";
+    prompt += "    - **Luật 4: Hỏi Vague & Liệt Kê SP (DANH SÁCH VĂN BẢN):**\n";
     prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | Shop có nhiều sản phẩm sức khỏe Hàn Quốc, Bác đang quan tâm cụ thể về vấn đề gì hoặc sản phẩm nào ạ? Bác có thể tham khảo một số sản phẩm sau: \n1. AN CUNG SAMSUNG (Hỗ trợ tai biến)\n2. CAO HỒNG SÂM 365 (Bồi bổ sức khỏe)\n3. TINH DẦU THÔNG ĐỎ (Hỗ trợ mỡ máu)\n4. NƯỚC SÂM NHUNG HƯƠU (30 gói)\n5. NƯỚC SÂM NHUNG HƯƠU (20 gói)\n6. NƯỚC MÁT GAN SAMSUNG (Giải độc gan)\n7. AN CUNG KWANGDONG (Tai biến cao cấp)\"\n";
     
     prompt += "    - **Luật Giá (KHÔNG XIN SĐT):**\n";
@@ -334,13 +344,13 @@ async function callGemini(userMessage, userName, userState, productKnowledge) {
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", quà tặng bên Shop rất đa dạng ạ. | Shop sẽ tư vấn quà tặng phù hợp nhất khi Bác chốt đơn nhé ạ!\"\n";
 
     prompt += "    - **Luật Chung (Mặc định - KHÔNG XIN SĐT):**\n";
-    prompt += "      - (Áp dụng khi không dính các luật trên)\n";
+    prompt += "      - (Áp dụng khi không dính các luật 1-5, Giá, Quà Tặng)\n";
     prompt += "      - **LUÔN NHỚ LUẬT CHAT:** Trả lời NGẮN GỌN, không lặp lại.\n";
     prompt += "      - **YÊU CẦU 0 (Tra cứu):** Nếu khách hỏi về công dụng, cách dùng... -> Trả lời NGẮN GỌN dựa trên 'KHỐI KIẾN THỨC SẢN PHẨM'. PHẢI NHẮC LẠI: 'Sản phẩm không phải là thuốc'.\n";
     prompt += "      - **YÊU CẦU 1 (Hỏi ngược):** Kết thúc bằng một câu hỏi gợi mở NGẮN.\n";
     prompt += "      - **YÊU CẦU 2 (KHÔNG XIN SĐT):** TUYỆT ĐỐI KHÔNG xin SĐT.\n";
-    prompt += "      - **(BỎ QUA SĐT):** Nếu tin nhắn của khách chỉ chứa SĐT -> KHÔNG trả lời gì đặc biệt, coi như tin nhắn khó hiểu.\n";
-    prompt += "      - Nếu tin nhắn khó hiểu (kể cả SĐT):\n";
+    prompt += "      - **(BỎ QUA SĐT/ĐỊA CHỈ/ẢNH NẾU BỊ LỌT):** Nếu tin nhắn có vẻ là SĐT, Địa chỉ, hoặc hỏi ảnh (mà các luật trên bị lọt) -> KHÔNG trả lời gì đặc biệt, coi như tin nhắn khó hiểu.\n";
+    prompt += "      - Nếu tin nhắn khó hiểu (kể cả SĐT, Địa chỉ, Ảnh bị lọt):\n";
     prompt += "        -> Trả lời: \"Dạ " + greetingName + ", Shop chưa hiểu ý Bác lắm ạ. | Bác có thể nói rõ hơn Bác đang cần hỗ trợ gì không ạ?\"\n";
 
     prompt += "      - Luôn xưng hô \"Shop - Bác\", tông ấm áp, câu ngắn, tối đa 1 emoji.\n";
@@ -351,7 +361,7 @@ async function callGemini(userMessage, userName, userState, productKnowledge) {
     prompt += "{\n";
     prompt += "  \"response_message\": \"Câu trả lời cho khách | tách bằng dấu |\",\n";
     prompt += "  \"new_state\": {\n";
-    prompt += "    \"price_asked_count\": [SỐ LẦM MỚI SAU KHI PHÂN TÍCH]\n";
+    prompt += "    \"price_asked_count\": [SỐ LẦN MỚI SAU KHI PHÂN TÍCH]\n";
     prompt += "  }\n";
     prompt += "}\n";
     prompt += "---\n";
