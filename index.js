@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "CHỐNG LẶP TUYỆT ĐỐI" + Sửa "120 viên")
+// File: index.js (Phiên bản "CHỐNG LẶP TUYỆT ĐỐI" + Sửa "120 viên" + Sửa "Trầm Hương")
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -186,7 +186,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
 
 
 // -------------------------------------------------------------------
-// HÀM: TRẢ VỀ KHỐI KIẾN THỨC SẢN PHẨM (ĐÃ SỬA "120 VIÊN")
+// HÀM: TRẢ VỀ KHỐI KIẾN THỨC SẢN PHẨM (ĐÃ SỬA "120 VIÊN" + "TRẦM HƯƠNG")
 // -------------------------------------------------------------------
 function getProductKnowledge() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (DÙNG ĐỂ TRA CỨU):**\n\n";
@@ -235,10 +235,10 @@ function getProductKnowledge() {
     knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Giá: 390.000đ/hộp 30 chai (ƯU ĐÃI).\n";
     knowledgeString += "-----------------\n\n";
     
-    // == SẢN PHẨM 7 ==
+    // == SẢN PHẨM 7 (ĐÃ SỬA "TRẦM HƯƠNG") ==
     knowledgeString += "---[SẢN PHẨM]---\n";
-    knowledgeString += "Tên Sản Phẩm: AN CUNG KWANGDONG HÀN QUỐC HỘP 60 VIÊN\n";
-    knowledgeString += "Từ Khóa: an cung, an cung kwangdong, kwang dong, kwangdong, tai biến, đột quỵ, phòng đột quỵ, huyết áp, cao huyết áp, tiền đình, rối loạn tiền đình, đau đầu, bổ não\n";
+    knowledgeString += "Tên Sản Phẩm: AN CUNG TRẦM HƯƠNG KWANGDONG HÀN QUỐC HỘP 60 VIÊN\n"; // <--- SỬA Ở ĐÂY
+    knowledgeString += "Từ Khóa: an cung, an cung trầm hương, trầm hương, an cung kwangdong, kwang dong, kwangdong, tai biến, đột quỵ, phòng đột quỵ, huyết áp, cao huyết áp, tiền đình, rối loạn tiền đình, đau đầu, bổ não\n"; // <--- SỬA Ở ĐÂY
     knowledgeString += "Cách Dùng: Người tai biến: 1 viên/ngày. Người dự phòng: Dùng hằng ngày, mỗi ngày 1 viên. Một năm dùng 2-3 hộp.\n";
     knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. (Tốt nhất trong dòng 60 viên). Giá: 1.290.000đ/hộp (ƯU ĐÃI) + TẶNG 1 LỌ DẦU LẠNH + MIỄN SHIP.\n";
     knowledgeString += "-----------------\n\n";
@@ -294,7 +294,7 @@ async function saveState(uniqueStorageId, userMessage, botMessage) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI (Phiên bản "CÔNG KHAI GIÁ")
+// HÀM GỌI GEMINI (Phiên bản "CÔNG KHAI GIÁ" - ĐÃ SỬA "TRẦM HƯƠNG")
 // -------------------------------------------------------------------
 async function callGemini(userMessage, userName, userState, productKnowledge) {
   if (!model) {
@@ -307,39 +307,69 @@ async function callGemini(userMessage, userName, userState, productKnowledge) {
     const historyString = userState.history.map(h => `${h.role}: ${h.content}`).join('\n'); // userState chỉ có history
     const greetingName = userName ? "Bác " + userName : "Bác";
 
-    // (Toàn bộ Prompt "Công Khai Giá" của Bác ở đây... Cháu rút gọn phần này)
-    let prompt = "**Nhiệm vụ:** Bạn là bot tư vấn ĐA SẢN PHẨM...\n\n";
+    // XÂY DỰNG PROMPT BẰNG CÁCH NỐI CHUỖI
+    let prompt = "**Nhiệm vụ:** Bạn là bot tư vấn ĐA SẢN PHẨM. Bạn PHẢI trả lời tin nhắn của khách và tra cứu kiến thức.\n\n";
+
+    // NẠP KIẾN THỨC (TỪ CODE)
     prompt += productKnowledge + "\n\n";
+
     prompt += "**Lịch sử chat (10 tin nhắn gần nhất):**\n";
     prompt += (historyString || "(Chưa có lịch sử chat)") + "\n\n";
+    
     prompt += "**Luật Lệ (Ưu tiên từ trên xuống):**\n";
-    prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** KHÔNG được nói lặp đi lặp lại...\n";
+    prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** KHÔNG được nói lặp đi lặp lại. Phải trả lời NGẮN GỌN, đúng trọng tâm. (Vẫn dùng dấu | để tách các ý/câu nếu cần).\n";
+    
     prompt += "2.  **Phân tích tin nhắn:**\n";
     prompt += "    - Đọc tin nhắn của khách: \"" + userMessage + "\".\n";
-    prompt += "    - (Ưu tiên 1 - Yêu cầu Hình Ảnh)...\n";
-    prompt += "    - (Ưu tiên 2 - Gửi SĐT/Địa chỉ)...\n";
-    prompt += "    - (Ưu tiên 3 - Câu hỏi mặc định SĐT)...\n";
-    prompt += "    - (Ưu tiên 4 - Câu hỏi mặc định Mua SP)...\n";
-    prompt += "    - (Ưu tiên 5 - Hỏi Giá) -> Kích hoạt 'Luật 5: Báo Giá Công Khai'.\n";
-    prompt += "    - (Ưu tiên 6 - Tra cứu)...\n";
-    prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n";
+    prompt += "    - **(Kiểm tra SĐT):** Tin nhắn có chứa SĐT hợp lệ (10 số, 09/08/07/05/03) hoặc Địa chỉ (sn, ngõ, phố...) không?\n";
+    prompt += "    - **(Kiểm tra Hình Ảnh):** Tin nhắn có chứa từ khóa yêu cầu ảnh không (như: 'ảnh', 'hình', 'video', 'xem hộp', 'nắp hộp').\n";
+    prompt += "    - **(Kiểm tra Giá):** Khách có hỏi giá lần này không (như 'giá', 'bao nhiêu tiền', 'giá sao')?\n";
+    
+    prompt += "    - **(Ưu tiên 1 - Yêu cầu Hình Ảnh):** Nếu chứa từ khóa 'Kiểm tra Hình Ảnh' -> Kích hoạt 'Luật 1: Chuyển Giao Nhân Viên (Hình Ảnh)'.\n";
+    prompt += "    - **(Ưu tiên 2 - Gửi SĐT/Địa chỉ):** Nếu chứa SĐT hoặc Địa chỉ -> Kích hoạt 'Luật 2: Ghi Nhận Đơn Hàng'.\n";
+    prompt += "    - **(Ưu tiên 3 - Câu hỏi mặc định SĐT):** Nếu tin nhắn GIỐNG HỆT 'Số Điện Thoại của tôi là:' -> Kích hoạt 'Luật 3: Phản hồi Câu SĐT Mặc Định'.\n";
+    prompt += "    - **(Ưu tiên 4 - Câu hỏi mặc định Mua SP):** Nếu tin nhắn GIỐNG HỆT 'Tôi muốn mua sản phẩm:' HOẶC tin nhắn mơ hồ ('shop có gì'...) VÀ Lịch sử chat là (Chưa có lịch sử chat) -> Kích hoạt 'Luật 4: Hỏi Vague & Liệt Kê SP'.\n";
+    prompt += "    - **(Ưu tiên 5 - Hỏi Giá):** Nếu khách 'Kiểm tra Giá' (CÓ) -> Kích hoạt 'Luật 5: Báo Giá Công Khai'.\n"; // LUẬT MỚI
+    prompt += "    - **(Ưu tiên 6 - Tra cứu):** Nếu không, hãy tra cứu 'KHỐI KIẾN THỨC SẢN PHẨM'.\n";
+    
+    prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n"; // Sửa thành số 3
+
     prompt += "    - **Luật 1: Chuyển Giao Nhân Viên (Hình Ảnh):**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop xin lỗi vì chưa kịp gửi ảnh...\"\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop xin lỗi vì chưa kịp gửi ảnh/video cho Bác ngay ạ. | Nhân viên của Shop sẽ kiểm tra và gửi cho Bác ngay sau đây, Bác chờ Shop 1-2 phút nhé!\"\n";
+    
     prompt += "    - **Luật 2: Ghi Nhận Đơn Hàng (SĐT/Địa chỉ):**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin...\"\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin (SĐT/Địa chỉ) của Bác ạ. | Shop sẽ gọi điện cho Bác để xác nhận đơn hàng ngay. Cảm ơn Bác ạ!\"\n";
+
     prompt += "    - **Luật 3: Phản hồi Câu SĐT Mặc Định:**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Bác cần Shop hỗ trợ gì ạ?...\"\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Bác cần Shop hỗ trợ gì ạ? | Nếu Bác muốn được tư vấn kỹ hơn qua điện thoại, Bác có thể nhập Số Điện Thoại vào đây, Shop sẽ gọi lại ngay ạ.\"\n";
+
+    // ----- ĐÃ SỬA "TRẦM HƯƠNG" -----
     prompt += "    - **Luật 4: Hỏi Vague & Liệt Kê SP (DANH SÁCH VĂN BẢN):**\n";
-    prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | ... \n1. AN CUNG SAMSUNG...\n(Và 6 sản phẩm khác)\n7. AN CUNG KWANGDONG...\"\n"; // (Giữ nguyên)
+    prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | Shop có nhiều sản phẩm sức khỏe Hàn Quốc, Bác đang quan tâm cụ thể về vấn đề gì hoặc sản phẩm nào ạ? Bác có thể tham khảo một số sản phẩm sau: \n1. AN CUNG SAMSUNG (Hỗ trợ tai biến)\n2. CAO HỒNG SÂM 365 (Bồi bổ sức khỏe)\n3. TINH DẦU THÔNG ĐỎ (Hỗ trợ mỡ máu)\n4. NƯỚC SÂM NHUNG HƯƠU (30 gói)\n5. NƯỚC SÂM NHUNG HƯƠU (20 gói)\n6. NƯỚC MÁT GAN SAMSUNG (Giải độc gan)\n7. AN CUNG TRẦM HƯƠNG KWANGDONG (Tai biến cao cấp)\"\n"; // <--- SỬA Ở ĐÂY
+    
     prompt += "    - **Luật 5: Báo Giá Công Khai (KHÔNG XIN SĐT):**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP] là [Giá SP] ạ...\"\n";
+    prompt += "      - (Áp dụng khi khách hỏi giá)\n";
+    prompt += "      - **(Hành động):** Tra cứu 'KHỐI KIẾN THỨC' để tìm [Tên SP] và [Giá SP] (bao gồm quà tặng, freeship nếu có) mà khách đang hỏi. Nếu khách không nói rõ SP, hãy báo giá 1-2 SP phổ biến (An Cung Samsung).\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP tra cứu được] hiện tại là [Giá SP tra cứu được] ạ. | [Thông tin Quà Tặng/Freeship nếu có]. | Bác có muốn Shop tư vấn thêm về cách dùng không ạ?\"\n";
+
     prompt += "    - **Luật Quà Tặng (KHÔNG XIN SĐT):**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", quà tặng bên Shop rất đa dạng ạ...\"\n";
-    prompt += "    - **LuLET CHUNG (Mặc định - KHÔNG XIN SĐT):**\n";
-    prompt += "      - Nếu tin nhắn khó hiểu (kể cả SĐT):\n";
-    prompt += "        -> Trả lời: \"Dạ " + greetingName + ", Shop chưa hiểu ý Bác lắm ạ...\"\n";
+    prompt += "      - (Áp dụng khi khách hỏi về 'quà tặng', 'khuyến mãi').\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", quà tặng bên Shop rất đa dạng ạ, tùy theo sản phẩm. | Ví dụ An Cung Samsung (780k) thì được tặng 1 lọ dầu lạnh ạ. | Bác muốn hỏi quà của sản phẩm nào ạ?\"\n";
+
+    prompt += "    - **Luật Chung (Mặc định - KHÔNG XIN SĐT):**\n";
+    prompt += "      - (Áp dụng khi không dính các luật trên)\n";
+    prompt += "      - **LUÔN NHỚ LUẬT CHAT:** Trả lời NGẮN GỌN, không lặp lại.\n";
+    prompt += "      - **YÊU CẦU 0 (Tra cứu):** Nếu khách hỏi về công dụng, cách dùng... -> Trả lời NGẮN GỌN dựa trên 'KHỐI KIẾN THỨC SẢN PHẨM'. PHẢI NHẮC LẠI: 'Sản phẩm không phải là thuốc'.\n";
+    prompt += "      - **YÊU CẦU 1 (Hỏi ngược):** Kết thúc bằng một câu hỏi gợi mở NGẮN.\n";
+    prompt += "      - **YÊU CẦU 2 (KHÔNG XIN SĐT):** TUYỆT ĐỐI KHÔNG xin SĐT.\n";
+    prompt += "      - Nếu tin nhắn khó hiểu (kể cả SĐT, Địa chỉ, Ảnh bị lọt):\n";
+    prompt += "        -> Trả lời: \"Dạ " + greetingName + ", Shop chưa hiểu ý Bác lắm ạ. | Bác có thể nói rõ hơn Bác đang cần hỗ trợ gì không ạ?\"\n";
+
+    prompt += "      - Luôn xưng hô \"Shop - Bác\", tông ấm áp, câu ngắn, tối đa 1 emoji.\n";
     prompt += "      - Tách câu trả lời bằng dấu |\n\n";
+
     prompt += "**YÊU CẦU ĐẦU RA (JSON):**\n";
+    prompt += "Bạn PHẢI trả lời dưới dạng một JSON string duy nhất, không có giải thích, không có \\```json ... \\```.\n";
     prompt += "{\n";
     prompt += "  \"response_message\": \"Câu trả lời cho khách | tách bằng dấu |\"\n";
     prompt += "}\n";
@@ -431,6 +461,6 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 // -------------------------------------------------------------------
 // 5. Khởi động server
 app.listen(PORT, () => {
-  console.log(`Bot AI ĐA TRANG (Chong Lap) đang chạy ở cổng ${PORT}`);
+  console.log(`Bot AI ĐA TRANG (Chong Lap + Tram Huong) đang chạy ở cổng ${PORT}`);
   console.log(`Sẵn sàng nhận lệnh từ Facebook tại /webhook`);
 });
