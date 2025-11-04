@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "ĐA NHÂN CÁCH" - Thao Korea + Do Choi May Tinh)
+// File: index.js (Phiên bản "ĐA NHÂN CÁCH" - Nâng Cấp Bot Máy Tính)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -35,18 +35,14 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
 // ----- BỘ MAP TOKEN MỚI (QUAN TRỌNG) -----
 const pageTokenMap = new Map();
-
-// Tải Token cho Trang 1 (Thảo Korea)
 if (process.env.PAGE_ID_THAO_KOREA && process.env.FB_PAGE_TOKEN_THAO_KOREA) {
     pageTokenMap.set(process.env.PAGE_ID_THAO_KOREA, process.env.FB_PAGE_TOKEN_THAO_KOREA);
     console.log(`Đã tải Token cho trang Thao Korea: ${process.env.PAGE_ID_THAO_KOREA}`);
 }
-// Tải Token cho Trang 2 (Máy Tính)
 if (process.env.PAGE_ID_MAY_TINH && process.env.FB_PAGE_TOKEN_MAY_TINH) {
     pageTokenMap.set(process.env.PAGE_ID_MAY_TINH, process.env.FB_PAGE_TOKEN_MAY_TINH);
     console.log(`Đã tải Token cho trang May Tinh: ${process.env.PAGE_ID_MAY_TINH}`);
 }
-
 console.log(`Bot đã được khởi tạo cho ${pageTokenMap.size} Fanpage.`);
 if (pageTokenMap.size === 0) {
     console.error("LỖI: KHÔNG TÌM THẤY BẤT KỲ CẶP PAGE_ID VÀ TOKEN NÀO!");
@@ -258,17 +254,18 @@ function getProductKnowledge_ThaoKorea() {
 }
 
 // -------------------------------------------------------------------
-// BỘ NÃO 2: KIẾN THỨC SẢN PHẨM (ĐỒ CHƠI MÁY TÍNH)
+// BỘ NÃO 2: KIẾN THỨC SẢN PHẨM (ĐỒ CHƠI MÁY TÍNH - ĐÃ NÂNG CẤP)
 // -------------------------------------------------------------------
 function getProductKnowledge_MayTinh() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (ĐỒ CHƠI MÁY TÍNH):**\n\n";
 
-    // == SẢN PHẨM 1 ==
+    // == SẢN PHẨM 1 (ĐÃ NÂNG CẤP) ==
     knowledgeString += "---[SẢN PHẨM]---\n";
-    knowledgeString += "Tên Sản Phẩm: Chuột Fuhlen L102\n";
+    knowledgeString += "Tên Sản Phẩm: Chuột Fuhlen L102 USB - Đen\n";
     knowledgeString += "Từ Khóa: chuột, fuhlen, l102, chuột l102, chuột fuhlen, chuột quốc dân, chuột giá rẻ, chuột 119k, chuột văn phòng, chuột game\n";
-    knowledgeString += "Mô Tả Chung: Chuột Fuhlen L102, mẫu chuột quốc dân, độ bền cao, thiết kế công thái học, cảm biến 1000 DPI, kết nối USB. Phù hợp game thủ và dân văn phòng.\n";
-    knowledgeString += "Lưu Ý / Giá: Giá 119.000đ (ƯU ĐÃI). Độ bền hàng triệu lần click. Cắm là dùng ngay.\n";
+    knowledgeString += "Mô Tả Chung: Chuột Fuhlen L102 (chuột quốc dân), giá siêu tốt, siêu bền. Thiết kế công thái học (Ergonomic) và đối xứng, dùng được cả tay trái/phải, ôm tay, giảm mỏi cổ tay.\n";
+    knowledgeString += "Thông Số Kỹ Thuật: Cảm biến quang học (Optical) 1000 DPI (di mượt và chính xác). Nút bấm dùng switch Omron (chất lượng cao). Độ bền 10 triệu lượt nhấn. Kết nối USB cắm là dùng.\n";
+    knowledgeString += "Lưu Ý / Giá: Giá 119.000đ (ƯU ĐÃI). Hàng hot cho game thủ, quán net, văn phòng.\n";
     knowledgeString += "-----------------\n\n";
 
     // (Bác có thể thêm RAM, VGA... vào đây nếu muốn)
@@ -336,6 +333,7 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     const greetingName = userName ? "Bác " + userName : "Bác";
 
     // --- PROMPT 1: KỊCH BẢN THẢO KOREA (BÁC-SHOP) ---
+    // (Prompt này giữ nguyên, đã bao gồm các luật Bác cần)
     let prompt = "**Nhiệm vụ:** Bạn là bot tư vấn (Trang Thảo Korea). Xưng hô 'Shop - Bác'. Bạn PHẢI trả lời tin nhắn, tra cứu kiến thức.\n\n";
     prompt += productKnowledge + "\n\n";
     prompt += "**Lịch sử chat (10 tin nhắn gần nhất):**\n";
@@ -344,33 +342,31 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** KHÔNG lặp lại. Trả lời NGẮN GỌN. Tách câu bằng |\n";
     prompt += "2.  **Phân tích tin nhắn:**\n";
     prompt += "    - Đọc tin nhắn: \"" + userMessage + "\".\n";
-    prompt += "    - **(Kiểm tra SĐT/Địa chỉ):** Tin nhắn có chứa SĐT (10 số, 09/08...) hoặc Địa chỉ (sn, ngõ...) không?\n";
-    prompt += "    - **(Kiểm tra Hình Ảnh):** Tin nhắn có chứa từ khóa yêu cầu ảnh ('ảnh', 'hình', 'video', 'xem hộp'...) không?\n";
-    prompt += "    - **(Kiểm tra Giá):** Khách có hỏi giá ('giá', 'bao nhiêu tiền'...) không?\n";
-    prompt += "    - **(Ưu tiên 1 - Yêu cầu Hình Ảnh):** Nếu 'Kiểm tra Hình Ảnh' -> Kích hoạt 'Luật 1: Chuyển Giao Nhân Viên'.\n";
-    prompt += "    - **(Ưu tiên 2 - Gửi SĐT/Địa chỉ):** Nếu 'Kiểm tra SĐT/Địa chỉ' -> Kích hoạt 'Luật 2: Ghi Nhận Đơn Hàng'.\n";
-    prompt += "    - **(Ưu tiên 3 - Câu hỏi mặc định SĐT):** Nếu tin nhắn GIỐNG HỆT 'Số Điện Thoại của tôi là:' -> Kích hoạt 'Luật 3: Phản hồi Câu SĐT Mặc Định'.\n";
-    prompt += "    - **(Ưu tiên 4 - Câu hỏi mặc định Mua SP):** Nếu tin nhắn GIỐNG HỆT 'Tôi muốn mua sản phẩm:' HOẶC mơ hồ ('shop có gì'...) VÀ Lịch sử chat rỗng -> Kích hoạt 'Luật 4: Hỏi Vague & Liệt Kê SP'.\n";
-    prompt += "    - **(Ưu tiên 5 - Hỏi Giá):** Nếu 'Kiểm tra Giá' (CÓ) -> Kích hoạt 'Luật 5: Báo Giá Công Khai'.\n";
-    prompt += "    - **(Ưu tiên 6 - Tra cứu):** Nếu không, tra cứu 'KHỐI KIẾN THỨC SẢN PHẨM'.\n";
+    prompt += "    - (Kiểm tra SĐT/Địa chỉ)...\n";
+    prompt += "    - (Kiểm tra Hình Ảnh)...\n";
+    prompt += "    - (Kiểm tra Giá)...\n";
+    prompt += "    - (Ưu tiên 1 - Yêu cầu Hình Ảnh)...\n";
+    prompt += "    - (Ưu tiên 2 - Gửi SĐT/Địa chỉ)...\n";
+    prompt += "    - (Ưu tiên 3 - Câu hỏi mặc định SĐT)...\n";
+    prompt += "    - (Ưu tiên 4 - Câu hỏi mặc định Mua SP)...\n";
+    prompt += "    - (Ưu tiên 5 - Hỏi Giá)...\n";
+    prompt += "    - (Ưu tiên 6 - Tra cứu)...\n";
     prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n";
     prompt += "    - **Luật 1: Chuyển Giao Nhân Viên (Hình Ảnh):**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop xin lỗi vì chưa kịp gửi ảnh/video cho Bác ngay ạ. | Nhân viên của Shop sẽ kiểm tra và gửi cho Bác ngay sau đây, Bác chờ Shop 1-2 phút nhé!\"\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop xin lỗi vì chưa kịp gửi ảnh...\"\n";
     prompt += "    - **Luật 2: Ghi Nhận Đơn Hàng (SĐT/Địa chỉ):**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin (SĐT/Địa chỉ) của Bác ạ. | Shop sẽ gọi điện cho Bác để xác nhận đơn hàng ngay. Cảm ơn Bác ạ!\"\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin...\"\n";
     prompt += "    - **Luật 3: Phản hồi Câu SĐT Mặc Định:**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Bác cần Shop hỗ trợ gì ạ? | Nếu Bác muốn được tư vấn kỹ hơn qua điện thoại, Bác có thể nhập Số Điện Thoại vào đây, Shop sẽ gọi lại ngay ạ.\"\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Bác cần Shop hỗ trợ gì ạ?...\"\n";
     prompt += "    - **Luật 4: Hỏi Vague & Liệt Kê SP (DANH SÁCH VĂN BẢN):**\n";
-    prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | Shop có nhiều sản phẩm sức khỏe Hàn Quốc, Bác đang quan tâm cụ thể về vấn đề gì hoặc sản phẩm nào ạ? Bác có thể tham khảo một số sản phẩm sau: \n1. AN CUNG SAMSUNG (Hỗ trợ tai biến)\n2. CAO HỒNG SÂM 365 (Bồi bổ sức khỏe)\n3. TINH DẦU THÔNG ĐỎ (Hỗ trợ mỡ máu)\n4. NƯỚC SÂM NHUNG HƯƠU (30 gói)\n5. NƯỚC SÂM NHUNG HƯƠU (20 gói)\n6. NƯỚC MÁT GAN SAMSUNG (Giải độc gan)\n7. AN CUNG TRẦM HƯƠNG KWANGDONG (Tai biến cao cấp)\"\n";
+    prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | ... \n1. AN CUNG SAMSUNG...\n(Và 6 sản phẩm khác)\n7. AN CUNG TRẦM HƯƠNG KWANGDONG...\"\n";
     prompt += "    - **Luật 5: Báo Giá Công Khai (KHÔNG XIN SĐT):**\n";
-    prompt += "      - (Hành động): Tra cứu 'KHỐI KIẾN THỨC' để tìm [Tên SP] và [Giá SP].\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP tra cứu được] hiện tại là [Giá SP tra cứu được] ạ. | [Thông tin Quà Tặng/Freeship nếu có]. | Bác có muốn Shop tư vấn thêm về cách dùng không ạ?\"\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP] là [Giá SP] ạ...\"\n";
     prompt += "    - **Luật Quà Tặng (KHÔNG XIN SĐT):**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", quà tặng bên Shop rất đa dạng ạ... | Ví dụ An Cung Samsung (780k) thì được tặng 1 lọ dầu lạnh ạ...\"\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", quà tặng bên Shop rất đa dạng ạ...\"\n";
     prompt += "    - **Luật Chung (Mặc định):**\n";
-    prompt += "      - (Áp dụng khi không dính các luật trên)\n";
-    prompt += "      - Nếu tin nhắn khó hiểu: -> Trả lời: \"Dạ " + greetingName + ", Shop chưa hiểu ý Bác lắm ạ. | Bác có thể nói rõ hơn Bác đang cần hỗ trợ gì không ạ?\"\n";
-    prompt += "      - Nếu không khó hiểu (hỏi công dụng...): Trả lời NGẮN GỌN dựa trên 'KHỐI KIẾN THỨC'. Luôn hỏi ngược. Luôn nhắc 'không phải là thuốc'.\n";
+    prompt += "      - Nếu tin nhắn khó hiểu: -> Trả lời: \"Dạ " + greetingName + ", Shop chưa hiểu ý Bác lắm ạ...\"\n";
+    prompt += "      - Nếu không khó hiểu: Trả lời NGẮN GỌN dựa trên 'KHỐI KIẾN THỨC'.\n";
     prompt += "      - Tách câu trả lời bằng dấu |\n\n";
     prompt += "**YÊU CẦU ĐẦU RA (JSON):**\n";
     prompt += "{\n\"response_message\": \"Câu trả lời cho khách | tách bằng dấu |\"\n}\n";
@@ -405,7 +401,7 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI 2 (CHO TRANG ĐỒ CHƠI MÁY TÍNH)
+// HÀM GỌI GEMINI 2 (CHO TRANG ĐỒ CHƠI MÁY TÍNH - ĐÃ NÂNG CẤP "CHÉM GIÓ")
 // -------------------------------------------------------------------
 async function callGemini_MayTinh(userMessage, userName, userState, productKnowledge) {
   if (!model) {
@@ -418,38 +414,50 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
     const greetingName = userName ? userName : "Anh/Chị"; 
 
     // --- PROMPT 2: KỊCH BẢN MÁY TÍNH (SHOP-ANH/CHỊ/EM) ---
-    let prompt = "**Nhiệm vụ:** Bạn là bot tư vấn (Trang Đồ Chơi Máy Tính). Xưng hô 'Shop - Anh/Chị/Em'. Bạn PHẢI trả lời tin nhắn, tra cứu kiến thức.\n\n";
+    let prompt = "**Nhiệm vụ:** Bạn là bot tư vấn (Trang Đồ Chơi Máy Tính). Xưng hô 'Shop - Anh/Chị/Em'. Bạn PHẢI trả lời tin nhắn, tra cứu kiến thức và 'chém gió' (tư vấn thuyết phục) để chốt đơn.\n\n";
     prompt += productKnowledge + "\n\n";
     prompt += "**Lịch sử chat (10 tin nhắn gần nhất):**\n";
     prompt += (historyString || "(Chưa có lịch sử chat)") + "\n\n";
+    
+    // ----- BỘ LUẬT MỚI CHO TRANG MÁY TÍNH (NÂNG CẤP) -----
     prompt += "**Luật Lệ (Ưu tiên từ trên xuống):**\n";
-    prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** Trả lời NGẮN GỌN. Tách câu bằng |\n";
+    prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** Trả lời NGẮN GỌN, nhiệt tình. Tách câu bằng |\n";
     prompt += "2.  **Phân tích tin nhắn:**\n";
     prompt += "    - Đọc tin nhắn: \"" + userMessage + "\".\n";
     prompt += "    - **(Kiểm tra SĐT/Địa chỉ):** Tin nhắn có chứa SĐT (10 số) hoặc Địa chỉ (sn, ngõ...) không?\n";
-    prompt += "    - **(Kiểm tra Giá):** Khách có hỏi giá ('giá', 'bao nhiêu tiền') không?\n";
     prompt += "    - **(Kiểm tra SP Khác):** Khách có hỏi sản phẩm KHÁC (như 'RAM', 'VGA', 'CPU'...) mà KHÔNG có trong 'KHỐI KIẾN THỨC' không?\n";
+    prompt += "    - **(Kiểm tra Lịch sử):** Lịch sử chat có rỗng không? " + (historyString ? "Không rỗng" : "Rỗng") + "\n";
+    prompt += "    - **(Kiểm tra Đồng Ý):** Tin nhắn có phải là ('Có', 'ok', 'vâng', 'tư vấn đi', 'đúng rồi', 'thêm đi', 'hàng hot') không?\n";
     
     prompt += "    - **(Ưu tiên 1 - Gửi SĐT/Địa chỉ):** Nếu 'Kiểm tra SĐT/Địa chỉ' -> Kích hoạt 'Luật 1: Ghi Nhận Chốt Đơn'.\n";
     prompt += "    - **(Ưu tiên 2 - Hỏi SP Khác):** Nếu 'Kiểm tra SP Khác' -> Kích hoạt 'Luật 2: Xin lỗi hết hàng'.\n";
-    prompt += "    - **(Ưu tiên 3 - Hỏi Giá):** Nếu 'Kiểm tra Giá' (CÓ) -> Kích hoạt 'Luật 3: Báo Giá Chuột'.\n";
-    prompt += "    - **(Ưu tiên 4 - Tra cứu):** Nếu không, tra cứu 'KHỐI KIẾN THỨC SẢN PHẨM'.\n";
+    prompt += "    - **(Ưu tiên 3 - Chào/Hỏi mơ hồ LẦN ĐẦU):** Nếu Lịch sử chat là 'Rỗng' VÀ (tin nhắn là 'Alo', 'Chào', 'Tôi muốn mua sản phẩm') -> Kích hoạt 'Luật 3: Chào Hàng (Giới thiệu Chuột)'.\n";
+    prompt += "    - **(Ưu tiên 4 - Khách đồng ý / Hỏi thêm):** Nếu (Lịch sử chat 'Không rỗng' VÀ 'Kiểm tra Đồng Ý' (CÓ)) HOẶC (Khách hỏi về 'cảm biến', 'độ bền', 'click') -> Kích hoạt 'Luật 4: Tư Vấn Sâu (Chém Gió)'.\n"; // Sửa logic
+    prompt += "    - **(Ưu tiên 5 - Hỏi Giá):** Nếu khách hỏi 'giá' -> Kích hoạt 'Luật 5: Báo Giá'.\n";
+    prompt += "    - **(Ưu tiên 6 - Chung):** Nếu không khớp -> Kích hoạt 'Luật Chung: Khó hiểu'.\n";
 
     prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n";
     prompt += "    - **Luật 1: Ghi Nhận Chốt Đơn:**\n";
-    prompt += "      - Trả lời: \"Dạ Shop đã nhận được thông tin. | Anh/Chị vui lòng để lại Tên + SĐT + Địa chỉ + Số lượng để Shop chốt đơn cho mình ngay nhé!\"\n"; // (Kịch bản chốt đơn của Bác)
+    prompt += "      - Trả lời: \"Dạ Shop đã nhận được thông tin. | Anh/Chị vui lòng để lại Tên + SĐT + Địa chỉ + Số lượng đầy đủ để Shop chốt đơn cho mình ngay nhé!\"\n";
     
     prompt += "    - **Luật 2: Xin lỗi hết hàng:**\n";
     prompt += "      - Trả lời: \"Dạ Shop xin lỗi Anh/Chị, hiện tại Shop chỉ có sẵn sản phẩm 'Chuột Fuhlen L102' thôi ạ. | Anh/Chị có quan tâm sản phẩm này không ạ?\"\n";
 
-    prompt += "    - **Luật 3: Báo Giá Chuột:**\n";
-    prompt += "      - Trả lời: \"Dạ, Chuột Fuhlen L102 (chuột quốc dân) giá chỉ 119.000đ/con ạ. | Anh/Chị muốn lấy mấy con ạ?\"\n"; // Công khai giá
-    
-    prompt += "    - **Luật Chung (Mặc định):**\n";
-    prompt += "      - (Áp dụng khi không dính các luật trên, ví dụ khách chào, hỏi 'mua', 'tư vấn').\n";
-    prompt += "      - (Hành động): Tư vấn về 'Chuột Fuhlen L102' dựa trên 'KHỐI KIẾN THỨC'.\n";
+    prompt += "    - **Luật 3: Chào Hàng (Giới thiệu Chuột):**\n";
     prompt += "      - Trả lời: \"Dạ chào " + greetingName + ". Shop hiện có Chuột Fuhlen L102 giá siêu tốt 119k, bền bỉ, nhạy bén cho cả game và văn phòng ạ. | Anh/Chị có muốn Shop tư vấn thêm không ạ?\"\n";
-    prompt += "      - Tách câu trả lời bằng dấu |\n\n";
+
+    prompt += "    - **Luật 4: Tư Vấn Sâu (Chém Gió):**\n";
+    prompt += "      - (Tư vấn thuyết phục dựa trên 'KHỐI KIẾN THỨC' mới).\n";
+    prompt += "      - Trả lời: \"Dạ con này thì 'quốc dân' rồi ạ! | Nó dùng switch Omron xịn nên độ bền 10 triệu click, bao trâu bò cho Anh/Chị cày game. | Thiết kế đối xứng (tay trái/phải đều ok) lại ôm tay, dùng lâu không mỏi. | Với giá 119k thì không có đối thủ luôn ạ! Anh/Chị muốn lấy mấy con để Shop chốt đơn ạ?\"\n"; // Kịch bản chốt đơn
+
+    prompt += "    - **Luật 5: Báo Giá:**\n";
+    prompt += "      - Trả lời: \"Dạ, Chuột Fuhlen L102 (chuột quốc dân) giá chỉ 119.000đ/con ạ. | Con này dùng switch Omron 10 triệu click siêu bền. | Anh/Chị muốn lấy mấy con ạ?\"\n";
+    
+    prompt += "    - **Luật Chung: Khó hiểu:**\n";
+    prompt += "      - Trả lời: \"Dạ Shop chưa hiểu ý " + greetingName + " lắm. | Shop hiện đang bán Chuột Fuhlen L102 giá 119k, Anh/Chị có cần tư vấn về sản phẩm này không ạ?\"\n";
+
+    prompt += "    - Tách câu trả lời bằng dấu |\n\n";
+    // ----- KẾT THÚC BỘ LUẬT MỚI -----
 
     prompt += "**YÊU CẦU ĐẦU RA (JSON):**\n";
     prompt += "{\n\"response_message\": \"Câu trả lời cho khách | tách bằng dấu |\"\n}\n";
@@ -541,6 +549,6 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 // -------------------------------------------------------------------
 // 5. Khởi động server
 app.listen(PORT, () => {
-  console.log(`Bot AI ĐA NHÂN CÁCH đang chạy ở cổng ${PORT}`);
+  console.log(`Bot AI ĐA NHÂN CÁCH (v2) đang chạy ở cổng ${PORT}`);
   console.log(`Sẵn sàng nhận lệnh từ Facebook tại /webhook`);
 });
