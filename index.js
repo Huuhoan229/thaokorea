@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.1" - Cập nhật Ship 30k)
+// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.2" - Nâng Cấp Bot Máy Tính "Chém Gió")
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -232,17 +232,28 @@ function getProductKnowledge_ThaoKorea() {
 }
 
 // -------------------------------------------------------------------
-// BỘ NÃO 2: KIẾN THỨC SẢN PHẨM (ĐỒ CHƠI MÁY TÍNH - ĐÃ NÂNG CẤP) - Giữ nguyên
+// BỘ NÃO 2: KIẾN THỨC SẢN PHẨM (ĐỒ CHƠI MÁY TÍNH - ĐÃ NÂNG CẤP)
 // -------------------------------------------------------------------
 function getProductKnowledge_MayTinh() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (ĐỒ CHƠI MÁY TÍNH):**\n\n";
-    knowledgeString += "---[SẢN PHẨM]---\n";
-    knowledgeString += "Tên Sản Phẩm: Chuột Fuhlen L102 USB - Đen\n";
+
+    // == SẢN PHẨM 1 (ĐÃ NÂNG CẤP) ==
+    knowledgeString += "---[SẢN PHẨM CHÍNH]---\n";
+    knowledgeString += "Tên Sản Phẩm: Chuột Fuhlen L102 USB - Đen (Hàng Xịn)\n";
     knowledgeString += "Từ Khóa: chuột, fuhlen, l102, chuột l102, chuột fuhlen, chuột quốc dân, chuột giá rẻ, chuột 119k, chuột văn phòng, chuột game\n";
-    knowledgeString += "Mô Tả Chung: Chuột Fuhlen L102 (chuột quốc dân), giá siêu tốt, siêu bền. Thiết kế công thái học (Ergonomic) và đối xứng, dùng được cả tay trái/phải, ôm tay, giảm mỏi cổ tay.\n";
-    knowledgeString += "Thông Số Kỹ Thuật: Cảm biến quang học (Optical) 1000 DPI (di mượt và chính xác). Nút bấm dùng switch Omron (chất lượng cao). Độ bền 10 triệu lượt nhấn. Kết nối USB cắm là dùng.\n";
-    knowledgeString += "Lưu Ý / Giá: Giá 119.000đ (ƯU ĐÃI).\n"; // Xóa giá cũ, để Prompt tự xử lý
+    // Thông tin Bác cung cấp (từ Hacom)
+    knowledgeString += "Thông Số Vàng (Dùng để chém gió): Switch Omron (siêu bền), Độ bền 10 TRIỆU LẦN CLICK (bao phê, bao trâu bò), Cảm biến quang học 1000 DPI (chính xác, di mượt), Thiết kế công thái học & đối xứng (ôm tay, tay trái/phải đều ok, giảm mỏi).\n";
+    knowledgeString += "Mô Tả Chung: Hàng hot, 'chuột quốc dân' cho cả game thủ, quán net, văn phòng. Kết nối USB cắm là dùng.\n";
+    // Thông tin Ưu Đãi (Bác cung cấp)
+    knowledgeString += "ƯU ĐÃI (CỰC QUAN TRỌNG): Giá 119.000đ/con. Mua 1 con: +30k ship. Mua TỪ 2 CON: FREESHIP toàn quốc.\n";
     knowledgeString += "-----------------\n\n";
+
+    // == SẢN PHẨM KHÁC (ĐỂ BOT XIN LỖI) ==
+    knowledgeString += "---[SẢN PHẨM KHÁC]---\n";
+    knowledgeString += "Tên Sản Phẩm: RAM, VGA, CPU, Bàn phím...\n";
+    knowledgeString += "Tình trạng: Hiện tại Shop chưa sẵn hàng. Sắp về.\n";
+    knowledgeString += "-----------------\n\n";
+
     knowledgeString += "\n----- HẾT KHỐI KIẾN THỨC -----\n\n";
     return knowledgeString;
 }
@@ -303,7 +314,7 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
   }
   try {
     const historyString = userState.history.map(h => `${h.role}: ${h.content}`).join('\n');
-    const greetingName = userName ? "Bác " + userName : "Bác";
+    const greetingName = userName ? "Bác "Tele " + userName : "Bác";
 
     // --- PROMPT 1: KỊCH BẢN THẢO KOREA (BÁC-SHOP) ---
     // (Prompt này giữ nguyên, đã bao gồm các luật Bác cần)
@@ -355,7 +366,7 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI 2 (CHO TRANG ĐỒ CHƠI MÁY TÍNH - CẬP NHẬT SHIP 30K)
+// HÀM GỌI GEMINI 2 (CHO TRANG ĐỒ CHƠI MÁY TÍNH - NÂNG CẤP "CHÉM GIÓ" + "SHIP 30K")
 // -------------------------------------------------------------------
 async function callGemini_MayTinh(userMessage, userName, userState, productKnowledge) {
   if (!model) {
@@ -366,13 +377,15 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
     const historyString = userState.history.map(h => `${h.role}: ${h.content}`).join('\n');
     
     // ----- LOGIC XƯNG HÔ MỚI (KHÔNG GENDER) -----
-    const salutation = "Anh/Chị"; // Xưng hô mặc định
+    const salutation = "Anh/Chị/Em"; // Xưng hô mặc định
     const greetingName = userName ? userName : salutation;
     // ----- KẾT THÚC LOGIC XƯNG HÔ -----
 
 
     // --- PROMPT 2: KỊCH BẢN MÁY TÍNH (SHOP-ANH/CHỊ/EM) ---
     let prompt = "**Nhiệm vụ:** Bạn là bot tư vấn (Trang Đồ Chơi Máy Tính). Xưng hô 'Shop' và gọi khách là '" + salutation + "'. Nếu biết tên, hãy chào tên (ví dụ 'Dạ chào " + greetingName + "').\n\n";
+    
+    // NẠP KIẾN THỨC
     prompt += productKnowledge + "\n\n";
     
     // ----- CẬP NHẬT ƯU ĐÃI MỚI -----
@@ -385,7 +398,7 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
     prompt += (historyString || "(Chưa có lịch sử chat)") + "\n\n";
     
     prompt += "**Luật Lệ (Ưu tiên từ trên xuống):**\n";
-    prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** Trả lời NGẮN GỌN, nhiệt tình. Tách câu bằng |\n";
+    prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** Trả lời NGẮN GỌN, nhiệt tình, giọng giới trẻ (dùng 'sp', 'k', 'đc', 'ib', 'bao phê', 'hàng xịn'...). Tách câu bằng |\n";
     prompt += "2.  **Phân tích tin nhắn:**\n";
     prompt += "    - Đọc tin nhắn: \"" + userMessage + "\".\n";
     prompt += "    - (Kiểm tra SĐT/Địa chỉ): Tin nhắn có chứa SĐT (10 số) hoặc Địa chỉ (sn, ngõ...) không?\n";
@@ -407,19 +420,19 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
     prompt += "      - Trả lời: \"Dạ Shop đã nhận được thông tin. | Shop có ưu đãi: Mua 1 con ship 30k, mua từ 2 con FREESHIP toàn quốc ạ. | " + salutation + " vui lòng để lại Tên + SĐT + Địa chỉ + Số lượng đầy đủ để Shop chốt đơn cho mình ngay nhé!\"\n"; 
     
     prompt += "    - **Luật 2: Xin lỗi hết hàng:**\n";
-    prompt += "      - Trả lời: \"Dạ Shop xin lỗi " + salutation + ", hiện tại Shop chỉ có sẵn sản phẩm 'Chuột Fuhlen L102' (119k) thôi ạ. | Nếu " + salutation + " lấy 1 con ship 30k, lấy từ 2 con Shop sẽ Freeship toàn quốc ạ. | " + salutation + " có quan tâm sản phẩm này không ạ?\"\n"; 
+    prompt += "      - Trả lời: \"Dạ Shop xin lỗi " + salutation + ", hiện tại Shop chỉ có sẵn sp 'Chuột Fuhlen L102' (119k) thoy ạ. | Nếu " + salutation + " lấy 1 con ship 30k, lấy từ 2 con Shop sẽ Freeship toàn quốc ạ. | " + salutation + " có quan tâm sp này k ạ?\"\n"; // Dùng teencode
 
     prompt += "    - **Luật 3: Chào Hàng (Giới thiệu Chuột):**\n";
-    prompt += "      - Trả lời: \"Dạ chào " + greetingName + ". Shop hiện có Chuột Fuhlen L102 giá siêu tốt 119k, bền bỉ, nhạy bén cho cả game và văn phòng ạ. | Mua 1 con ship 30k, nhưng mua từ 2 con Shop FREESHIP toàn quốc ạ! | " + salutation + " có muốn Shop tư vấn thêm không ạ?\"\n"; 
+    prompt += "      - Trả lời: \"Dạ chào " + greetingName + ". Shop hiện có Chuột Fuhlen L102 giá siêu tốt 119k, hàng xịn, bền bỉ, nhạy bén cho cả game và văn phòng ạ. | Mua 1 con ship 30k, nhưng mua từ 2 con Shop FREESHIP toàn quốc ạ! | " + salutation + " có muốn Shop tư vấn thêm không ạ?\"\n"; 
 
     prompt += "    - **Luật 4: Tư Vấn Sâu (Chém Gió):**\n";
-    prompt += "      - Trả lời: \"Dạ con này thì 'quốc dân' rồi " + salutation + " ạ! | Nó dùng switch Omron xịn nên độ bền 10 triệu click, bao trâu bò. | Với giá 119k thì không có đối thủ luôn! | Mua 1 con ship 30k, mua từ 2 con Shop FREESHIP ạ! | " + salutation + " muốn lấy mấy con để Shop chốt đơn ạ?\"\n"; 
+    prompt += "      - Trả lời: \"Dạ con này thì 'quốc dân' rồi " + salutation + " ạ! | Nó dùng switch Omron xịn nên độ bền 10 triệu click, bao trâu bò, click 'bao phê'. | Với giá 119k thì best choice (lựa chọn tốt nhất) luôn! | Mua 1 con ship 30k, mua từ 2 con Shop FREESHIP ạ! | " + salutation + " muốn lấy mấy con để Shop chốt đơn ạ?\"\n"; // "Chém gió" + chốt đơn
 
     prompt += "    - **Luật 5: Báo Giá:**\n";
-    prompt += "      - Trả lời: \"Dạ, Chuột Fuhlen L102 (chuột quốc dân) giá chỉ 119.000đ/con ạ. | Nếu " + salutation + " lấy 1 con phí ship 30k, còn lấy từ 2 con trở lên Shop FREESHIP toàn quốc ạ! | " + salutation + " muốn lấy mấy con ạ?\"\n"; 
+    prompt += "      - Trả lời: \"Dạ, Chuột Fuhlen L102 (chuột quốc dân) giá chỉ 119.000đ/con ạ. | Con này dùng switch Omron 10 triệu click siêu bền. | Nếu " + salutation + " lấy 1 con phí ship 30k, còn lấy từ 2 con trở lên Shop FREESHIP toàn quốc ạ! | " + salutation + " muốn lấy mấy con ạ?\"\n"; 
     
     prompt += "    - **Luật Chung: Khó hiểu:**\n";
-    prompt += "      - Trả lời: \"Dạ Shop chưa hiểu ý " + salutation + " lắm. | Shop hiện đang bán Chuột Fuhlen L102 giá 119k (mua 1 con ship 30k, mua 2 con freeship). | " + salutation + " có cần tư vấn về sản phẩm này không ạ?\"\n"; 
+    prompt += "      - Trả lời: \"Dạ Shop chưa hiểu ý " + salutation + " lắm. | Shop hiện đang bán Chuột Fuhlen L102 giá 119k (mua 1 con ship 30k, mua 2 con freeship). | " + salutation + " có cần tư vấn về sp này không ạ?\"\n"; 
     // ----- KẾT THÚC CẬP NHẬT LUẬT -----
 
     prompt += "    - Tách câu trả lời bằng dấu |\n\n";
@@ -520,6 +533,6 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 // -------------------------------------------------------------------
 // 5. Khởi động server
 app.listen(PORT, () => {
-  console.log(`Bot AI ĐA NHÂN CÁCH (v2.1 - Ship 30k) đang chạy ở cổng ${PORT}`);
+  console.log(`Bot AI ĐA NHÂN CÁCH (v2.2 - Chem Gio) đang chạy ở cổng ${PORT}`);
   console.log(`Sẵn sàng nhận lệnh từ Facebook tại /webhook`);
 });
