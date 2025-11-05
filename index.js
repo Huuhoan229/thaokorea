@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.2" - Nâng Cấp Bot Máy Tính "Chém Gió")
+// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.3" - Hiểu Teencode)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -8,6 +8,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const admin = require('firebase-admin'); // Thư viện "bộ nhớ"
 
 // ----- BỘ CHỐNG LẶP (XỬ LÝ SONG SONG) -----
+// Lưu trữ các user đang được xử lý tin nhắn
 const processingUserSet = new Set();
 // ---------------------------------------------
 
@@ -193,40 +194,63 @@ async function processMessage(pageId, sender_psid, userMessage) {
 
 
 // -------------------------------------------------------------------
-// BỘ NÃO 1: KIẾN THỨC SẢN PHẨM (THẢO KOREA) - Giữ nguyên
+// BỘ NÃO 1: KIẾN THỨC SẢN PHẨM (THẢO KOREA)
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
-    // ... (Toàn bộ 7 sản phẩm An Cung, Sâm... của Bác) ...
+
+    // == SẢN PHẨM 1 ==
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN\n";
-    knowledgeString += "Từ Khóa: an cung, an cung samsung...\n";
-    knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Giá: 780.000đ/hộp...\n";
+    knowledgeString += "Từ Khóa: an cung, an cung samsung, an cung 60 viên, an cung hộp gỗ, tai biến, đột quỵ, phòng đột quỵ, huyết áp, cao huyết áp, tiền đình, rối loạn tiền đình, đau đầu, bổ não, tuần hoàn não, hoa mắt, chóng mặt, samsung\n";
+    knowledgeString += "Cách Dùng: Dùng hằng ngày, mỗi ngày 1 viên. Một năm dùng 2-3 hộp.\n";
+    knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Không dùng buổi tối. Không dùng khi bụng đói. Giá: 780.000đ/hộp (ƯU ĐÃI) + TẶNG 1 LỌ DẦU LẠNH + MIỄN SHIP.\n";
     knowledgeString += "-----------------\n\n";
+
+    // == SẢN PHẨM 2 ==
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: HỘP CAO HỒNG SÂM 365 HÀN QUỐC\n";
-    knowledgeString += "...\n";
+    knowledgeString += "Từ Khóa: cao hồng sâm, cao sâm, sâm 365, hồng sâm 365, sâm hàn quốc, bồi bổ, tăng đề kháng, suy nhược, mệt mỏi, người ốm, quà biếu, ốm dậy, ăn không ngon, ngủ không sâu\n";
+    knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Người huyết áp cao nên dùng liều nhỏ. Giá: 450.000đ/hũ (ƯU ĐÃI).\n";
     knowledgeString += "-----------------\n\n";
+
+    // == SẢN PHẨM 3 ==
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: HỘP TINH DẦU THÔNG ĐỎ KWANGDONG HÀN QUỐC (120 VIÊN)\n";
-    knowledgeString += "...\n";
+    knowledgeString += "Từ Khóa: tinh dầu thông đỏ, thông đỏ, 120 viên, thông đỏ kwangdong, mỡ máu, giảm mỡ máu, cholesterol, tim mạch, mỡ gan, huyết áp, thông huyết mạch, xơ vữa động mạch\n";
+    knowledgeString += "Cách Dùng: Uống 1-2 viên/ngày sau bữa ăn tối 30 phút.\n";
+    knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Không dùng cho phụ nữ có thai. Giá: 1.150.000đ/hộp 120 viên (ƯU ĐÃI) + TẶNG 1 GÓI CAO DÁN 20 MIẾNG + MIỄN SHIP.\n";
     knowledgeString += "-----------------\n\n";
+
+    // == SẢN PHẨM 4 ==
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: HỘP NƯỚC HỒNG SÂM NHUNG HƯƠU HỘP 30 GÓI\n";
-    knowledgeString += "...\n";
+    knowledgeString += "Từ Khóa: nước sâm, nước hồng sâm, sâm nhung hươu, nhung hươu, sâm 30 gói, bồi bổ, đau lưng, mỏi gối, xương khớp, yếu sinh lý, tăng đề kháng, suy nhược, mệt mỏi\n";
+    knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Giá: 420.000đ/hộp 30 gói (ƯU ĐÃI).\n";
     knowledgeString += "-----------------\n\n";
+
+    // == SẢN PHẨM 5 ==
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: HỘP NƯỚC HỒNG SÂM NHUNG HƯƠU HỘP 20 GÓI\n";
-    knowledgeString += "...\n";
+    knowledgeString += "Từ Khóa: nước sâm, nước hồng sâm, sâm nhung hươu, nhung hươu, sâm 20 gói, bồi bổ, đau lưng, mỏi gối, xương khớp, yếu sinh lý, tăng đề kháng, suy nhược, mệt mỏi\n";
+    knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Giá: 330.000đ/hộp 20 gói (ƯU ĐÃI).\n";
     knowledgeString += "-----------------\n\n";
+    
+    // == SẢN PHẨM 6 ==
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: NƯỚC MÁT GAN ĐÔNG TRÙNG NGHỆ SAMSUNG\n";
-    knowledgeString += "...\n";
+    knowledgeString += "Từ Khóa: nước mát gan, mát gan, giải độc gan, gan, nóng trong, men gan cao, rượu bia, mụn, mề đay, đông trùng, nghệ, curcumin, dạ dày, samsung gan\n";
+    knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Giá: 390.000đ/hộp 30 chai (ƯU ĐÃI).\n";
     knowledgeString += "-----------------\n\n";
+    
+    // == SẢN PHẨM 7 ==
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: AN CUNG TRẦM HƯƠNG KWANGDONG HÀN QUỐC HỘP 60 VIÊN\n";
-    knowledgeString += "...\n";
+    knowledgeString += "Từ Khóa: an cung, an cung trầm hương, trầm hương, an cung kwangdong, kwang dong, kwangdong, tai biến, đột quỵ, phòng đột quỵ, huyết áp, cao huyết áp, tiền đình, rối loạn tiền đình, đau đầu, bổ não\n";
+    knowledgeString += "Cách Dùng: Người tai biến: 1 viên/ngày. Người dự phòng: Dùng hằng ngày, mỗi ngày 1 viên. Một năm dùng 2-3 hộp.\n";
+    knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. (Tốt nhất trong dòng 60 viên). Giá: 1.290.000đ/hộp (ƯU ĐÃI) + TẶNG 1 LỌ DẦU LẠNH + MIỄN SHIP.\n";
     knowledgeString += "-----------------\n\n";
+
     knowledgeString += "\n----- HẾT KHỐI KIẾN THỨC -----\n\n";
     return knowledgeString;
 }
@@ -241,11 +265,9 @@ function getProductKnowledge_MayTinh() {
     knowledgeString += "---[SẢN PHẨM CHÍNH]---\n";
     knowledgeString += "Tên Sản Phẩm: Chuột Fuhlen L102 USB - Đen (Hàng Xịn)\n";
     knowledgeString += "Từ Khóa: chuột, fuhlen, l102, chuột l102, chuột fuhlen, chuột quốc dân, chuột giá rẻ, chuột 119k, chuột văn phòng, chuột game\n";
-    // Thông tin Bác cung cấp (từ Hacom)
     knowledgeString += "Thông Số Vàng (Dùng để chém gió): Switch Omron (siêu bền), Độ bền 10 TRIỆU LẦN CLICK (bao phê, bao trâu bò), Cảm biến quang học 1000 DPI (chính xác, di mượt), Thiết kế công thái học & đối xứng (ôm tay, tay trái/phải đều ok, giảm mỏi).\n";
     knowledgeString += "Mô Tả Chung: Hàng hot, 'chuột quốc dân' cho cả game thủ, quán net, văn phòng. Kết nối USB cắm là dùng.\n";
-    // Thông tin Ưu Đãi (Bác cung cấp)
-    knowledgeString += "ƯU ĐÃI (CỰC QUAN TRỌNG): Giá 119.000đ/con. Mua 1 con: +30k ship. Mua TỪ 2 CON: FREESHIP toàn quốc.\n";
+    knowledgeString += "Lưu Ý / Giá: Giá 119.000đ (ƯU ĐÃI).\n";
     knowledgeString += "-----------------\n\n";
 
     // == SẢN PHẨM KHÁC (ĐỂ BOT XIN LỖI) ==
@@ -314,7 +336,7 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
   }
   try {
     const historyString = userState.history.map(h => `${h.role}: ${h.content}`).join('\n');
-    const greetingName = userName ? "Bác "Tele " + userName : "Bác";
+    const greetingName = userName ? "Bác " + userName : "Bác";
 
     // --- PROMPT 1: KỊCH BẢN THẢO KOREA (BÁC-SHOP) ---
     // (Prompt này giữ nguyên, đã bao gồm các luật Bác cần)
@@ -366,7 +388,7 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI 2 (CHO TRANG ĐỒ CHƠI MÁY TÍNH - NÂNG CẤP "CHÉM GIÓ" + "SHIP 30K")
+// HÀM GỌI GEMINI 2 (CHO TRANG ĐỒ CHƠI MÁY TÍNH - v2.3 HIỂU TEENCODE)
 // -------------------------------------------------------------------
 async function callGemini_MayTinh(userMessage, userName, userState, productKnowledge) {
   if (!model) {
@@ -384,54 +406,54 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
 
     // --- PROMPT 2: KỊCH BẢN MÁY TÍNH (SHOP-ANH/CHỊ/EM) ---
     let prompt = "**Nhiệm vụ:** Bạn là bot tư vấn (Trang Đồ Chơi Máy Tính). Xưng hô 'Shop' và gọi khách là '" + salutation + "'. Nếu biết tên, hãy chào tên (ví dụ 'Dạ chào " + greetingName + "').\n\n";
-    
-    // NẠP KIẾN THỨC
     prompt += productKnowledge + "\n\n";
     
-    // ----- CẬP NHẬT ƯU ĐÃI MỚI -----
     prompt += "**ƯU ĐÃI HIỆN TẠI (Đồ Chơi Máy Tính):**\n";
-    prompt += "- Mua 1 con: Giá 119k + 30k ship.\n"; // THÊM
-    prompt += "- Mua từ 2 con chuột Fuhlen L102 trở lên: Giá 119k/con + MIỄN PHÍ SHIP (FREESHIP) toàn quốc.\n\n"; // SỬA
-    // ----------------------------
+    prompt += "- Mua 1 con: Giá 119k + 30k ship.\n";
+    prompt += "- Mua từ 2 con chuột Fuhlen L102 trở lên: Giá 119k/con + MIỄN PHÍ SHIP (FREESHIP) toàn quốc.\n\n";
 
     prompt += "**Lịch sử chat (10 tin nhắn gần nhất):**\n";
     prompt += (historyString || "(Chưa có lịch sử chat)") + "\n\n";
     
+    // ----- BỘ LUẬT MỚI CHO TRANG MÁY TÍNH (v2.3) -----
     prompt += "**Luật Lệ (Ưu tiên từ trên xuống):**\n";
     prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** Trả lời NGẮN GỌN, nhiệt tình, giọng giới trẻ (dùng 'sp', 'k', 'đc', 'ib', 'bao phê', 'hàng xịn'...). Tách câu bằng |\n";
     prompt += "2.  **Phân tích tin nhắn:**\n";
     prompt += "    - Đọc tin nhắn: \"" + userMessage + "\".\n";
-    prompt += "    - (Kiểm tra SĐT/Địa chỉ): Tin nhắn có chứa SĐT (10 số) hoặc Địa chỉ (sn, ngõ...) không?\n";
-    prompt += "    - (Kiểm tra SP Khác): Khách có hỏi sản phẩm KHÁC (như 'RAM', 'VGA', 'CPU'...) không?\n";
-    prompt += "    - (Kiểm tra Lịch sử): Lịch sử chat có rỗng không? " + (historyString ? "Không rỗng" : "Rỗng") + "\n";
-    prompt += "    - (Kiểm tra Đồng Ý): Tin nhắn có phải là ('Có', 'ok', 'vâng', 'tư vấn đi') không?\n";
+    prompt += "    - **(Kiểm tra SĐT/Địa chỉ):** Tin nhắn có chứa SĐT (10 số) hoặc Địa chỉ (sn, ngõ...) không?\n";
+    prompt += "    - **(Kiểm tra SP Khác):** Khách có hỏi sản phẩm KHÁC (như 'RAM', 'VGA', 'CPU'...) không?\n";
+    prompt += "    - **(Kiểm tra Lịch sử):** Lịch sử chat có rỗng không? " + (historyString ? "Không rỗng" : "Rỗng") + "\n";
+    // ----- ĐÃ CẬP NHẬT LUẬT NÀY -----
+    prompt += "    - **(Kiểm tra Chào/Hỏi Mơ Hồ):** Tin nhắn có chứa các từ (viết hoa/thường) như ('Alo', 'a lô', 'lô', 'Chào', 'shop oi', 'sp', 'Tôi muốn mua sản phẩm', 'tư vấn') không?\n";
+    prompt += "    - **(Kiểm tra Đồng Ý):** Tin nhắn có phải là ('Có', 'ok', 'vâng', 'tư vấn đi', 'đúng rồi') không?\n";
     
-    prompt += "    - (Ưu tiên 1 - Gửi SĐT/Địa chỉ): Nếu 'Kiểm tra SĐT/Địa chỉ' -> Kích hoạt 'Luật 1: Ghi Nhận Chốt Đơn'.\n";
-    prompt += "    - (Ưu tiên 2 - Hỏi SP Khác): Nếu 'Kiểm tra SP Khác' -> Kích hoạt 'Luật 2: Xin lỗi hết hàng'.\n";
-    prompt += "    - (Ưu tiên 3 - Chào/Hỏi mơ hồ LẦN ĐẦU): Nếu Lịch sử chat là 'Rỗng' VÀ (tin nhắn là 'Alo', 'Chào', 'Tôi muốn mua sản phẩm') -> Kích hoạt 'Luật 3: Chào Hàng (Giới thiệu Chuột)'.\n";
-    prompt += "    - (Ưu tiên 4 - Khách đồng ý / Hỏi thêm): Nếu (Lịch sử chat 'Không rỗng' VÀ 'Kiểm tra Đồng Ý' (CÓ)) HOẶC (Khách hỏi về 'cảm biến', 'độ bền', 'click', 'thông số') -> Kích hoạt 'Luật 4: Tư Vấn Sâu (Chém Gió)'.\n";
-    prompt += "    - (Ưu tiên 5 - Hỏi Giá): Nếu khách hỏi 'giá' -> Kích hoạt 'Luật 5: Báo Giá'.\n";
-    prompt += "    - (Ưu tiên 6 - Chung): Nếu không khớp -> Kích hoạt 'Luật Chung: Khó hiểu'.\n";
+    prompt += "    - **(Ưu tiên 1 - Gửi SĐT/Địa chỉ):** Nếu 'Kiểm tra SĐT/Địa chỉ' -> Kích hoạt 'Luật 1: Ghi Nhận Chốt Đơn'.\n";
+    prompt += "    - **(Ưu tiên 2 - Hỏi SP Khác):** Nếu 'Kiểm tra SP Khác' -> Kích hoạt 'Luật 2: Xin lỗi hết hàng'.\n";
+    // ----- ĐÃ CẬP NHẬT LUẬT NÀY -----
+    prompt += "    - **(Ưu tiên 3 - Chào/Hỏi mơ hồ LẦN ĐẦU):** Nếu Lịch sử chat là 'Rỗng' VÀ 'Kiểm tra Chào/Hỏi Mơ Hồ' (CÓ) -> Kích hoạt 'Luật 3: Chào Hàng (Giới thiệu Chuột)'.\n";
+    prompt += "    - **(Ưu tiên 4 - Khách đồng ý / Hỏi thêm):** Nếu (Lịch sử chat 'Không rỗng' VÀ 'Kiểm tra Đồng Ý' (CÓ)) HOẶC (Khách hỏi về 'cảm biến', 'độ bền', 'click', 'thông số') -> Kích hoạt 'Luật 4: Tư Vấn Sâu (Chém Gió)'.\n";
+    prompt += "    - **(Ưu tiên 5 - Hỏi Giá):** Nếu khách hỏi 'giá' -> Kích hoạt 'Luật 5: Báo Giá'.\n";
+    prompt += "    - **(Ưu tiên 6 - Chung):** Nếu không khớp -> Kích hoạt 'Luật Chung: Khó hiểu'.\n";
 
     prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n";
     
-    // ----- CẬP NHẬT LUẬT TRẢ LỜI VỚI SHIP 30K -----
     prompt += "    - **Luật 1: Ghi Nhận Chốt Đơn:**\n";
     prompt += "      - Trả lời: \"Dạ Shop đã nhận được thông tin. | Shop có ưu đãi: Mua 1 con ship 30k, mua từ 2 con FREESHIP toàn quốc ạ. | " + salutation + " vui lòng để lại Tên + SĐT + Địa chỉ + Số lượng đầy đủ để Shop chốt đơn cho mình ngay nhé!\"\n"; 
     
     prompt += "    - **Luật 2: Xin lỗi hết hàng:**\n";
-    prompt += "      - Trả lời: \"Dạ Shop xin lỗi " + salutation + ", hiện tại Shop chỉ có sẵn sp 'Chuột Fuhlen L102' (119k) thoy ạ. | Nếu " + salutation + " lấy 1 con ship 30k, lấy từ 2 con Shop sẽ Freeship toàn quốc ạ. | " + salutation + " có quan tâm sp này k ạ?\"\n"; // Dùng teencode
+    prompt += "      - Trả lời: \"Dạ Shop xin lỗi " + salutation + ", hiện tại Shop chỉ có sẵn sp 'Chuột Fuhlen L102' (119k) thoy ạ. | Nếu " + salutation + " lấy 1 con ship 30k, lấy từ 2 con Shop sẽ Freeship toàn quốc ạ. | " + salutation + " có quan tâm sp này k ạ?\"\n"; 
 
     prompt += "    - **Luật 3: Chào Hàng (Giới thiệu Chuột):**\n";
     prompt += "      - Trả lời: \"Dạ chào " + greetingName + ". Shop hiện có Chuột Fuhlen L102 giá siêu tốt 119k, hàng xịn, bền bỉ, nhạy bén cho cả game và văn phòng ạ. | Mua 1 con ship 30k, nhưng mua từ 2 con Shop FREESHIP toàn quốc ạ! | " + salutation + " có muốn Shop tư vấn thêm không ạ?\"\n"; 
 
     prompt += "    - **Luật 4: Tư Vấn Sâu (Chém Gió):**\n";
-    prompt += "      - Trả lời: \"Dạ con này thì 'quốc dân' rồi " + salutation + " ạ! | Nó dùng switch Omron xịn nên độ bền 10 triệu click, bao trâu bò, click 'bao phê'. | Với giá 119k thì best choice (lựa chọn tốt nhất) luôn! | Mua 1 con ship 30k, mua từ 2 con Shop FREESHIP ạ! | " + salutation + " muốn lấy mấy con để Shop chốt đơn ạ?\"\n"; // "Chém gió" + chốt đơn
+    prompt += "      - Trả lời: \"Dạ con này thì 'quốc dân' rồi " + salutation + " ạ! | Nó dùng switch Omron xịn nên độ bền 10 triệu click, bao trâu bò, click 'bao phê'. | Với giá 119k thì best choice (lựa chọn tốt nhất) luôn! | Mua 1 con ship 30k, mua từ 2 con Shop FREESHIP ạ! | " + salutation + " muốn lấy mấy con để Shop chốt đơn ạ?\"\n"; 
 
     prompt += "    - **Luật 5: Báo Giá:**\n";
     prompt += "      - Trả lời: \"Dạ, Chuột Fuhlen L102 (chuột quốc dân) giá chỉ 119.000đ/con ạ. | Con này dùng switch Omron 10 triệu click siêu bền. | Nếu " + salutation + " lấy 1 con phí ship 30k, còn lấy từ 2 con trở lên Shop FREESHIP toàn quốc ạ! | " + salutation + " muốn lấy mấy con ạ?\"\n"; 
     
     prompt += "    - **Luật Chung: Khó hiểu:**\n";
+    prompt += "      - (Áp dụng khi tin nhắn không khớp BẤT KỲ luật nào ở trên, ví dụ 'abcxyz', '???').\n"; // Thêm giải thích
     prompt += "      - Trả lời: \"Dạ Shop chưa hiểu ý " + salutation + " lắm. | Shop hiện đang bán Chuột Fuhlen L102 giá 119k (mua 1 con ship 30k, mua 2 con freeship). | " + salutation + " có cần tư vấn về sp này không ạ?\"\n"; 
     // ----- KẾT THÚC CẬP NHẬT LUẬT -----
 
@@ -533,6 +555,6 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 // -------------------------------------------------------------------
 // 5. Khởi động server
 app.listen(PORT, () => {
-  console.log(`Bot AI ĐA NHÂN CÁCH (v2.2 - Chem Gio) đang chạy ở cổng ${PORT}`);
+  console.log(`Bot AI ĐA NHÂN CÁCH (v2.3 - Hieu Teencode) đang chạy ở cổng ${PORT}`);
   console.log(`Sẵn sàng nhận lệnh từ Facebook tại /webhook`);
 });
