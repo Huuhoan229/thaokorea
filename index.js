@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.4" - TỰ NHIÊN NHẤT / KHÔNG NHẬN LÀ BOT)
+// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.4" - Hỗ trợ 3 Trang)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -33,16 +33,25 @@ const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN; 
 
-// ----- BỘ MAP TOKEN MỚI (QUAN TRỌNG) -----
+// ----- BỘ MAP TOKEN MỚI (QUAN TRỌNG - HỖ TRỢ 3 TRANG) -----
 const pageTokenMap = new Map();
+
+// Tải Token cho Trang 1 (Thảo Korea)
 if (process.env.PAGE_ID_THAO_KOREA && process.env.FB_PAGE_TOKEN_THAO_KOREA) {
     pageTokenMap.set(process.env.PAGE_ID_THAO_KOREA, process.env.FB_PAGE_TOKEN_THAO_KOREA);
     console.log(`Đã tải Token cho trang Thao Korea: ${process.env.PAGE_ID_THAO_KOREA}`);
 }
+// Tải Token cho Trang 2 (Trang Mới - An Cung) <-- ĐÃ THÊM
+if (process.env.PAGE_ID_TRANG_MOI && process.env.FB_PAGE_TOKEN_TRANG_MOI) {
+    pageTokenMap.set(process.env.PAGE_ID_TRANG_MOI, process.env.FB_PAGE_TOKEN_TRANG_MOI);
+    console.log(`Đã tải Token cho trang Trang Moi: ${process.env.PAGE_ID_TRANG_MOI}`);
+}
+// Tải Token cho Trang 3 (Máy Tính)
 if (process.env.PAGE_ID_MAY_TINH && process.env.FB_PAGE_TOKEN_MAY_TINH) {
     pageTokenMap.set(process.env.PAGE_ID_MAY_TINH, process.env.FB_PAGE_TOKEN_MAY_TINH);
     console.log(`Đã tải Token cho trang May Tinh: ${process.env.PAGE_ID_MAY_TINH}`);
 }
+
 console.log(`Bot đã được khởi tạo cho ${pageTokenMap.size} Fanpage.`);
 if (pageTokenMap.size === 0) {
     console.error("LỖI: KHÔNG TÌM THẤY BẤT KỲ CẶP PAGE_ID VÀ TOKEN NÀO!");
@@ -142,21 +151,23 @@ async function processMessage(pageId, sender_psid, userMessage) {
       let productKnowledge;
       let geminiResult;
 
-      // ----- BỘ CHIA "NHÂN CÁCH" BOT -----
-      if (pageId === process.env.PAGE_ID_THAO_KOREA) {
-          console.log(`[Router]: Trang Thao Korea. Đang tải Bộ Não 1...`);
+      // ----- BỘ CHIA "NHÂN CÁCH" BOT (ĐÃ CẬP NHẬT 3 TRANG) -----
+      // Nếu là trang Thảo Korea HOẶC Trang Mới -> Dùng Bộ Não 1
+      if (pageId === process.env.PAGE_ID_THAO_KOREA || pageId === process.env.PAGE_ID_TRANG_MOI) {
+          console.log(`[Router]: Trang Thuc Pham Chuc Nang (ID: ${pageId}). Đang tải Bộ Não 1...`);
           productKnowledge = getProductKnowledge_ThaoKorea();
           geminiResult = await callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge); 
       
+      // Nếu là trang Máy Tính -> Dùng Bộ Não 2
       } else if (pageId === process.env.PAGE_ID_MAY_TINH) {
-          console.log(`[Router]: Trang May Tinh. Đang tải Bộ Não 2...`);
+          console.log(`[Router]: Trang May Tinh (ID: ${pageId}). Đang tải Bộ Não 2...`);
           productKnowledge = getProductKnowledge_MayTinh();
           geminiResult = await callGemini_MayTinh(userMessage, userName, userState, productKnowledge);
       
       } else {
           console.error(`KHÔNG BIẾT PAGE ID: ${pageId}. Không có kịch bản.`);
           processingUserSet.delete(uniqueStorageId); // Mở khóa
-          return; // Dừng nếu không phải 2 trang đã định nghĩa
+          return; // Dừng nếu không phải trang đã định nghĩa
       }
       // ----- KẾT THÚC BỘ CHIA -----
 
@@ -184,11 +195,8 @@ async function processMessage(pageId, sender_psid, userMessage) {
 
     } catch (error) {
       console.error("Lỗi xử lý:", error);
-      // Sửa câu báo lỗi chung
-      const errorMessage = (pageId === process.env.PAGE_ID_MAY_TINH) 
-        ? "Dạ, Shop đang bận chút, Anh/Chị chờ Shop trong giây lát nhé."
-        : "Dạ, nhân viên Shop chưa trực tuyến nên chưa trả lời được Bác ngay ạ. Bác vui lòng chờ trong giây lát nhé.";
-      await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, errorMessage);
+      // Sửa câu báo lỗi (dùng chung 1 câu cho cả 2 bot)
+      await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, "Dạ, Shop đang bận chút, Bác/Anh/Chị vui lòng chờ trong giây lát nhé.");
     } finally {
       processingUserSet.delete(uniqueStorageId); 
       console.log(`[XỬ LÝ XONG]: Mở khóa cho ${uniqueStorageId}`);
@@ -263,8 +271,6 @@ function getProductKnowledge_ThaoKorea() {
 // -------------------------------------------------------------------
 function getProductKnowledge_MayTinh() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (ĐỒ CHƠI MÁY TÍNH):**\n\n";
-
-    // == SẢN PHẨM 1 (ĐÃ NÂNG CẤP) ==
     knowledgeString += "---[SẢN PHẨM CHÍNH]---\n";
     knowledgeString += "Tên Sản Phẩm: Chuột Fuhlen L102 USB - Đen (Hàng Xịn)\n";
     knowledgeString += "Từ Khóa: chuột, fuhlen, l102, chuột l102, chuột fuhlen, chuột quốc dân, chuột giá rẻ, chuột 119k, chuột văn phòng, chuột game\n";
@@ -272,13 +278,10 @@ function getProductKnowledge_MayTinh() {
     knowledgeString += "Mô Tả Chung: Hàng hot, 'chuột quốc dân' cho cả game thủ, quán net, văn phòng. Kết nối USB cắm là dùng.\n";
     knowledgeString += "Lưu Ý / Giá: Giá 119.000đ (ƯU ĐÃI).\n";
     knowledgeString += "-----------------\n\n";
-
-    // == SẢN PHẨM KHÁC (ĐỂ BOT XIN LỖI) ==
     knowledgeString += "---[SẢN PHẨM KHÁC]---\n";
     knowledgeString += "Tên Sản Phẩm: RAM, VGA, CPU, Bàn phím...\n";
     knowledgeString += "Tình trạng: Hiện tại Shop chưa sẵn hàng. Sắp về.\n";
     knowledgeString += "-----------------\n\n";
-
     knowledgeString += "\n----- HẾT KHỐI KIẾN THỨC -----\n\n";
     return knowledgeString;
 }
@@ -316,7 +319,6 @@ async function saveState(uniqueStorageId, userMessage, botMessage) {
   }
   const userRef = db.collection('users').doc(uniqueStorageId); 
   const newUserMsg = { role: 'user', content: userMessage };
-  // Sửa lỗi báo bận
   const shouldSaveBotMsg = botMessage && !botMessage.includes("nhân viên Shop chưa trực tuyến") && !botMessage.includes("Shop đang bận chút");
   const historyUpdates = shouldSaveBotMsg ? [newUserMsg, { role: 'bot', content: botMessage }] : [newUserMsg];
 
@@ -331,7 +333,7 @@ async function saveState(uniqueStorageId, userMessage, botMessage) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI 1 (CHO TRANG THẢO KOREA - ĐÃ CẬP NHẬT TỰ NHIÊN HƠN)
+// HÀM GỌI GEMINI 1 (CHO TRANG THẢO KOREA)
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) {
@@ -365,13 +367,18 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop xin lỗi vì chưa kịp gửi ảnh/video cho Bác ngay ạ. | Nhân viên của Shop sẽ kiểm tra và gửi cho Bác ngay sau đây, Bác chờ Shop 1-2 phút nhé!\"\n";
     prompt += "    - **Luật 2: Ghi Nhận Đơn Hàng (SĐT/Địa chỉ):**\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin (SĐT/Địa chỉ) của Bác ạ. | Shop sẽ gọi điện cho Bác để xác nhận đơn hàng ngay. Cảm ơn Bác ạ!\"\n";
+    prompt += "    - **Luật 3: Phản hồi Câu SĐT Mặc Định:**\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Bác cần Shop hỗ trợ gì ạ? | Nếu Bác muốn được tư vấn kỹ hơn qua điện thoại, Bác có thể nhập Số Điện Thoại vào đây, Shop sẽ gọi lại ngay ạ.\"\n";
     prompt += "    - **Luật 4: Hỏi Vague & Liệt Kê SP (DANH SÁCH VĂN BẢN):**\n";
     prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | Shop có nhiều sản phẩm sức khỏe Hàn Quốc, Bác đang quan tâm cụ thể về vấn đề gì hoặc sản phẩm nào ạ? Bác có thể tham khảo một số sản phẩm sau: \n1. AN CUNG SAMSUNG (Hỗ trợ tai biến)\n2. CAO HỒNG SÂM 365 (Bồi bổ sức khỏe)\n3. TINH DẦU THÔNG ĐỎ (Hỗ trợ mỡ máu)\n4. NƯỚC SÂM NHUNG HƯƠU (30 gói)\n5. NƯỚC SÂM NHUNG HƯƠU (20 gói)\n6. NƯỚC MÁT GAN SAMSUNG (Giải độc gan)\n7. AN CUNG TRẦM HƯƠNG KWANGDONG (Tai biến cao cấp)\"\n";
     prompt += "    - **Luật 5: Báo Giá Công Khai (KHÔNG XIN SĐT):**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP] là [Giá SP] ạ...\"\n";
+    prompt += "      - (Hành động): Tra cứu 'KHỐI KIẾN THỨC' để tìm [Tên SP] và [Giá SP].\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP tra cứu được] hiện tại là [Giá SP tra cứu được] ạ. | [Thông tin Quà Tặng/Freeship nếu có]. | Bác có muốn Shop tư vấn thêm về cách dùng không ạ?\"\n";
+    prompt += "    - **Luật Quà Tặng (KHÔNG XIN SĐT):**\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", quà tặng bên Shop rất đa dạng ạ...\"\n";
     prompt += "    - **Luật Chung (Mặc định):**\n";
-    prompt += "      - Nếu tin nhắn khó hiểu: -> Trả lời: \"Dạ " + greetingName + ", Shop chưa hiểu ý Bác lắm ạ. | Bác có thể nói rõ hơn Bác đang cần hỗ trợ gì không ạ?\"\n";
-    prompt += "      - Nếu không khó hiểu (hỏi công dụng...): Trả lời NGẮN GỌN dựa trên 'KHỐI KIẾN THỨC'. Luôn hỏi ngược. Luôn nhắc 'không phải là thuốc'.\n";
+    prompt += "      - Nếu tin nhắn khó hiểu: -> Trả lời: \"Dạ " + greetingName + ", Shop chưa hiểu ý Bác lắm ạ...\"\n";
+    prompt += "      - Nếu không khó hiểu: Trả lời NGẮN GỌN dựa trên 'KHỐI KIẾN THỨC'.\n";
     prompt += "      - Tách câu trả lời bằng dấu |\n\n";
     prompt += "**YÊU CẦU ĐẦU RA (JSON):**\n";
     prompt += "{\n\"response_message\": \"Câu trả lời cho khách | tách bằng dấu |\"\n}\n";
@@ -423,7 +430,7 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
 
 
     // --- PROMPT 2: KỊCH BẢN MÁY TÍNH (SHOP-BẠN) ---
-    let prompt = "**Nhiệm vụ:** Bạn là nhân viên tư vấn (Trang Đồ Chơi Máy Tính). **LUẬT BÍ MẬT:** TUYỆT ĐỐI KHÔNG BAO GIỜ được nói mình là 'bot' hay 'AI'. Phải chat 1 cách tự nhiên nhất, giọng văn giới trẻ (dùng 'sp', 'k', 'đc', 'ib', 'bao phê', 'hàng xịn'...). Xưng hô 'Shop' và gọi khách là '" + salutation + "'. Nếu biết tên, hãy chào tên (ví dụ 'Dạ chào " + greetingName + "').\n\n";
+    let prompt = "**Nhiệm vụ:** Bạn là nhân viên tư vấn (Trang Đồ Chơi Máy Tính). **LUẬT BÍ MẬT:** TUYỆT ĐỐI KHÔNG BAO GIỜ được nói mình là 'bot' hay 'AI'. Phải chat 1 cách tự nhiên nhất, giọng văn giới trẻ (dùng 'sp', 'k', 'đc', 'ib', 'bao phê', 'hàng xịn'...). Xưng hô 'Shop' và gọi khách là '" + salutation + "'. Nếu biết tên, hãy chào tên (ví dụ 'Chào " + greetingName + "').\n\n";
     prompt += productKnowledge + "\n\n";
     
     prompt += "**ƯU ĐÃI HIỆN TẠI (Đồ Chơi Máy Tính):**\n";
@@ -441,7 +448,6 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
     prompt += "    - **(Kiểm tra SĐT/Địa chỉ):** Tin nhắn có chứa SĐT (10 số) hoặc Địa chỉ (sn, ngõ...) không?\n";
     prompt += "    - **(Kiểm tra SP Khác):** Khách có hỏi sản phẩm KHÁC (như 'RAM', 'VGA', 'CPU'...) không?\n";
     prompt += "    - **(Kiểm tra Lịch sử):** Lịch sử chat có rỗng không? " + (historyString ? "Không rỗng" : "Rỗng") + "\n";
-    // ----- ĐÃ CẬP NHẬT LUẬT NÀY -----
     prompt += "    - **(Kiểm tra Chào/Hỏi Mơ Hồ):** Tin nhắn có chứa các từ (viết hoa/thường) như ('Alo', 'a lô', 'lô', 'Chào', 'shop oi', 'sp', 'Tôi muốn mua sản phẩm', 'tư vấn') không?\n";
     prompt += "    - **(Kiểm tra Đồng Ý):** Tin nhắn có phải là ('Có', 'ok', 'vâng', 'tư vấn đi', 'đúng rồi') không?\n";
     
@@ -455,13 +461,13 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
     prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n";
     
     prompt += "    - **Luật 1: Ghi Nhận Chốt Đơn:**\n";
-    prompt += "      - Trả lời: \"Dạ Shop đã nhận được thông tin. | Shop có ưu đãi: Mua 1 con ship 30k, mua từ 2 con FREESHIP toàn quốc ạ. | " + salutation + " vui lòng để lại Tên + SĐT + Địa chỉ + Số lượng đầy đủ để Shop chốt đơn cho mình ngay nhé!\"\n"; 
+    prompt += "      - Trả lời: \"Shop đã nhận được thông tin. | Ưu đãi: Mua 1c ship 30k, mua từ 2c FREESHIP. | " + salutation + " vui lòng để lại Tên + SĐT + Địa chỉ + Số lượng đầy đủ để Shop chốt đơn ngay nhé!\"\n"; 
     
     prompt += "    - **Luật 2: Xin lỗi hết hàng:**\n";
     prompt += "      - Trả lời: \"Dạ Shop xin lỗi " + salutation + ", hiện tại Shop chỉ có sẵn sp 'Chuột Fuhlen L102' (119k) thoy ạ. | Nếu " + salutation + " lấy 1 con ship 30k, lấy từ 2 con Shop sẽ Freeship toàn quốc ạ. | " + salutation + " có quan tâm sp này k ạ?\"\n"; 
 
     prompt += "    - **Luật 3: Chào Hàng (Giới thiệu Chuột):**\n";
-    prompt += "      - Trả lời: \"Dạ chào " + greetingName + ". Shop hiện có Chuột Fuhlen L102 giá siêu tốt 119k, hàng xịn, bền bỉ, nhạy bén cho cả game và văn phòng ạ. | Mua 1 con ship 30k, nhưng mua từ 2 con Shop FREESHIP toàn quốc ạ! | " + salutation + " có muốn Shop tư vấn thêm không ạ?\"\n"; 
+    prompt += "      - Trả lời: \"Chào " + greetingName + ". Shop hiện có Chuột Fuhlen L102 giá siêu tốt 119k, hàng xịn, bền bỉ, nhạy bén cho cả game và văn phòng ạ. | Mua 1 con ship 30k, nhưng mua từ 2 con Shop FREESHIP toàn quốc ạ! | " + salutation + " có muốn Shop tư vấn thêm không ạ?\"\n"; 
 
     prompt += "    - **Luật 4: Tư Vấn Sâu (Chém Gió):**\n";
     prompt += "      - Trả lời: \"Dạ con này thì 'quốc dân' rồi " + salutation + " ạ! | Nó dùng switch Omron xịn nên độ bền 10 triệu click, bao trâu bò, click 'bao phê'. | Với giá 119k thì best choice (lựa chọn tốt nhất) luôn! | Mua 1 con ship 30k, mua từ 2 con Shop FREESHIP ạ! | " + salutation + " muốn lấy mấy con để Shop chốt đơn ạ?\"\n"; 
