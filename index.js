@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.4" - Hỗ trợ 3 Trang)
+// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.5" - Sửa Lỗi Logic Chốt Đơn)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -33,25 +33,21 @@ const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN; 
 
-// ----- BỘ MAP TOKEN MỚI (QUAN TRỌNG - HỖ TRỢ 3 TRANG) -----
+// ----- BỘ MAP TOKEN MỚI (QUAN TRỌNG) -----
 const pageTokenMap = new Map();
-
-// Tải Token cho Trang 1 (Thảo Korea)
 if (process.env.PAGE_ID_THAO_KOREA && process.env.FB_PAGE_TOKEN_THAO_KOREA) {
     pageTokenMap.set(process.env.PAGE_ID_THAO_KOREA, process.env.FB_PAGE_TOKEN_THAO_KOREA);
     console.log(`Đã tải Token cho trang Thao Korea: ${process.env.PAGE_ID_THAO_KOREA}`);
 }
-// Tải Token cho Trang 2 (Trang Mới - An Cung) <-- ĐÃ THÊM
-if (process.env.PAGE_ID_TRANG_MOI && process.env.FB_PAGE_TOKEN_TRANG_MOI) {
-    pageTokenMap.set(process.env.PAGE_ID_TRANG_MOI, process.env.FB_PAGE_TOKEN_TRANG_MOI);
-    console.log(`Đã tải Token cho trang Trang Moi: ${process.env.PAGE_ID_TRANG_MOI}`);
-}
-// Tải Token cho Trang 3 (Máy Tính)
 if (process.env.PAGE_ID_MAY_TINH && process.env.FB_PAGE_TOKEN_MAY_TINH) {
     pageTokenMap.set(process.env.PAGE_ID_MAY_TINH, process.env.FB_PAGE_TOKEN_MAY_TINH);
     console.log(`Đã tải Token cho trang May Tinh: ${process.env.PAGE_ID_MAY_TINH}`);
 }
-
+// Thêm trang "Trang Mới" (An Cung)
+if (process.env.PAGE_ID_TRANG_MOI && process.env.FB_PAGE_TOKEN_TRANG_MOI) {
+    pageTokenMap.set(process.env.PAGE_ID_TRANG_MOI, process.env.FB_PAGE_TOKEN_TRANG_MOI);
+    console.log(`Đã tải Token cho trang Trang Moi: ${process.env.PAGE_ID_TRANG_MOI}`);
+}
 console.log(`Bot đã được khởi tạo cho ${pageTokenMap.size} Fanpage.`);
 if (pageTokenMap.size === 0) {
     console.error("LỖI: KHÔNG TÌM THẤY BẤT KỲ CẶP PAGE_ID VÀ TOKEN NÀO!");
@@ -167,7 +163,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
       } else {
           console.error(`KHÔNG BIẾT PAGE ID: ${pageId}. Không có kịch bản.`);
           processingUserSet.delete(uniqueStorageId); // Mở khóa
-          return; // Dừng nếu không phải trang đã định nghĩa
+          return; // Dừng nếu không phải 2 trang đã định nghĩa
       }
       // ----- KẾT THÚC BỘ CHIA -----
 
@@ -196,7 +192,10 @@ async function processMessage(pageId, sender_psid, userMessage) {
     } catch (error) {
       console.error("Lỗi xử lý:", error);
       // Sửa câu báo lỗi (dùng chung 1 câu cho cả 2 bot)
-      await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, "Dạ, Shop đang bận chút, Bác/Anh/Chị vui lòng chờ trong giây lát nhé.");
+      const errorMessage = (pageId === process.env.PAGE_ID_MAY_TINH) 
+        ? "Dạ, Shop đang bận chút, bạn chờ Shop trong giây lát nhé."
+        : "Dạ, nhân viên Shop chưa trực tuyến nên chưa trả lời được Bác ngay ạ. Bác vui lòng chờ trong giây lát nhé.";
+      await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, errorMessage);
     } finally {
       processingUserSet.delete(uniqueStorageId); 
       console.log(`[XỬ LÝ XONG]: Mở khóa cho ${uniqueStorageId}`);
@@ -364,22 +363,14 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     prompt += "    - (Ưu tiên 6 - Tra cứu)...\n";
     prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n";
     prompt += "    - **Luật 1: Chuyển Giao Nhân Viên (Hình Ảnh):**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop xin lỗi vì chưa kịp gửi ảnh/video cho Bác ngay ạ. | Nhân viên của Shop sẽ kiểm tra và gửi cho Bác ngay sau đây, Bác chờ Shop 1-2 phút nhé!\"\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop xin lỗi...\"\n";
     prompt += "    - **Luật 2: Ghi Nhận Đơn Hàng (SĐT/Địa chỉ):**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin (SĐT/Địa chỉ) của Bác ạ. | Shop sẽ gọi điện cho Bác để xác nhận đơn hàng ngay. Cảm ơn Bác ạ!\"\n";
-    prompt += "    - **Luật 3: Phản hồi Câu SĐT Mặc Định:**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Bác cần Shop hỗ trợ gì ạ? | Nếu Bác muốn được tư vấn kỹ hơn qua điện thoại, Bác có thể nhập Số Điện Thoại vào đây, Shop sẽ gọi lại ngay ạ.\"\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin...\"\n";
     prompt += "    - **Luật 4: Hỏi Vague & Liệt Kê SP (DANH SÁCH VĂN BẢN):**\n";
-    prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | Shop có nhiều sản phẩm sức khỏe Hàn Quốc, Bác đang quan tâm cụ thể về vấn đề gì hoặc sản phẩm nào ạ? Bác có thể tham khảo một số sản phẩm sau: \n1. AN CUNG SAMSUNG (Hỗ trợ tai biến)\n2. CAO HỒNG SÂM 365 (Bồi bổ sức khỏe)\n3. TINH DẦU THÔNG ĐỎ (Hỗ trợ mỡ máu)\n4. NƯỚC SÂM NHUNG HƯƠU (30 gói)\n5. NƯỚC SÂM NHUNG HƯƠU (20 gói)\n6. NƯỚC MÁT GAN SAMSUNG (Giải độc gan)\n7. AN CUNG TRẦM HƯƠNG KWANGDONG (Tai biến cao cấp)\"\n";
+    prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | ... \n1. AN CUNG SAMSUNG...\n(Và 6 sản phẩm khác)\n7. AN CUNG TRẦM HƯƠNG KWANGDONG...\"\n";
     prompt += "    - **Luật 5: Báo Giá Công Khai (KHÔNG XIN SĐT):**\n";
-    prompt += "      - (Hành động): Tra cứu 'KHỐI KIẾN THỨC' để tìm [Tên SP] và [Giá SP].\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP tra cứu được] hiện tại là [Giá SP tra cứu được] ạ. | [Thông tin Quà Tặng/Freeship nếu có]. | Bác có muốn Shop tư vấn thêm về cách dùng không ạ?\"\n";
-    prompt += "    - **Luật Quà Tặng (KHÔNG XIN SĐT):**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", quà tặng bên Shop rất đa dạng ạ...\"\n";
-    prompt += "    - **Luật Chung (Mặc định):**\n";
-    prompt += "      - Nếu tin nhắn khó hiểu: -> Trả lời: \"Dạ " + greetingName + ", Shop chưa hiểu ý Bác lắm ạ...\"\n";
-    prompt += "      - Nếu không khó hiểu: Trả lời NGẮN GỌN dựa trên 'KHỐI KIẾN THỨC'.\n";
-    prompt += "      - Tách câu trả lời bằng dấu |\n\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP] là [Giá SP] ạ...\"\n";
+    // ... (v.v.)
     prompt += "**YÊU CẦU ĐẦU RA (JSON):**\n";
     prompt += "{\n\"response_message\": \"Câu trả lời cho khách | tách bằng dấu |\"\n}\n";
     prompt += "---\n";
@@ -413,7 +404,7 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI 2 (CHO TRANG ĐỒ CHƠI MÁY TÍNH - v2.4 HIỂU TEENCODE + TỰ NHIÊN)
+// HÀM GỌI GEMINI 2 (CHO TRANG ĐỒ CHƠI MÁY TÍNH - v2.5 SỬA LỖI LOGIC CHỐT ĐƠN)
 // -------------------------------------------------------------------
 async function callGemini_MayTinh(userMessage, userName, userState, productKnowledge) {
   if (!model) {
@@ -424,7 +415,7 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
     const historyString = userState.history.map(h => `${h.role}: ${h.content}`).join('\n');
     
     // ----- LOGIC XƯNG HÔ MỚI (KHÔNG GENDER) -----
-    const salutation = "bạn"; // Đổi xưng hô mặc định thành "bạn" cho thân thiện
+    const salutation = "bạn"; // Xưng hô mặc định
     const greetingName = userName ? userName : salutation;
     // ----- KẾT THÚC LOGIC XƯNG HÔ -----
 
@@ -440,18 +431,20 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
     prompt += "**Lịch sử chat (10 tin nhắn gần nhất):**\n";
     prompt += (historyString || "(Chưa có lịch sử chat)") + "\n\n";
     
-    // ----- BỘ LUẬT MỚI CHO TRANG MÁY TÍNH (v2.4) -----
+    // ----- BỘ LUẬT MỚI CHO TRANG MÁY TÍNH (v2.5 - SỬA LỖI LOGIC CHỐT ĐƠN) -----
     prompt += "**Luật Lệ (Ưu tiên từ trên xuống):**\n";
     prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** Trả lời NGẮN GỌN, nhiệt tình, giọng giới trẻ. Tách câu bằng |\n";
     prompt += "2.  **Phân tích tin nhắn:**\n";
     prompt += "    - Đọc tin nhắn: \"" + userMessage + "\".\n";
-    prompt += "    - **(Kiểm tra SĐT/Địa chỉ):** Tin nhắn có chứa SĐT (10 số) hoặc Địa chỉ (sn, ngõ...) không?\n";
+    prompt += "    - **(Kiểm tra SĐT):** Tin nhắn có chứa SĐT hợp lệ (10 số, 09/08...) không?\n";
+    prompt += "    - **(Kiểm tra Địa Chỉ):** Tin nhắn có chứa từ khóa địa chỉ (sn, ngõ, phường...) không?\n";
+    prompt += "    - **(Kiểm tra Số Lượng):** Tin nhắn có chứa số lượng (ví dụ: '1 con', '2 nhé', 'lấy 3') không?\n";
     prompt += "    - **(Kiểm tra SP Khác):** Khách có hỏi sản phẩm KHÁC (như 'RAM', 'VGA', 'CPU'...) không?\n";
     prompt += "    - **(Kiểm tra Lịch sử):** Lịch sử chat có rỗng không? " + (historyString ? "Không rỗng" : "Rỗng") + "\n";
     prompt += "    - **(Kiểm tra Chào/Hỏi Mơ Hồ):** Tin nhắn có chứa các từ (viết hoa/thường) như ('Alo', 'a lô', 'lô', 'Chào', 'shop oi', 'sp', 'Tôi muốn mua sản phẩm', 'tư vấn') không?\n";
     prompt += "    - **(Kiểm tra Đồng Ý):** Tin nhắn có phải là ('Có', 'ok', 'vâng', 'tư vấn đi', 'đúng rồi') không?\n";
     
-    prompt += "    - **(Ưu tiên 1 - Gửi SĐT/Địa chỉ):** Nếu 'Kiểm tra SĐT/Địa chỉ' -> Kích hoạt 'Luật 1: Ghi Nhận Chốt Đơn'.\n";
+    prompt += "    - **(Ưu tiên 1 - Gửi SĐT/Địa chỉ/Số Lượng):** Nếu 'Kiểm tra SĐT' (CÓ) HOẶC 'Kiểm tra Địa Chỉ' (CÓ) HOẶC 'Kiểm tra Số Lượng' (CÓ) -> Kích hoạt 'Luật 1: Ghi Nhận Thông Tin Đơn Hàng'.\n"; // Gộp lại
     prompt += "    - **(Ưu tiên 2 - Hỏi SP Khác):** Nếu 'Kiểm tra SP Khác' -> Kích hoạt 'Luật 2: Xin lỗi hết hàng'.\n";
     prompt += "    - **(Ưu tiên 3 - Chào/Hỏi mơ hồ LẦN ĐẦU):** Nếu Lịch sử chat là 'Rỗng' VÀ 'Kiểm tra Chào/Hỏi Mơ Hồ' (CÓ) -> Kích hoạt 'Luật 3: Chào Hàng (Giới thiệu Chuột)'.\n";
     prompt += "    - **(Ưu tiên 4 - Khách đồng ý / Hỏi thêm):** Nếu (Lịch sử chat 'Không rỗng' VÀ 'Kiểm tra Đồng Ý' (CÓ)) HOẶC (Khách hỏi về 'cảm biến', 'độ bền', 'click', 'thông số') -> Kích hoạt 'Luật 4: Tư Vấn Sâu (Chém Gió)'.\n";
@@ -460,8 +453,12 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
 
     prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n";
     
-    prompt += "    - **Luật 1: Ghi Nhận Chốt Đơn:**\n";
-    prompt += "      - Trả lời: \"Shop đã nhận được thông tin. | Ưu đãi: Mua 1c ship 30k, mua từ 2c FREESHIP. | " + salutation + " vui lòng để lại Tên + SĐT + Địa chỉ + Số lượng đầy đủ để Shop chốt đơn ngay nhé!\"\n"; 
+    // ----- ĐÃ SỬA LỖI LOGIC NÀY -----
+    prompt += "    - **Luật 1: Ghi Nhận Thông Tin Đơn Hàng:**\n";
+    prompt += "      - (Phân tích): Tin nhắn của khách là '" + userMessage + "'. Lịch sử chat là: '" + historyString + "'.\n";
+    prompt += "      - (Hành động): Bot phải tự kiểm tra xem 4 thông tin: [Tên], [SĐT], [Địa Chỉ], [Số Lượng] đã đủ chưa (dựa vào tin nhắn MỚI và Lịch sử chat).\n";
+    prompt += "      - (Kịch bản 1: Đã ĐỦ): Nếu đã có đủ [Tên], [SĐT], [Địa Chỉ], [Số Lượng] -> Trả lời: \"Ok " + greetingName + "! Shop đã nhận đủ thông tin. | Shop sẽ gọi/nhắn tin xác nhận đơn hàng ngay. Cảm ơn " + salutation + " đã ủng hộ Shop!\"\n";
+    prompt += "      - (Kịch bản 2: CÒN THIẾU): Nếu còn thiếu thông tin -> Trả lời: \"Dạ Shop đã nhận được thông tin của " + salutation + " rồi ạ. | " + salutation + " vui lòng cung cấp nốt [VIẾT TÊN CÁC MỤC CÒN THIẾU] để Shop chốt đơn nhé! | (Lưu ý: 1 con 119k+30k ship, 2 con 238k+FREESHIP ạ)\"\n";
     
     prompt += "    - **Luật 2: Xin lỗi hết hàng:**\n";
     prompt += "      - Trả lời: \"Dạ Shop xin lỗi " + salutation + ", hiện tại Shop chỉ có sẵn sp 'Chuột Fuhlen L102' (119k) thoy ạ. | Nếu " + salutation + " lấy 1 con ship 30k, lấy từ 2 con Shop sẽ Freeship toàn quốc ạ. | " + salutation + " có quan tâm sp này k ạ?\"\n"; 
@@ -578,6 +575,6 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 // -------------------------------------------------------------------
 // 5. Khởi động server
 app.listen(PORT, () => {
-  console.log(`Bot AI ĐA NHÂN CÁCH (v2.4 - Tu Nhien) đang chạy ở cổng ${PORT}`);
+  console.log(`Bot AI ĐA NHÂN CÁCH (v2.5 - Sua Logic Chot Don) đang chạy ở cổng ${PORT}`);
   console.log(`Sẵn sàng nhận lệnh từ Facebook tại /webhook`);
 });
