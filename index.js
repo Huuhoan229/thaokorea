@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.5" - Sửa Lỗi Logic Chốt Đơn)
+// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.6" - Sửa Lỗi Đổi Quà)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -33,20 +33,19 @@ const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN; 
 
-// ----- BỘ MAP TOKEN MỚI (QUAN TRỌNG) -----
+// ----- BỘ MAP TOKEN MỚI (QUAN TRỌNG - HỖ TRỢ 3 TRANG) -----
 const pageTokenMap = new Map();
 if (process.env.PAGE_ID_THAO_KOREA && process.env.FB_PAGE_TOKEN_THAO_KOREA) {
     pageTokenMap.set(process.env.PAGE_ID_THAO_KOREA, process.env.FB_PAGE_TOKEN_THAO_KOREA);
     console.log(`Đã tải Token cho trang Thao Korea: ${process.env.PAGE_ID_THAO_KOREA}`);
 }
-if (process.env.PAGE_ID_MAY_TINH && process.env.FB_PAGE_TOKEN_MAY_TINH) {
-    pageTokenMap.set(process.env.PAGE_ID_MAY_TINH, process.env.FB_PAGE_TOKEN_MAY_TINH);
-    console.log(`Đã tải Token cho trang May Tinh: ${process.env.PAGE_ID_MAY_TINH}`);
-}
-// Thêm trang "Trang Mới" (An Cung)
 if (process.env.PAGE_ID_TRANG_MOI && process.env.FB_PAGE_TOKEN_TRANG_MOI) {
     pageTokenMap.set(process.env.PAGE_ID_TRANG_MOI, process.env.FB_PAGE_TOKEN_TRANG_MOI);
     console.log(`Đã tải Token cho trang Trang Moi: ${process.env.PAGE_ID_TRANG_MOI}`);
+}
+if (process.env.PAGE_ID_MAY_TINH && process.env.FB_PAGE_TOKEN_MAY_TINH) {
+    pageTokenMap.set(process.env.PAGE_ID_MAY_TINH, process.env.FB_PAGE_TOKEN_MAY_TINH);
+    console.log(`Đã tải Token cho trang May Tinh: ${process.env.PAGE_ID_MAY_TINH}`);
 }
 console.log(`Bot đã được khởi tạo cho ${pageTokenMap.size} Fanpage.`);
 if (pageTokenMap.size === 0) {
@@ -262,11 +261,19 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "-----------------\n\n";
 
     knowledgeString += "\n----- HẾT KHỐI KIẾN THỨC -----\n\n";
+    
+    // ----- THÊM KIẾN THỨC VỀ QUÀ TẶNG -----
+    knowledgeString += "**LỊCH SỬ QUÀ TẶNG (Dùng để tra cứu):**\n";
+    knowledgeString += "- Quà mặc định (An Cung Samsung, An Cung Kwangdong): 1 Lọ Dầu Lạnh.\n";
+    knowledgeString += "- Quà mặc định (Tinh Dầu Thông Đỏ): 1 Gói Cao Dán 20 miếng.\n";
+    knowledgeString += "- QUÀ CÓ THỂ ĐỔI (Nếu khách yêu cầu): Khách có thể đổi Dầu Lạnh lấy Cao Dán và ngược lại. Hãy xác nhận yêu cầu của khách.\n\n";
+    // -----------------------------------------
+    
     return knowledgeString;
 }
 
 // -------------------------------------------------------------------
-// BỘ NÃO 2: KIẾN THỨC SẢN PHẨM (ĐỒ CHƠI MÁY TÍNH - ĐÃ NÂNG CẤP)
+// BỘ NÃO 2: KIẾN THỨC SẢN PHẨM (ĐỒ CHƠI MÁY TÍNH)
 // -------------------------------------------------------------------
 function getProductKnowledge_MayTinh() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (ĐỒ CHƠI MÁY TÍNH):**\n\n";
@@ -332,7 +339,7 @@ async function saveState(uniqueStorageId, userMessage, botMessage) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI 1 (CHO TRANG THẢO KOREA)
+// HÀM GỌI GEMINI 1 (CHO TRANG THẢO KOREA - SỬA LỖI ĐỔI QUÀ)
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) {
@@ -348,6 +355,8 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     prompt += productKnowledge + "\n\n";
     prompt += "**Lịch sử chat (10 tin nhắn gần nhất):**\n";
     prompt += (historyString || "(Chưa có lịch sử chat)") + "\n\n";
+    
+    // ----- ĐÃ CẬP NHẬT LUẬT LỆ (THÊM LUẬT ĐỔI QUÀ) -----
     prompt += "**Luật Lệ (Ưu tiên từ trên xuống):**\n";
     prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** KHÔNG lặp lại. Trả lời NGẮN GỌN. Tách câu bằng |\n";
     prompt += "2.  **Phân tích tin nhắn:**\n";
@@ -355,22 +364,39 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     prompt += "    - (Kiểm tra SĐT/Địa chỉ)...\n";
     prompt += "    - (Kiểm tra Hình Ảnh)...\n";
     prompt += "    - (Kiểm tra Giá)...\n";
+    prompt += "    - **(Kiểm tra Đổi Quà):** Tin nhắn có chứa từ khóa đổi quà ('đổi quà', 'lấy cao dán', 'lấy dầu lạnh', 'không lấy dầu lạnh', 'không lấy cao dán') không?\n"; // <--- LUẬT MỚI
+    
     prompt += "    - (Ưu tiên 1 - Yêu cầu Hình Ảnh)...\n";
     prompt += "    - (Ưu tiên 2 - Gửi SĐT/Địa chỉ)...\n";
-    prompt += "    - (Ưu tiên 3 - Câu hỏi mặc định SĐT)...\n";
-    prompt += "    - (Ưu tiên 4 - Câu hỏi mặc định Mua SP)...\n";
-    prompt += "    - (Ưu tiên 5 - Hỏi Giá)...\n";
-    prompt += "    - (Ưu tiên 6 - Tra cứu)...\n";
+    prompt += "    - **(Ưu tiên 3 - Đổi Quà):** Nếu 'Kiểm tra Đổi Quà' (CÓ) -> Kích hoạt 'Luật 3: Xử Lý Đổi Quà'.\n"; // <--- LUẬT MỚI
+    prompt += "    - (Ưu tiên 4 - Câu hỏi mặc định SĐT)...\n";
+    prompt += "    - (Ưu tiên 5 - Câu hỏi mặc định Mua SP)...\n";
+    prompt += "    - (Ưu tiên 6 - Hỏi Giá)...\n";
+    prompt += "    - (Ưu tiên 7 - Tra cứu)...\n";
+    
     prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n";
     prompt += "    - **Luật 1: Chuyển Giao Nhân Viên (Hình Ảnh):**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop xin lỗi...\"\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop xin lỗi vì chưa kịp gửi ảnh...\"\n";
     prompt += "    - **Luật 2: Ghi Nhận Đơn Hàng (SĐT/Địa chỉ):**\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin...\"\n";
-    prompt += "    - **Luật 4: Hỏi Vague & Liệt Kê SP (DANH SÁCH VĂN BẢN):**\n";
+    
+    // ----- LUẬT MỚI ĐỂ XỬ LÝ LỖI -----
+    prompt += "    - **Luật 3: Xử Lý Đổi Quà:**\n";
+    prompt += "      - (Áp dụng khi khách nhắn 'cho chú cao dán', 'đổi quà').\n";
+    prompt += "      - Trả lời: \"Dạ vâng " + greetingName + ". Shop đã ghi nhận Bác muốn đổi quà (từ Dầu Lạnh sang Cao Dán hoặc ngược lại) ạ. | Shop sẽ xác nhận lại khi gọi chốt đơn cho Bác nhé!\"\n";
+    // ----- KẾT THÚC LUẬT MỚI -----
+
+    prompt += "    - **Luật 4: Phản hồi Câu SĐT Mặc Định:**\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Bác cần Shop hỗ trợ gì ạ?...\"\n";
+    prompt += "    - **Luật 5: Hỏi Vague & Liệt Kê SP (DANH SÁCH VĂN BẢN):**\n";
     prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | ... \n1. AN CUNG SAMSUNG...\n(Và 6 sản phẩm khác)\n7. AN CUNG TRẦM HƯƠNG KWANGDONG...\"\n";
-    prompt += "    - **Luật 5: Báo Giá Công Khai (KHÔNG XIN SĐT):**\n";
+    prompt += "    - **Luật 6: Báo Giá Công Khai (KHÔNG XIN SĐT):**\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP] là [Giá SP] ạ...\"\n";
-    // ... (v.v.)
+    prompt += "    - **Luật Chung (Mặc định):**\n";
+    prompt += "      - (Áp dụng khi không dính các luật trên)\n";
+    prompt += "      - Nếu tin nhắn khó hiểu: -> Trả lời: \"Dạ " + greetingName + ", Shop chưa hiểu ý Bác lắm ạ...\"\n";
+    prompt += "      - Nếu không khó hiểu: Trả lời NGẮN GỌN dựa trên 'KHỐI KIẾN THỨC'.\n";
+    prompt += "      - Tách câu trả lời bằng dấu |\n\n";
     prompt += "**YÊU CẦU ĐẦU RA (JSON):**\n";
     prompt += "{\n\"response_message\": \"Câu trả lời cho khách | tách bằng dấu |\"\n}\n";
     prompt += "---\n";
@@ -404,7 +430,7 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI 2 (CHO TRANG ĐỒ CHƠI MÁY TÍNH - v2.5 SỬA LỖI LOGIC CHỐT ĐƠN)
+// HÀM GỌI GEMINI 2 (CHO TRANG ĐỒ CHƠI MÁY TÍNH - v2.4 HIỂU TEENCODE + TỰ NHIÊN)
 // -------------------------------------------------------------------
 async function callGemini_MayTinh(userMessage, userName, userState, productKnowledge) {
   if (!model) {
@@ -415,7 +441,7 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
     const historyString = userState.history.map(h => `${h.role}: ${h.content}`).join('\n');
     
     // ----- LOGIC XƯNG HÔ MỚI (KHÔNG GENDER) -----
-    const salutation = "bạn"; // Xưng hô mặc định
+    const salutation = "bạn"; // Đổi xưng hô mặc định thành "bạn" cho thân thiện
     const greetingName = userName ? userName : salutation;
     // ----- KẾT THÚC LOGIC XƯNG HÔ -----
 
@@ -431,20 +457,18 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
     prompt += "**Lịch sử chat (10 tin nhắn gần nhất):**\n";
     prompt += (historyString || "(Chưa có lịch sử chat)") + "\n\n";
     
-    // ----- BỘ LUẬT MỚI CHO TRANG MÁY TÍNH (v2.5 - SỬA LỖI LOGIC CHỐT ĐƠN) -----
+    // ----- BỘ LUẬT MỚI CHO TRANG MÁY TÍNH (v2.4) -----
     prompt += "**Luật Lệ (Ưu tiên từ trên xuống):**\n";
     prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** Trả lời NGẮN GỌN, nhiệt tình, giọng giới trẻ. Tách câu bằng |\n";
     prompt += "2.  **Phân tích tin nhắn:**\n";
     prompt += "    - Đọc tin nhắn: \"" + userMessage + "\".\n";
-    prompt += "    - **(Kiểm tra SĐT):** Tin nhắn có chứa SĐT hợp lệ (10 số, 09/08...) không?\n";
-    prompt += "    - **(Kiểm tra Địa Chỉ):** Tin nhắn có chứa từ khóa địa chỉ (sn, ngõ, phường...) không?\n";
-    prompt += "    - **(Kiểm tra Số Lượng):** Tin nhắn có chứa số lượng (ví dụ: '1 con', '2 nhé', 'lấy 3') không?\n";
+    prompt += "    - **(Kiểm tra SĐT/Địa chỉ):** Tin nhắn có chứa SĐT (10 số) hoặc Địa chỉ (sn, ngõ...) không?\n";
     prompt += "    - **(Kiểm tra SP Khác):** Khách có hỏi sản phẩm KHÁC (như 'RAM', 'VGA', 'CPU'...) không?\n";
     prompt += "    - **(Kiểm tra Lịch sử):** Lịch sử chat có rỗng không? " + (historyString ? "Không rỗng" : "Rỗng") + "\n";
     prompt += "    - **(Kiểm tra Chào/Hỏi Mơ Hồ):** Tin nhắn có chứa các từ (viết hoa/thường) như ('Alo', 'a lô', 'lô', 'Chào', 'shop oi', 'sp', 'Tôi muốn mua sản phẩm', 'tư vấn') không?\n";
     prompt += "    - **(Kiểm tra Đồng Ý):** Tin nhắn có phải là ('Có', 'ok', 'vâng', 'tư vấn đi', 'đúng rồi') không?\n";
     
-    prompt += "    - **(Ưu tiên 1 - Gửi SĐT/Địa chỉ/Số Lượng):** Nếu 'Kiểm tra SĐT' (CÓ) HOẶC 'Kiểm tra Địa Chỉ' (CÓ) HOẶC 'Kiểm tra Số Lượng' (CÓ) -> Kích hoạt 'Luật 1: Ghi Nhận Thông Tin Đơn Hàng'.\n"; // Gộp lại
+    prompt += "    - **(Ưu tiên 1 - Gửi SĐT/Địa chỉ):** Nếu 'Kiểm tra SĐT/Địa chỉ' -> Kích hoạt 'Luật 1: Ghi Nhận Chốt Đơn'.\n";
     prompt += "    - **(Ưu tiên 2 - Hỏi SP Khác):** Nếu 'Kiểm tra SP Khác' -> Kích hoạt 'Luật 2: Xin lỗi hết hàng'.\n";
     prompt += "    - **(Ưu tiên 3 - Chào/Hỏi mơ hồ LẦN ĐẦU):** Nếu Lịch sử chat là 'Rỗng' VÀ 'Kiểm tra Chào/Hỏi Mơ Hồ' (CÓ) -> Kích hoạt 'Luật 3: Chào Hàng (Giới thiệu Chuột)'.\n";
     prompt += "    - **(Ưu tiên 4 - Khách đồng ý / Hỏi thêm):** Nếu (Lịch sử chat 'Không rỗng' VÀ 'Kiểm tra Đồng Ý' (CÓ)) HOẶC (Khách hỏi về 'cảm biến', 'độ bền', 'click', 'thông số') -> Kích hoạt 'Luật 4: Tư Vấn Sâu (Chém Gió)'.\n";
@@ -453,8 +477,7 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
 
     prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n";
     
-    // ----- ĐÃ SỬA LỖI LOGIC NÀY -----
-    prompt += "    - **Luật 1: Ghi Nhận Thông Tin Đơn Hàng:**\n";
+    prompt += "    - **Luật 1: Ghi Nhận Chốt Đơn:**\n";
     prompt += "      - (Phân tích): Tin nhắn của khách là '" + userMessage + "'. Lịch sử chat là: '" + historyString + "'.\n";
     prompt += "      - (Hành động): Bot phải tự kiểm tra xem 4 thông tin: [Tên], [SĐT], [Địa Chỉ], [Số Lượng] đã đủ chưa (dựa vào tin nhắn MỚI và Lịch sử chat).\n";
     prompt += "      - (Kịch bản 1: Đã ĐỦ): Nếu đã có đủ [Tên], [SĐT], [Địa Chỉ], [Số Lượng] -> Trả lời: \"Ok " + greetingName + "! Shop đã nhận đủ thông tin. | Shop sẽ gọi/nhắn tin xác nhận đơn hàng ngay. Cảm ơn " + salutation + " đã ủng hộ Shop!\"\n";
@@ -575,6 +598,6 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 // -------------------------------------------------------------------
 // 5. Khởi động server
 app.listen(PORT, () => {
-  console.log(`Bot AI ĐA NHÂN CÁCH (v2.5 - Sua Logic Chot Don) đang chạy ở cổng ${PORT}`);
+  console.log(`Bot AI ĐA NHÂN CÁCH (v2.6 - Sua Doi Qua) đang chạy ở cổng ${PORT}`);
   console.log(`Sẵn sàng nhận lệnh từ Facebook tại /webhook`);
 });
