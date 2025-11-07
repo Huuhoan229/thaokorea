@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.9" - CHỈ GỬI 1 ẢNH)
+// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.10" - Sửa Lỗi Logic Đổi Quà + Chốt Đơn)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -177,7 +177,16 @@ async function processMessage(pageId, sender_psid, userMessage) {
           console.log(`Đang gửi 1 ảnh: ${geminiResult.image_url_to_send}`);
           await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, true);
           await new Promise(resolve => setTimeout(resolve, 1000)); // Chờ 1s
-          await sendFacebookImage(FB_PAGE_TOKEN, sender_psid, geminiResult.image_url_to_send); // Gửi 1 ảnh
+          
+          // ----- SỬA LỖI GỬI ẢNH -----
+          try {
+            await sendFacebookImage(FB_PAGE_TOKEN, sender_psid, geminiResult.image_url_to_send); // Gửi 1 ảnh
+          } catch (imgError) {
+            console.error("LỖI KHI GỬI ẢNH (sẽ tiếp tục gửi text):", imgError.message);
+            // Gửi tin nhắn text báo lỗi (chỉ 1 lần)
+            await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, "Dạ, Shop gửi ảnh bị lỗi. Bác vui lòng chờ nhân viên gửi lại ngay ạ!");
+          }
+          // -------------------------
       }
       
       // 2. Tách câu và gửi chữ (luôn luôn)
@@ -210,7 +219,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
 
 
 // -------------------------------------------------------------------
-// BỘ NÃO 1: KIẾN THỨC SẢN PHẨM (THẢO KOREA - ĐÃ SỬA 1 LINK ẢNH)
+// BỘ NÃO 1: KIẾN THỨC SẢN PHẨM (THẢO KOREA - ĐÃ SỬA 1 LINK ẢNH + THÊM LUẬT QUÀ)
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
@@ -276,10 +285,12 @@ function getProductKnowledge_ThaoKorea() {
 
     knowledgeString += "\n----- HẾT KHỐI KIẾN THỨC -----\n\n";
     
-    knowledgeString += "**LỊCH SỬ QUÀ TẶNG (Dùng để tra cứu):**\n";
+    // ----- THÊM KIẾN THỨC VỀ QUÀ TẶNG -----
+    knowledgeString += "**KIẾN THỨC QUÀ TẶNG (Dùng để tra cứu):**\n";
     knowledgeString += "- Quà mặc định (An Cung Samsung, An Cung Kwangdong): 1 Lọ Dầu Lạnh.\n";
     knowledgeString += "- Quà mặc định (Tinh Dầu Thông Đỏ): 1 Gói Cao Dán 20 miếng.\n";
     knowledgeString += "- QUÀ CÓ THỂ ĐỔI (Nếu khách yêu cầu): Khách có thể đổi Dầu Lạnh lấy Cao Dán và ngược lại. Hãy xác nhận yêu cầu của khách.\n\n";
+    // -----------------------------------------
     
     return knowledgeString;
 }
@@ -354,7 +365,7 @@ async function saveState(uniqueStorageId, userMessage, botMessage) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI 1 (CHO TRANG THẢO KOREA - NÂNG CẤP GỬI ẢNH)
+// HÀM GỌI GEMINI 1 (CHO TRANG THẢO KOREA - SỬA LỖI ĐỔI QUÀ + PHÂN LOẠI)
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) {
@@ -371,38 +382,50 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     prompt += "**Lịch sử chat (10 tin nhắn gần nhất):**\n";
     prompt += (historyString || "(Chưa có lịch sử chat)") + "\n\n";
     
-    // ----- ĐÃ CẬP NHẬT LUẬT LỆ (THÊM LUẬT GỬI ẢNH) -----
+    // ----- ĐÃ CẬP NHẬT LUẬT LỆ (THÊM LUẬT ĐỔI QUÀ + PHÂN LOẠI) -----
     prompt += "**Luật Lệ (Ưu tiên từ trên xuống):**\n";
     prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** KHÔNG lặp lại. Trả lời NGẮN GỌN. Tách câu bằng |\n";
     prompt += "2.  **Phân tích tin nhắn:**\n";
     prompt += "    - Đọc tin nhắn: \"" + userMessage + "\".\n";
     prompt += "    - (Kiểm tra SĐT/Địa chỉ)...\n";
-    prompt += "    - **(Kiểm tra Hình Ảnh):** Tin nhắn có chứa từ khóa yêu cầu ảnh ('ảnh', 'hình', 'video', 'xem hộp', 'nắp hộp', 'bên ngoài', 'gửi mẫu') không?\n"; // <--- LUẬT MỚI
+    prompt += "    - (Kiểm tra Hình Ảnh)...\n";
     prompt += "    - (Kiểm tra Giá)...\n";
-    prompt += "    - (Kiểm tra Đổi Quà)...\n";
+    prompt += "    - (Kiểm tra Đổi Quà): Tin nhắn có chứa từ khóa đổi quà ('đổi quà', 'lấy cao dán', 'lấy dầu lạnh', 'không lấy dầu lạnh') không?\n";
+    prompt += "    - **(Kiểm tra Phân Loại):** Tin nhắn có chứa từ khóa chung chung ('an cung', 'cao 365', 'cao hồng sâm', 'nhung hươu', 'sâm nhung hươu') MÀ KHÔNG chứa từ khóa cụ thể (samsung, kwangdong, 2 lọ, 4 lọ, 20 gói, 30 gói) không?\n"; // <--- LUẬT MỚI
     
-    prompt += "    - **(Ưu tiên 1 - Yêu cầu Hình Ảnh):** Nếu 'Kiểm tra Hình Ảnh' (CÓ) -> Kích hoạt 'Luật 1: Gửi Ảnh Sản Phẩm'.\n"; // <--- LUẬT MỚI
-    prompt += "    - (Ưu tiên 2 - Gửi SĐT/Địa chỉ)...\n";
-    prompt += "    - (Ưu tiên 3 - Đổi Quà)...\n";
-    prompt += "    - (Ưu tiên 4 - Câu hỏi mặc định SĐT)...\n";
-    prompt += "    - (Ưu tiên 5 - Câu hỏi mặc định Mua SP)...\n";
-    prompt += "    - (Ưu tiên 6 - Hỏi Giá)...\n";
-    prompt += "    - (Ưu tiên 7 - Tra cứu)...\n";
+    prompt += "    - **(Ưu tiên 1 - Cần Phân Loại):** Nếu 'Kiểm tra Phân Loại' (CÓ) -> Kích hoạt 'Luật 1: Yêu Cầu Phân Loại'.\n"; // <--- LUẬT MỚI
+    prompt += "    - **(Ưu tiên 2 - Yêu cầu Hình Ảnh):** Nếu 'Kiểm tra Hình Ảnh' (CÓ) -> Kích hoạt 'Luật 2: Gửi Ảnh Sản Phẩm'.\n";
+    prompt += "    - **(Ưu tiên 3 - Gửi SĐT/Địa chỉ):** ... Kích hoạt 'Luật 3: Ghi Nhận Đơn Hàng'.\n";
+    prompt += "    - **(Ưu tiên 4 - Đổi Quà):** ... Kích hoạt 'Luật 4: Xử Lý Đổi Quà'.\n";
+    prompt += "    - (Ưu tiên 5 - Câu hỏi mặc định SĐT)...\n";
+    prompt += "    - (Ưu tiên 6 - Câu hỏi mặc định Mua SP)...\n";
+    prompt += "    - (Ưu tiên 7 - Hỏi Giá)...\n";
+    prompt += "    - (Ưu tiên 8 - Tra cứu)...\n";
     
     prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n";
     
-    // ----- LUẬT MỚI GỬI ẢNH -----
-    prompt += "    - **Luật 1: Gửi Ảnh Sản Phẩm:**\n";
-    prompt += "      - (Hành động): Xác định khách đang hỏi ảnh sản phẩm nào (dựa vào 'Từ Khóa' và Lịch sử chat). Tra cứu 'KHỐI KIẾN THỨC' để lấy **1 link `Image_URL`** của sản phẩm đó.\n"; // Sửa thành 1 link
-    prompt += "      - (Trả lời): Trả lời JSON có 2 trường: `response_message` (ví dụ: \"Dạ " + greetingName + ", Shop gửi Bác xem ảnh thật sản phẩm [Tên SP] ạ. | Bác xem có cần Shop tư vấn gì thêm không ạ?\") VÀ `image_url_to_send` (một chuỗi string chứa 1 link ảnh đã tra cứu).\n"; // Sửa thành 1 link
+    // ----- LUẬT MỚI -----
+    prompt += "    - **Luật 1: Yêu Cầu Phân Loại:**\n";
+    prompt += "      - (Hành động): Khách đang hỏi chung chung. Phải hỏi lại cho rõ.\n";
+    prompt += "      - Nếu khách hỏi 'an cung': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi An Cung Samsung (780.000đ) hay An Cung Trầm Hương Kwangdong (1.290.000đ) ạ?\"\n";
+    prompt += "      - Nếu khách hỏi 'cao 365' / 'cao hồng sâm': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi Cao Hồng Sâm 365 loại Hộp 2 lọ (450.000đ) hay Hộp 4 lọ (850.000đ) ạ?\"\n";
+    prompt += "      - Nếu khách hỏi 'nhung hươu' / 'sâm nhung hươu': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi Nước Sâm Nhung Hươu loại Hộp 20 gói (330.000đ) hay Hộp 30 gói (420.000đ) ạ?\"\n";
     
-    prompt += "    - **Luật 2: Ghi Nhận Đơn Hàng (SĐT/Địa chỉ):**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin...\"\n";
-    prompt += "    - **Luật 3: Xử Lý Đổi Quà:**\n";
-    prompt += "      - Trả lời: \"Dạ vâng " + greetingName + ". Shop đã ghi nhận Bác muốn đổi quà...\"\n";
-    prompt += "    - **Luật 5: Hỏi Vague & Liệt Kê SP (DANH SÁCH VĂN BẢN):**\n";
+    prompt += "    - **Luật 2: Gửi Ảnh Sản Phẩm:**\n";
+    prompt += "      - (Hành động): Xác định SP khách hỏi, tra cứu 'KHỐI KIẾN THỨC' để lấy 1 'Image_URL'.\n";
+    prompt += "      - (Trả lời): Trả về JSON có 2 trường: `response_message` (ví dụ: \"Dạ " + greetingName + ", Shop gửi Bác xem ảnh thật SP ạ...\") VÀ `image_url_to_send` (chuỗi string 1 link ảnh).\n";
+    
+    prompt += "    - **Luật 3: Ghi Nhận Đơn Hàng (SĐT/Địa chỉ):**\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin (SĐT/Địa chỉ) của Bác ạ. | Shop sẽ gọi điện cho Bác để xác nhận đơn hàng ngay. Cảm ơn Bác ạ!\"\n";
+    
+    prompt += "    - **Luật 4: Xử Lý Đổi Quà:**\n";
+    prompt += "      - Trả lời: \"Dạ vâng " + greetingName + ". Shop đã ghi nhận Bác muốn đổi quà (từ Dầu Lạnh sang Cao Dán hoặc ngược lại) ạ. | Shop sẽ xác nhận lại khi gọi chốt đơn cho Bác nhé!\"\n";
+
+    prompt += "    - **Luật 6: Hỏi Vague & Liệt Kê SP (DANH SÁCH VĂN BẢN):**\n"; // Đã sửa số
     prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | ... \n1. AN CUNG SAMSUNG...\n(Và 6 sản phẩm khác)\n7. AN CUNG TRẦM HƯƠNG KWANGDONG...\"\n";
-    prompt += "    - **Luật 6: Báo Giá Công Khai (KHÔNG XIN SĐT):**\n";
+    prompt += "    - **Luật 7: Báo Giá Công Khai (KHÔNG XIN SĐT):**\n"; // Đã sửa số
+    prompt += "      - (Quan trọng): Nếu khách hỏi giá chung chung ('giá?', 'giá sp?') -> KHÔNG trả lời 'chưa hiểu', mà phải áp dụng 'Luật 1: Yêu Cầu Phân Loại' trước.\n";
+    prompt += "      - (Hành động): Nếu khách hỏi giá RÕ RÀNG (ví dụ 'an cung samsung giá?'), tra cứu 'KHỐI KIẾN THỨC'.\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP] là [Giá SP] ạ...\"\n";
     prompt += "    - **Luật Chung (Mặc định):**\n";
     prompt += "      - Nếu tin nhắn khó hiểu: -> Trả lời: \"Dạ " + greetingName + ", Shop chưa hiểu ý Bác lắm ạ...\"\n";
@@ -414,7 +437,7 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     prompt += "Bạn PHẢI trả lời dưới dạng một JSON string duy nhất, không có giải thích, không có \\```json ... \\```.\n";
     prompt += "{\n";
     prompt += "  \"response_message\": \"Câu trả lời cho khách | tách bằng dấu |\",\n";
-    prompt += "  \"image_url_to_send\": \"link1.jpg\" (Chỉ dùng cho 'Luật 1: Gửi Ảnh SP'. Nếu không, trả về chuỗi rỗng \"\")\n";
+    prompt += "  \"image_url_to_send\": \"link1.jpg\" (Chỉ dùng cho 'Luật 2: Gửi Ảnh SP'. Nếu không, trả về chuỗi rỗng \"\")\n";
     prompt += "}\n";
     // ----------------------------
     
@@ -438,7 +461,7 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     
     return {
         response_message: geminiJson.response_message || "Dạ Bác chờ Shop một lát ạ.",
-        image_url_to_send: geminiJson.image_url_to_send || "" // Sửa trường trả về
+        image_url_to_send: geminiJson.image_url_to_send || "" // Thêm trường trả về
     };
 
   } catch (error) {
@@ -477,8 +500,8 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
     prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** Trả lời NGẮN GỌN, nhiệt tình, giọng giới trẻ. Tách câu bằng |\n";
     prompt += "2.  **Phân tích tin nhắn:**\n";
     prompt += "    - Đọc tin nhắn: \"" + userMessage + "\".\n";
-    prompt += "    - (Kiểm tra SĐT/Địa chỉ)...\n";
     prompt += "    - **(Kiểm tra Hình Ảnh):** Tin nhắn có chứa từ khóa yêu cầu ảnh ('ảnh', 'hình', 'video', 'xem chuột', 'ảnh thật') không?\n"; // <--- LUẬT MỚI
+    prompt += "    - (Kiểm tra SĐT/Địa chỉ)...\n";
     prompt += "    - (Kiểm tra SP Khác)...\n";
     prompt += "    - (Kiểm tra Lịch sử)...\n";
     prompt += "    - (Kiểm tra Chào/Hỏi Mơ Hồ)...\n";
@@ -608,14 +631,15 @@ async function sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, responseText) {
 }
 
 // -------------------------------------------------------------------
-// HÀM MỚI: GỬI HÌNH ẢNH (ĐÃ SỬA LỖI &amp;)
+// HÀM MỚI: GỬI HÌNH ẢNH (ĐÃ SỬA LỖI &amp; VÀ LỖI BÁO BẬN)
 // -------------------------------------------------------------------
 async function sendFacebookImage(FB_PAGE_TOKEN, sender_psid, imageUrl) {
   if (!sender_psid || !imageUrl) return;
 
   // ----- SỬA LỖI &amp; -----
-  // Thay thế ký tự &amp; (HTML) thành & (URL)
-  const safeImageUrl = imageUrl.replace(/&amp;/g, '&');
+  // Link Facebook chứa "&" chứ không phải "&amp;". 
+  // Chúng ta sẽ gửi link "nguyên bản" (as-is) vì axios sẽ tự xử lý.
+  const safeImageUrl = imageUrl;
   // -------------------------
 
   const request_body = {
@@ -637,8 +661,11 @@ async function sendFacebookImage(FB_PAGE_TOKEN, sender_psid, imageUrl) {
     console.log(`Đã gửi (Ảnh): ${imageUrl}`);
   } catch (error) {
       console.error("Lỗi khi gửi ảnh Facebook:", error.response?.data?.error || error.message);
-      // Gửi thông báo lỗi ảnh cho khách
-      await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, "Dạ, Shop gửi ảnh bị lỗi, Bác/Bạn chờ chút nhân viên Shop gửi lại ạ!");
+      // ----- SỬA CÂU BÁO LỖI -----
+      // Không gửi Bác/Bạn, chỉ báo lỗi chung. Hàm processMessage sẽ gửi câu chi tiết
+      // throw new Error("Gửi ảnh thất bại"); // Ném lỗi để processMessage bắt
+      // Tốt hơn là gửi tin nhắn lỗi ngay tại đây:
+      await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, "Dạ, Shop gửi ảnh bị lỗi. Nhân viên sẽ gửi lại cho Bác/bạn ngay ạ!");
   }
 }
 
@@ -658,6 +685,6 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 // -------------------------------------------------------------------
 // 5. Khởi động server
 app.listen(PORT, () => {
-  console.log(`Bot AI ĐA NHÂN CÁCH (v2.9 - 1 Anh) đang chạy ở cổng ${PORT}`);
+  console.log(`Bot AI ĐA NHÂN CÁCH (v2.9 - Sua Loi Gui Anh) đang chạy ở cổng ${PORT}`);
   console.log(`Sẵn sàng nhận lệnh từ Facebook tại /webhook`);
 });
