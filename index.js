@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.11" - Cập Nhật Ảnh Xịn An Cung)
+// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.12" - Thêm SP 8 Royal Family)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -182,8 +182,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
             await sendFacebookImage(FB_PAGE_TOKEN, sender_psid, geminiResult.image_url_to_send); // Gửi 1 ảnh
           } catch (imgError) {
             console.error("LỖI KHI GỬI ẢNH (sẽ tiếp tục gửi text):", imgError.message);
-            // Gửi tin nhắn text báo lỗi (chỉ 1 lần)
-            await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, "Dạ, Shop gửi ảnh bị lỗi. Bác vui lòng chờ nhân viên gửi lại ngay ạ!");
+            // (Hàm sendFacebookImage đã tự gửi báo lỗi)
           }
       }
       
@@ -217,29 +216,29 @@ async function processMessage(pageId, sender_psid, userMessage) {
 
 
 // -------------------------------------------------------------------
-// BỘ NÃO 1: KIẾN THỨC SẢN PHẨM (THẢO KOREA - ĐÃ CẬP NHẬT ẢNH XỊN)
+// BỘ NÃO 1: KIẾN THỨC SẢN PHẨM (THẢO KOREA - ĐÃ THÊM SP 8)
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
 
-    // == SẢN PHẨM 1 (ĐÃ CẬP NHẬT ẢNH XỊN) ==
+    // == SẢN PHẨM 1 ==
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN\n";
     knowledgeString += "Từ Khóa: an cung, an cung samsung, an cung 60 viên, an cung hộp gỗ, tai biến, đột quỵ, phòng đột quỵ, huyết áp, cao huyết áp, tiền đình, rối loạn tiền đình, đau đầu, bổ não, tuần hoàn não, hoa mắt, chóng mặt, samsung\n";
-    knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n"; // <--- ẢNH XỊN MỚI
+    knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n"; 
     knowledgeString += "Cách Dùng: Dùng hằng ngày, mỗi ngày 1 viên. Một năm dùng 2-3 hộp.\n";
     knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Không dùng buổi tối. Không dùng khi bụng đói. Giá: 780.000đ/hộp (ƯU ĐÃI) + TẶNG 1 LỌ DẦU LẠNH + MIỄN SHIP.\n";
     knowledgeString += "-----------------\n\n";
 
-    // == SẢN PHẨM 2 (ĐÃ SỬA 1 LINK ẢNH) ==
+    // == SẢN PHẨM 2 ==
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: HỘP CAO HỒNG SÂM 365 HÀN QUỐC (Loại 2 lọ & 4 lọ)\n";
     knowledgeString += "Từ Khóa: cao hồng sâm, cao sâm, sâm 365, hồng sâm 365, sâm hàn quốc, bồi bổ, tăng đề kháng, suy nhược, mệt mỏi, người ốm, quà biếu, ốm dậy, ăn không ngon, ngủ không sâu, hộp 2 lọ, hộp 4 lọ\n";
-    knowledgeString += "Image_URL: \"https://product.hstatic.net/200000494375/product/z4941235209154_120a0977cf9b70138a2330b5fee4f1db_8ddbf4c7f03244e6a24e49551e83dee2_master.jpg\"\n"; // Chỉ 1 link (ảnh 2 lọ)
+    knowledgeString += "Image_URL: \"https://product.hstatic.net/200000494375/product/z4941235209154_120a0977cf9b70138a2330b5fee4f1db_8ddbf4c7f03244e6a24e49551e83dee2_master.jpg\"\n"; 
     knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Người huyết áp cao nên dùng liều nhỏ. Shop bán theo hộp:\n - Hộp 2 lọ: 450.000đ/hộp (ƯU ĐÃI).\n - Hộp 4 lọ: 850.000đ/hộp (ƯU ĐÃI).\n";
     knowledgeString += "-----------------\n\n";
 
-    // == SẢN PHẨM 3 (ĐÃ SỬA 1 LINK ẢNH) ==
+    // == SẢN PHẨM 3 ==
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: HỘP TINH DẦU THÔNG ĐỎ KWANGDONG HÀN QUỐC (120 VIÊN)\n";
     knowledgeString += "Từ Khóa: tinh dầu thông đỏ, thông đỏ, 120 viên, thông đỏ kwangdong, mỡ máu, giảm mỡ máu, cholesterol, tim mạch, mỡ gan, huyết áp, thông huyết mạch, xơ vữa động mạch\n";
@@ -248,7 +247,7 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Không dùng cho phụ nữ có thai. Giá: 1.150.000đ/hộp 120 viên (ƯU ĐÃI) + TẶNG 1 GÓI CAO DÁN 20 MIẾNG + MIỄN SHIP.\n";
     knowledgeString += "-----------------\n\n";
 
-    // == SẢN PHẨM 4 (ĐÃ SỬA 1 LINK ẢNH) ==
+    // == SẢN PHẨM 4 ==
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: HỘP NƯỚC HỒNG SÂM NHUNG HƯƠU HỘP 30 GÓI\n";
     knowledgeString += "Từ Khóa: nước sâm, nước hồng sâm, sâm nhung hươu, nhung hươu, sâm 30 gói, bồi bổ, đau lưng, mỏi gối, xương khớp, yếu sinh lý, tăng đề kháng, suy nhược, mệt mỏi\n";
@@ -256,7 +255,7 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Giá: 420.000đ/hộp 30 gói (ƯU ĐÃI).\n";
     knowledgeString += "-----------------\n\n";
 
-    // == SẢN PHẨM 5 (ĐÃ SỬA 1 LINK ẢNH) ==
+    // == SẢN PHẨM 5 ==
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: HỘP NƯỚC HỒNG SÂM NHUNG HƯƠU HỘP 20 GÓI\n";
     knowledgeString += "Từ Khóa: nước sâm, nước hồng sâm, sâm nhung hươu, nhung hươu, sâm 20 gói, bồi bổ, đau lưng, mỏi gối, xương khớp, yếu sinh lý, tăng đề kháng, suy nhược, mệt mỏi\n";
@@ -264,7 +263,7 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Giá: 330.000đ/hộp 20 gói (ƯU ĐÃI).\n";
     knowledgeString += "-----------------\n\n";
     
-    // == SẢN PHẨM 6 (ĐÃ SỬA 1 LINK ẢNH) ==
+    // == SẢN PHẨM 6 ==
     knowledgeString += "---[SẢN PHẨM]---\n";
     knowledgeString += "Tên Sản Phẩm: NƯỚC MÁT GAN ĐÔNG TRÙNG NGHỆ SAMSUNG\n";
     knowledgeString += "Từ Khóa: nước mát gan, mát gan, giải độc gan, gan, nóng trong, men gan cao, rượu bia, mụn, mề đay, đông trùng, nghệ, curcumin, dạ dày, samsung gan\n";
@@ -272,13 +271,26 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Giá: 390.000đ/hộp 30 chai (ƯU ĐÃI).\n";
     knowledgeString += "-----------------\n\n";
     
-    // == SẢN PHẨM 7 (ĐÃ SỬA 1 LINK ẢNH) ==
+    // == SẢN PHẨM 7 (ĐÃ CẬP NHẬT 15%) ==
     knowledgeString += "---[SẢN PHẨM]---\n";
-    knowledgeString += "Tên Sản Phẩm: AN CUNG TRẦM HƯƠNG KWANGDONG HÀN QUỐC HỘP 60 VIÊN\n";
-    knowledgeString += "Từ Khóa: an cung, an cung trầm hương, trầm hương, an cung kwangdong, kwang dong, kwangdong, tai biến, đột quỵ, phòng đột quỵ, huyết áp, cao huyết áp, tiền đình, rối loạn tiền đình, đau đầu, bổ não\n";
+    knowledgeString += "Tên Sản Phẩm: AN CUNG TRẦM HƯƠNG KWANGDONG HÀN QUỐC HỘP 60 VIÊN (15% TRẦM HƯƠNG)\n";
+    knowledgeString += "Từ Khóa: an cung, an cung trầm hương, 15% trầm hương, trầm hương, an cung kwangdong, kwang dong, kwangdong, tai biến, đột quỵ, phòng đột quỵ, huyết áp, cao huyết áp, tiền đình, rối loạn tiền đình, đau đầu, bổ não\n";
     knowledgeString += "Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
     knowledgeString += "Cách Dùng: Người tai biến: 1 viên/ngày. Người dự phòng: Dùng hằng ngày, mỗi ngày 1 viên. Một năm dùng 2-3 hộp.\n";
-    knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. (Tốt nhất trong dòng 60 viên). Giá: 1.290.000đ/hộp (ƯU ĐÃI) + TẶNG 1 LỌ DẦU LẠNH + MIỄN SHIP.\n";
+    knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. (Loại 15% Trầm Hương, tốt nhất trong dòng 60 viên). Giá: 1.290.000đ/hộp (ƯU ĐÃI) + TẶNG 1 LỌ DẦU LẠNH + MIỄN SHIP.\n";
+    knowledgeString += "-----------------\n\n";
+
+    // == SẢN PHẨM 8 (MỚI) ==
+    knowledgeString += "---[SẢN PHẨM]---\n";
+    knowledgeString += "Tên Sản Phẩm: An Cung Ngưu Trầm Hương Hoàn Royal Family Chim Hyang Hwan Gold 32 Viên\n";
+    knowledgeString += "Từ Khóa: an cung, an cung 32 viên, an cung royal family, royal family, chim hyang hwan, 5% trầm hương, 32 viên, an cung trầm hương, bổ não, suy nhược, mệt mỏi, kém tập trung\n";
+    knowledgeString += "Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_-600x449.jpg\"\n";
+    knowledgeString += "Mô Tả Chung: Bài thuốc cổ truyền với 5% trầm hương (Indonesia) và 20 dược liệu quý (đương quy, hồng sâm, lộc nhung...). Dạng viên, hộp sang trọng, 'quý hơn vàng'.\n";
+    knowledgeString += "Công Dụng: Tăng cường miễn dịch, bồi bổ cơ thể, nâng cao sức đề kháng, phục hồi sinh lực. Giúp tinh thần tỉnh táo, sảng khoái, tăng cường chức năng tiêu hóa, kích thích trí não tập trung. Phòng ngừa đường huyết bất ổn.\n";
+    knowledgeString += "Đối Tượng: Người mệt mỏi, suy nhược, căng thẳng thần kinh; Người lớn tuổi; Người cần phục hồi sức khỏe, sinh lực yếu; Người kém tập trung, lao động trí óc nhiều.\n";
+    knowledgeString += "Cách Dùng: Mỗi ngày 1-2 lần, mỗi lần 1 viên. Nhai kỹ rồi nuốt, hoặc uống với nước ấm. Dùng theo liệu trình 1 tháng/đợt, mỗi năm 3-4 đợt.\n";
+    knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Chống chỉ định: Phụ nữ mang bầu/cho con bú, người cao huyết áp, người dị ứng thành phần.\n";
+    knowledgeString += "Giá: 690.000đ/hộp (ƯU ĐÃI) + MIỄN SHIP (FREESHIP). (Không tặng quà).\n";
     knowledgeString += "-----------------\n\n";
 
     knowledgeString += "\n----- HẾT KHỐI KIẾN THỨC -----\n\n";
@@ -292,12 +304,10 @@ function getProductKnowledge_ThaoKorea() {
 }
 
 // -------------------------------------------------------------------
-// BỘ NÃO 2: KIẾN THỨC SẢN PHẨM (ĐỒ CHƠI MÁY TÍNH - ĐÃ SỬA 1 LINK ẢNH)
+// BỘ NÃO 2: KIẾN THỨC SẢN PHẨM (ĐỒ CHƠI MÁY TÍNH)
 // -------------------------------------------------------------------
 function getProductKnowledge_MayTinh() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (ĐỒ CHƠI MÁY TÍNH):**\n\n";
-
-    // == SẢN PHẨM 1 (ĐÃ NÂNG CẤP) ==
     knowledgeString += "---[SẢN PHẨM CHÍNH]---\n";
     knowledgeString += "Tên Sản Phẩm: Chuột Fuhlen L102 USB - Đen (Hàng Xịn)\n";
     knowledgeString += "Từ Khóa: chuột, fuhlen, l102, chuột l102, chuột fuhlen, chuột quốc dân, chuột giá rẻ, chuột 119k, chuột văn phòng, chuột game\n";
@@ -361,7 +371,7 @@ async function saveState(uniqueStorageId, userMessage, botMessage) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI 1 (CHO TRANG THẢO KOREA - NÂNG CẤP GỬI ẢNH + SỬA LỖI ĐỔI QUÀ + PHÂN LOẠI)
+// HÀM GỌI GEMINI 1 (CHO TRANG THẢO KOREA - SỬA LỖI ĐỔI QUÀ + PHÂN LOẠI 3 SP)
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) {
@@ -378,7 +388,7 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     prompt += "**Lịch sử chat (10 tin nhắn gần nhất):**\n";
     prompt += (historyString || "(Chưa có lịch sử chat)") + "\n\n";
     
-    // ----- ĐÃ CẬP NHẬT LUẬT LỆ (THÊM LUẬT GỬI ẢNH + PHÂN LOẠI) -----
+    // ----- ĐÃ CẬP NHẬT LUẬT LỆ (THÊM LUẬT ĐỔI QUÀ + PHÂN LOẠI 3 SP) -----
     prompt += "**Luật Lệ (Ưu tiên từ trên xuống):**\n";
     prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** KHÔNG lặp lại. Trả lời NGẮN GỌN. Tách câu bằng |\n";
     prompt += "2.  **Phân tích tin nhắn:**\n";
@@ -387,9 +397,9 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     prompt += "    - **(Kiểm tra Hình Ảnh):** Tin nhắn có chứa từ khóa yêu cầu ảnh ('ảnh', 'hình', 'video', 'xem hộp', 'nắp hộp', 'bên ngoài', 'gửi mẫu') không?\n";
     prompt += "    - (Kiểm tra Giá)...\n";
     prompt += "    - (Kiểm tra Đổi Quà): Tin nhắn có chứa từ khóa đổi quà ('đổi quà', 'lấy cao dán', 'lấy dầu lạnh', 'không lấy dầu lạnh') không?\n";
-    prompt += "    - **(Kiểm tra Phân Loại):** Tin nhắn có chứa từ khóa chung chung ('an cung', 'cao 365', 'cao hồng sâm', 'nhung hươu', 'sâm nhung hươu') MÀ KHÔNG chứa từ khóa cụ thể (samsung, kwangdong, 2 lọ, 4 lọ, 20 gói, 30 gói) không?\n";
+    prompt += "    - **(Kiểm tra Phân Loại):** Tin nhắn có chứa từ khóa chung chung ('an cung', 'cao 365', 'cao hồng sâm', 'nhung hươu', 'sâm nhung hươu') MÀ KHÔNG chứa từ khóa cụ thể (samsung, kwangdong, royal family, 2 lọ, 4 lọ, 20 gói, 30 gói) không?\n";
     
-    prompt += "    - **(Ưu tiên 1 - Cần Phân Loại):** Nếu 'Kiểm tra Phân Loại' (CÓ) VÀ KHÔNG 'Kiểm tra Hình Ảnh' (KHÔNG) -> Kích hoạt 'Luật 1: Yêu Cầu Phân Loại'.\n"; // <--- SỬA LUẬT
+    prompt += "    - **(Ưu tiên 1 - Cần Phân Loại):** Nếu 'Kiểm tra Phân Loại' (CÓ) VÀ KHÔNG 'Kiểm tra Hình Ảnh' (KHÔNG) -> Kích hoạt 'Luật 1: Yêu Cầu Phân Loại'.\n"; 
     prompt += "    - **(Ưu tiên 2 - Yêu cầu Hình Ảnh):** Nếu 'Kiểm tra Hình Ảnh' (CÓ) -> Kích hoạt 'Luật 2: Gửi Ảnh Sản Phẩm'.\n";
     prompt += "    - **(Ưu tiên 3 - Gửi SĐT/Địa chỉ):** ... Kích hoạt 'Luật 3: Ghi Nhận Đơn Hàng'.\n";
     prompt += "    - **(Ưu tiên 4 - Đổi Quà):** ... Kích hoạt 'Luật 4: Xử Lý Đổi Quà'.\n";
@@ -403,21 +413,22 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     // ----- LUẬT MỚI -----
     prompt += "    - **Luật 1: Yêu Cầu Phân Loại:**\n";
     prompt += "      - (Hành động): Khách đang hỏi chung chung. Phải hỏi lại cho rõ.\n";
-    prompt += "      - Nếu khách hỏi 'an cung': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi An Cung Samsung (780.000đ) hay An Cung Trầm Hương Kwangdong (1.290.000đ) ạ?\"\n";
+    prompt += "      - Nếu khách hỏi 'an cung': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi An Cung Samsung (780k), An Cung Trầm Hương Kwangdong (1.290k, 15% trầm hương) hay An Cung Royal Family (690k, 5% trầm hương) ạ?\"\n"; // Sửa (3 SP)
     prompt += "      - Nếu khách hỏi 'cao 365' / 'cao hồng sâm': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi Cao Hồng Sâm 365 loại Hộp 2 lọ (450.000đ) hay Hộp 4 lọ (850.000đ) ạ?\"\n";
     prompt += "      - Nếu khách hỏi 'nhung hươu' / 'sâm nhung hươu': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi Nước Sâm Nhung Hươu loại Hộp 20 gói (330.000đ) hay Hộp 30 gói (420.000đ) ạ?\"\n";
     
     prompt += "    - **Luật 2: Gửi Ảnh Sản Phẩm:**\n";
-    prompt += "      - (Hành động): Xác định khách đang hỏi ảnh sản phẩm nào (dựa vào 'Từ Khóa' và Lịch sử chat, VÍ DỤ 'an cung samsung' hoặc 'an cung'). Nếu khách chỉ nói 'an cung', hãy hỏi lại (dùng 'Luật 1: Yêu Cầu Phân Loại'). Nếu khách nói rõ 'an cung samsung', tra cứu 'KHỐI KIẾN THỨC' để lấy **1 link `Image_URL`**.\n"; // Sửa logic
-    prompt += "      - (Trả lời): Trả lời JSON có 2 trường: `response_message` (ví dụ: \"Dạ " + greetingName + ", Shop gửi Bác xem ảnh thật sản phẩm [Tên SP] ạ. | Bác xem có cần Shop tư vấn gì thêm không ạ?\") VÀ `image_url_to_send` (một chuỗi string chứa 1 link ảnh đã tra cứu).\n";
+    prompt += "      - (Hành động): Xác định khách đang hỏi ảnh sản phẩm nào (dựa vào 'Từ Khóa' và Lịch sử chat). Nếu khách chỉ nói 'an cung', hãy hỏi lại (dùng 'Luật 1: Yêu Cầu Phân Loại'). Nếu khách nói rõ ('an cung samsung', 'royal family'...), tra cứu 'KHỐI KIẾN THỨC' để lấy **1 link `Image_URL`**.\n"; // Sửa logic
+    prompt += "      - (Trả lời): Trả về JSON có 2 trường: `response_message` (ví dụ: \"Dạ " + greetingName + ", Shop gửi Bác xem ảnh thật sản phẩm [Tên SP] ạ. | Bác xem có cần Shop tư vấn gì thêm không ạ?\") VÀ `image_url_to_send` (một chuỗi string chứa 1 link ảnh đã tra cứu).\n";
     
     prompt += "    - **Luật 3: Ghi Nhận Đơn Hàng (SĐT/Địa chỉ):**\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin...\"\n";
     prompt += "    - **Luật 4: Xử Lý Đổi Quà:**\n";
-    prompt += "      - Trả lời: \"Dạ vâng " + greetingName + ". Shop đã ghi nhận Bác muốn đổi quà...\"\n";
-    prompt += "    - **Luật 6: Hỏi Vague & Liệt Kê SP (DANH SÁCH VĂN BẢN):**\n";
-    prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | ... \n1. AN CUNG SAMSUNG...\n(Và 6 sản phẩm khác)\n7. AN CUNG TRẦM HƯƠNG KWANGDONG...\"\n";
-    prompt += "    - **Luật 7: Báo Giá Công Khai (KHÔNG XIN SĐT):**\n";
+    prompt += "      - Trả lời: \"Dạ vâng " + greetingName + ". Shop đã ghi nhận Bác muốn đổi quà (từ Dầu Lạnh sang Cao Dán hoặc ngược lại) ạ. | Shop sẽ xác nhận lại khi gọi chốt đơn cho Bác nhé!\"\n";
+
+    prompt += "    - **Luật 6: Hỏi Vague & Liệt Kê SP (DANH SÁCH VĂN BẢN):**\n"; 
+    prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | ... \n1. AN CUNG SAMSUNG...\n(Và 7 sản phẩm khác)\n8. AN CUNG ROYAL FAMILY (32 viên)\"\n"; // Cập nhật
+    prompt += "    - **Luật 7: Báo Giá Công Khai (KHÔNG XIN SĐT):**\n"; 
     prompt += "      - (Quan trọng): Nếu khách hỏi giá chung chung ('giá?', 'giá sp?') -> KHÔNG trả lời 'chưa hiểu', mà phải áp dụng 'Luật 1: Yêu Cầu Phân Loại' trước.\n";
     prompt += "      - (Hành động): Nếu khách hỏi giá RÕ RÀNG (ví dụ 'an cung samsung giá?'), tra cứu 'KHỐI KIẾN THỨC'.\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP] là [Giá SP] ạ...\"\n";
@@ -631,8 +642,6 @@ async function sendFacebookImage(FB_PAGE_TOKEN, sender_psid, imageUrl) {
   if (!sender_psid || !imageUrl) return;
 
   // ----- SỬA LỖI &amp; -----
-  // Link Facebook chứa "&" chứ không phải "&amp;". 
-  // Chúng ta sẽ gửi link "nguyên bản" (as-is) vì axios sẽ tự xử lý.
   const safeImageUrl = imageUrl.replace(/&amp;/g, '&');
   // -------------------------
 
@@ -656,9 +665,8 @@ async function sendFacebookImage(FB_PAGE_TOKEN, sender_psid, imageUrl) {
   } catch (error) {
       console.error("Lỗi khi gửi ảnh Facebook:", error.response?.data?.error || error.message);
       // Gửi thông báo lỗi ảnh cho khách
-      // ----- SỬA CÂU BÁO LỖI -----
       await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, "Dạ, Shop gửi ảnh bị lỗi. Nhân viên sẽ gửi lại cho Bác/bạn ngay ạ!");
-      // Ném lỗi để hàm processMessage biết và dừng lại (không gửi text nữa)
+      // Ném lỗi để processMessage biết và dừng lại
       throw new Error("Gửi ảnh thất bại"); 
   }
 }
@@ -679,6 +687,6 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 // -------------------------------------------------------------------
 // 5. Khởi động server
 app.listen(PORT, () => {
-  console.log(`Bot AI ĐA NHÂN CÁCH (v2.10 - Sua Loi Logic) đang chạy ở cổng ${PORT}`);
+  console.log(`Bot AI ĐA NHÂN CÁCH (v2.11 - Cap Nhat SP8) đang chạy ở cổng ${PORT}`);
   console.log(`Sẵn sàng nhận lệnh từ Facebook tại /webhook`);
 });
