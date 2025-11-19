@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.14" - Cập Nhật Địa Chỉ + Tặng Quà Chuẩn)
+// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.15" - Chỉ Bán Online)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -216,15 +216,16 @@ async function processMessage(pageId, sender_psid, userMessage) {
 
 
 // -------------------------------------------------------------------
-// BỘ NÃO 1: KIẾN THỨC SẢN PHẨM (THẢO KOREA - ĐÃ THÊM ĐỊA CHỈ + SP 8)
+// BỘ NÃO 1: KIẾN THỨC SẢN PHẨM (THẢO KOREA - ĐÃ SỬA ĐỊA CHỈ ONLINE)
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
 
-    // ----- THÊM ĐỊA CHỈ SHOP -----
+    // ----- SỬA ĐỊA CHỈ SHOP (CHỈ BÁN ONLINE) -----
     knowledgeString += "**THÔNG TIN SHOP:**\n";
     knowledgeString += "- Địa chỉ Kho: Hà Đông, Hà Nội.\n";
-    knowledgeString += "- Địa chỉ Tổng công ty: Long Biên, Hà Nội.\n\n";
+    knowledgeString += "- Địa chỉ Tổng công ty: Long Biên, Hà Nội.\n";
+    knowledgeString += "- LƯU Ý QUAN TRỌNG: Shop CHỈ BÁN ONLINE, giao hàng tận nơi (Ship COD) toàn quốc. Khách được kiểm tra hàng trước khi thanh toán. Không bán trực tiếp tại kho.\n\n";
     // -----------------------------
 
     // == SẢN PHẨM 1 ==
@@ -296,10 +297,10 @@ function getProductKnowledge_ThaoKorea() {
 
     knowledgeString += "\n----- HẾT KHỐI KIẾN THỨC -----\n\n";
     
-    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG (RẤT QUAN TRỌNG):**\n";
-    knowledgeString += "- Mua 1 hộp (các SP có quà): Tặng 1 Dầu Lạnh HOẶC 1 Cao Dán (Khách được chọn 1 trong 2, có thể đổi).\n";
-    knowledgeString += "- KHÔNG tặng thêm quà nếu khách chỉ mua 1 hộp mà đòi thêm.\n";
-    knowledgeString += "- Mua 2 hộp trở lên: Có thể xem xét tặng thêm (nhưng bot hãy tư vấn khéo léo: \"Bác mua thêm hộp thứ 2 đi Shop tặng thêm quà cho Bác\").\n\n";
+    knowledgeString += "**KIẾN THỨC QUÀ TẶNG (Dùng để tra cứu):**\n";
+    knowledgeString += "- Quà mặc định (An Cung Samsung, An Cung Kwangdong): 1 Lọ Dầu Lạnh.\n";
+    knowledgeString += "- Quà mặc định (Tinh Dầu Thông Đỏ): 1 Gói Cao Dán 20 miếng.\n";
+    knowledgeString += "- QUÀ CÓ THỂ ĐỔI (Nếu khách yêu cầu): Khách có thể đổi Dầu Lạnh lấy Cao Dán và ngược lại. Hãy xác nhận yêu cầu của khách.\n\n";
     
     return knowledgeString;
 }
@@ -322,11 +323,6 @@ function getProductKnowledge_MayTinh() {
     knowledgeString += "Tình trạng: Hiện tại Shop chưa sẵn hàng. Sắp về.\n";
     knowledgeString += "-----------------\n\n";
     knowledgeString += "\n----- HẾT KHỐI KIẾN THỨC -----\n\n";
-    // ----- THÊM ĐỊA CHỈ SHOP MÁY TÍNH -----
-    knowledgeString += "**THÔNG TIN SHOP:**\n";
-    knowledgeString += "- Địa chỉ Kho: Hà Đông, Hà Nội.\n";
-    knowledgeString += "- Địa chỉ Tổng công ty: Long Biên, Hà Nội.\n\n";
-    // ------------------------------------
     return knowledgeString;
 }
 
@@ -377,7 +373,7 @@ async function saveState(uniqueStorageId, userMessage, botMessage) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI 1 (CHO TRANG THẢO KOREA - SỬA LỖI ĐỔI QUÀ + PHÂN LOẠI + FREESHIP 500K)
+// HÀM GỌI GEMINI 1 (CHO TRANG THẢO KOREA - SỬA LỖI ĐỊA CHỈ ONLINE)
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) {
@@ -394,7 +390,7 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     prompt += "**Lịch sử chat (10 tin nhắn gần nhất):**\n";
     prompt += (historyString || "(Chưa có lịch sử chat)") + "\n\n";
     
-    // ----- ĐÃ CẬP NHẬT LUẬT LỆ (THÊM LUẬT FREESHIP) -----
+    // ----- ĐÃ CẬP NHẬT LUẬT LỆ -----
     prompt += "**Luật Lệ (Ưu tiên từ trên xuống):**\n";
     prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** KHÔNG lặp lại. Trả lời NGẮN GỌN. Tách câu bằng |\n";
     prompt += "2.  **Phân tích tin nhắn:**\n";
@@ -405,8 +401,8 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     prompt += "    - (Kiểm tra Đổi Quà): Tin nhắn có chứa từ khóa đổi quà ('đổi quà', 'lấy cao dán', 'lấy dầu lạnh', 'không lấy dầu lạnh') không?\n";
     prompt += "    - **(Kiểm tra Phân Loại):** Tin nhắn có chứa từ khóa chung chung ('an cung', 'cao 365', 'cao hồng sâm', 'nhung hươu', 'sâm nhung hươu') MÀ KHÔNG chứa từ khóa cụ thể (samsung, kwangdong, royal family, 2 lọ, 4 lọ, 20 gói, 30 gói) không?\n";
     prompt += "    - **(Kiểm tra Đòi Quà):** Khách có đòi thêm quà (như 'tặng thêm đi', 'cho thêm cao dán', 'tặng 2 hộp') không?\n";
-    prompt += "    - **(Kiểm tra Freeship):** Tin nhắn có chứa từ khóa 'ship', 'miễn ship', 'vận chuyển', 'phí ship' không?\n"; // <--- LUẬT MỚI
-    prompt += "    - **(Kiểm tra Địa Chỉ Shop):** Khách có hỏi 'shop ở đâu', 'địa chỉ shop' không?\n"; // <--- LUẬT MỚI
+    prompt += "    - **(Kiểm tra Freeship):** Tin nhắn có chứa từ khóa 'ship', 'miễn ship', 'vận chuyển', 'phí ship' không?\n"; 
+    prompt += "    - **(Kiểm tra Địa Chỉ Shop):** Khách có hỏi 'shop ở đâu', 'địa chỉ shop' không?\n"; 
     
     prompt += "    - **(Ưu tiên 1 - Cần Phân Loại):** Nếu 'Kiểm tra Phân Loại' (CÓ) VÀ KHÔNG 'Kiểm tra Hình Ảnh' (KHÔNG) -> Kích hoạt 'Luật 1: Yêu Cầu Phân Loại'.\n"; 
     prompt += "    - **(Ưu tiên 2 - Yêu cầu Hình Ảnh):** Nếu 'Kiểm tra Hình Ảnh' (CÓ) -> Kích hoạt 'Luật 2: Gửi Ảnh Sản Phẩm'.\n";
@@ -414,41 +410,52 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     prompt += "    - **(Ưu tiên 4 - Đổi Quà):** ... Kích hoạt 'Luật 4: Xử Lý Đổi Quà'.\n";
     prompt += "    - **(Ưu tiên 5 - Đòi Quà):** ... Kích hoạt 'Luật 5: Xử Lý Đòi Quà'.\n";
     prompt += "    - **(Ưu tiên 6 - Hết Hàng):** ... Kích hoạt 'Luật 6: Chuyển Hướng SP Hết Hàng'.\n";
-    prompt += "    - **(Ưu tiên 7 - Hỏi Freeship):** Nếu 'Kiểm tra Freeship' (CÓ) -> Kích hoạt 'Luật 7: Trả Lời Freeship'.\n"; // <--- LUẬT MỚI
-    prompt += "    - **(Ưu tiên 8 - Hỏi Địa Chỉ Shop):** Nếu 'Kiểm tra Địa Chỉ Shop' (CÓ) -> Kích hoạt 'Luật 8: Trả Lời Địa Chỉ'.\n"; // <--- LUẬT MỚI
+    prompt += "    - **(Ưu tiên 7 - Hỏi Freeship):** Nếu 'Kiểm tra Freeship' (CÓ) -> Kích hoạt 'Luật 7: Trả Lời Freeship'.\n";
+    prompt += "    - **(Ưu tiên 8 - Hỏi Địa Chỉ Shop):** Nếu 'Kiểm tra Địa Chỉ Shop' (CÓ) -> Kích hoạt 'Luật 8: Trả Lời Địa Chỉ'.\n"; // <--- LUẬT CẦN SỬA
+    prompt += "    - (Ưu tiên 9 - Câu hỏi mặc định SĐT)...\n";
+    prompt += "    - (Ưu tiên 10 - Câu hỏi mặc định Mua SP)...\n";
+    prompt += "    - (Ưu tiên 11 - Hỏi Giá)...\n";
+    prompt += "    - (Ưu tiên 12 - Tra cứu)...\n";
     
     prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n";
     
-    // ----- LUẬT MỚI -----
     prompt += "    - **Luật 1: Yêu Cầu Phân Loại:**\n";
     prompt += "      - Nếu khách hỏi 'an cung': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi An Cung Samsung (780.000đ) hay An Cung Trầm Hương Kwangdong (1.290.000đ, 15% trầm hương) hay An Cung Royal Family (690k, 5% trầm hương) ạ?\"\n"; 
-    prompt += "      - Nếu khách hỏi 'cao 365' / 'cao hồng sâm': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi Cao Hồng Sâm 365 loại Hộp 2 lọ (450.000đ) hay Hộp 4 lọ (850.000đ, có freeship) ạ?\"\n";
+    prompt += "      - Nếu khách hỏi 'cao 365' / 'cao hồng sâm': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi Cao Hồng Sâm 365 loại Hộp 2 lọ (450.000đ) hay Hộp 4 lọ (850.000đ) ạ?\"\n";
     prompt += "      - Nếu khách hỏi 'nhung hươu' / 'sâm nhung hươu': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi Nước Sâm Nhung Hươu loại Hộp 20 gói (330.000đ) hay Hộp 30 gói (420.000đ) ạ?\"\n";
     
     prompt += "    - **Luật 2: Gửi Ảnh Sản Phẩm:**\n";
-    prompt += "      - (Hành động): Xác định SP, tra cứu 'Image_URL'. Nếu hỏi chung, hỏi lại trước.\n";
-    prompt += "      - (Trả lời): Trả về JSON: `response_message` (ví dụ: \"Dạ " + greetingName + ", Shop gửi Bác xem ảnh thật sản phẩm [Tên SP] ạ. | Bác xem có cần Shop tư vấn gì thêm không ạ?\") VÀ `image_url_to_send` (1 link ảnh).\n";
+    prompt += "      - (Hành động): Xác định khách đang hỏi ảnh sản phẩm nào (dựa vào 'Từ Khóa' và Lịch sử chat). Nếu khách chỉ nói 'an cung', hãy hỏi lại. Nếu khách nói rõ, tra cứu 'KHỐI KIẾN THỨC' để lấy **1 link `Image_URL`**.\n";
+    prompt += "      - (Trả lời): Trả về JSON có 2 trường: `response_message` (ví dụ: \"Dạ " + greetingName + ", Shop gửi Bác xem ảnh thật sản phẩm [Tên SP] ạ. | Bác xem có cần Shop tư vấn gì thêm không ạ?\") VÀ `image_url_to_send` (một chuỗi string chứa 1 link ảnh).\n";
     
     prompt += "    - **Luật 3: Ghi Nhận Đơn Hàng (SĐT/Địa chỉ):**\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin (SĐT/Địa chỉ) của Bác ạ. | Shop sẽ gọi điện cho Bác để xác nhận đơn hàng ngay. Cảm ơn Bác ạ!\"\n";
+    
     prompt += "    - **Luật 4: Xử Lý Đổi Quà:**\n";
     prompt += "      - Trả lời: \"Dạ vâng " + greetingName + ". Shop đã ghi nhận Bác muốn đổi quà (từ Dầu Lạnh sang Cao Dán hoặc ngược lại) ạ. | Shop sẽ xác nhận lại khi gọi chốt đơn cho Bác nhé!\"\n";
+    
     prompt += "    - **Luật 5: Xử Lý Đòi Quà:**\n";
     prompt += "      - Trả lời: \"Dạ Bác thông cảm giúp Shop ạ, mua 1 hộp thì Shop chỉ tặng được 1 phần quà thôi ạ. | Nếu Bác lấy từ 2 hộp trở lên Shop sẽ ưu đãi tặng thêm quà cho Bác ạ! Bác lấy thêm 1 hộp nữa nhé?\"\n";
+    
     prompt += "    - **Luật 6: Chuyển Hướng SP Hết Hàng:**\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop xin lỗi Bác ạ! | Loại Nước Sâm Nhung Hươu 20 gói (330k) hiện đang tạm hết hàng rồi ạ. | Bác tham khảo sang Hộp 30 gói (giá 420k) được không ạ? Tính ra vẫn tiết kiệm mà dùng được lâu hơn ạ!\"\n";
 
-    // ----- LUẬT MỚI -----
     prompt += "    - **Luật 7: Trả Lời Freeship:**\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop có chính sách MIỄN SHIP (Freeship) toàn quốc cho các đơn hàng từ 500.000đ trở lên ạ. | Các đơn dưới 500k Shop sẽ báo phí ship sau nhé ạ. | Bác đang quan tâm sản phẩm nào ạ?\"\n";
-    prompt += "    - **Luật 8: Trả Lời Địa Chỉ:**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Kho hàng của Shop ở Hà Đông, Hà Nội ạ. | Còn Tổng công ty thì ở Long Biên, Hà Nội ạ. | Shop có ship hàng toàn quốc Bác nhé!\"\n";
+    
+    // ----- SỬA LUẬT ĐỊA CHỈ (CHỈ BÁN ONLINE) -----
+    prompt += "    - **Luật 8: Trả Lời Địa Chỉ (Chỉ Bán Online):**\n";
+    prompt += "      - Trả lời: \"Dạ kho Shop ở Hà Nội nhưng hiện tại Shop chỉ bán ONLINE thôi ạ. | Shop giao hàng tận nơi toàn quốc, Bác được kiểm tra hàng thoải mái rồi mới thanh toán ạ! | Bác yên tâm nhé!\"\n";
+    // --------------------------------------------
 
     prompt += "    - **Luật 9: Hỏi Vague & Liệt Kê SP (DANH SÁCH VĂN BẢN):**\n"; 
     prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | ... \n1. AN CUNG SAMSUNG (Hỗ trợ tai biến)\n(Và 7 sản phẩm khác)\n8. AN CUNG ROYAL FAMILY (32 viên)\"\n"; 
+    
     prompt += "    - **Luật 10: Báo Giá Công Khai (KHÔNG XIN SĐT):**\n";
+    prompt += "      - (Quan trọng): Nếu khách hỏi giá chung chung -> Áp dụng 'Luật 1: Yêu Cầu Phân Loại'.\n";
     prompt += "      - (Hành động): Nếu khách hỏi giá RÕ RÀNG, tra cứu 'KHỐI KIẾN THỨC'.\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP] là [Giá SP] ạ...\"\n";
+    
     prompt += "    - **Luật Chung (Mặc định):**\n";
     prompt += "      - Nếu tin nhắn khó hiểu: -> Trả lời: \"Dạ " + greetingName + ", Shop chưa hiểu ý Bác lắm ạ...\"\n";
     prompt += "      - Nếu không khó hiểu: Trả lời NGẮN GỌN dựa trên 'KHỐI KIẾN THỨC'.\n";
@@ -517,27 +524,25 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
     prompt += "**Lịch sử chat (10 tin nhắn gần nhất):**\n";
     prompt += (historyString || "(Chưa có lịch sử chat)") + "\n\n";
     
-    // ----- BỘ LUẬT MỚI CHO TRANG MÁY TÍNH (v2.14) -----
+    // ----- BỘ LUẬT MỚI CHO TRANG MÁY TÍNH (v2.7) -----
     prompt += "**Luật Lệ (Ưu tiên từ trên xuống):**\n";
     prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** Trả lời NGẮN GỌN, nhiệt tình, giọng giới trẻ. Tách câu bằng |\n";
     prompt += "2.  **Phân tích tin nhắn:**\n";
     prompt += "    - Đọc tin nhắn: \"" + userMessage + "\".\n";
-    prompt += "    - **(Kiểm tra Hình Ảnh):** Tin nhắn có chứa từ khóa yêu cầu ảnh ('ảnh', 'hình', 'video', 'xem chuột', 'ảnh thật') không?\n";
+    prompt += "    - **(Kiểm tra Hình Ảnh):** Tin nhắn có chứa từ khóa yêu cầu ảnh ('ảnh', 'hình', 'video', 'xem chuột', 'ảnh thật') không?\n"; 
     prompt += "    - (Kiểm tra SĐT/Địa chỉ)...\n";
     prompt += "    - (Kiểm tra SP Khác)...\n";
     prompt += "    - (Kiểm tra Lịch sử)...\n";
     prompt += "    - (Kiểm tra Chào/Hỏi Mơ Hồ)...\n";
     prompt += "    - (Kiểm tra Đồng Ý)...\n";
-    prompt += "    - **(Kiểm tra Địa Chỉ Shop):** Khách có hỏi 'shop ở đâu', 'địa chỉ shop' không?\n"; // <--- LUẬT MỚI
     
-    prompt += "    - **(Ưu tiên 1 - Yêu cầu Hình Ảnh):** Nếu 'Kiểm tra Hình Ảnh' (CÓ) -> Kích hoạt 'Luật 1: Gửi Ảnh Sản Phẩm'.\n";
-    prompt += "    - **(Ưu tiên 2 - Gửi SĐT/Địa chỉ):** ... Kích hoạt 'Luật 2: Ghi Nhận Đơn Hàng'.\n";
-    prompt += "    - **(Ưu tiên 3 - Hỏi SP Khác):** ... Kích hoạt 'Luật 3: Xin lỗi hết hàng'.\n";
-    prompt += "    - **(Ưu tiên 4 - Chào/Hỏi mơ hồ LẦN ĐẦU):** ... Kích hoạt 'Luật 4: Chào Hàng (Giới thiệu Chuột)'.\n";
-    prompt += "    - **(Ưu tiên 5 - Khách đồng ý / Hỏi thêm):** ... Kích hoạt 'Luật 5: Tư Vấn Sâu (Chém Gió)'.\n";
-    prompt += "    - **(Ưu tiên 6 - Hỏi Giá):** ... Kích hoạt 'Luật 6: Báo Giá'.\n";
-    prompt += "    - **(Ưu tiên 7 - Hỏi Địa Chỉ Shop):** ... Kích hoạt 'Luật 7: Trả Lời Địa Chỉ'.\n"; // <--- LUẬT MỚI
-    prompt += "    - (Ưu tiên 8 - Chung)...\n";
+    prompt += "    - **(Ưu tiên 1 - Yêu cầu Hình Ảnh):** Nếu 'Kiểm tra Hình Ảnh' (CÓ) -> Kích hoạt 'Luật 1: Gửi Ảnh Sản Phẩm'.\n"; 
+    prompt += "    - (Ưu tiên 2 - Gửi SĐT/Địa chỉ)...\n";
+    prompt += "    - (Ưu tiên 3 - Hỏi SP Khác)...\n";
+    prompt += "    - (Ưu tiên 4 - Chào/Hỏi mơ hồ LẦN ĐẦU)...\n";
+    prompt += "    - (Ưu tiên 5 - Khách đồng ý / Hỏi thêm)...\n";
+    prompt += "    - (Ưu tiên 6 - Hỏi Giá)...\n";
+    prompt += "    - (Ưu tiên 7 - Chung)...\n";
 
     prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n";
 
@@ -560,11 +565,6 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
     prompt += "      - Trả lời: \"Dạ con này thì 'quốc dân' rồi " + salutation + " ạ! | Nó dùng switch Omron xịn...\"\n"; 
     prompt += "    - **Luật 6: Báo Giá:**\n";
     prompt += "      - Trả lời: \"Dạ, Chuột Fuhlen L102 giá chỉ 119.000đ/con ạ...\"\n"; 
-    
-    // ----- LUẬT MỚI -----
-    prompt += "    - **Luật 7: Trả Lời Địa Chỉ:**\n";
-    prompt += "      - Trả lời: \"Dạ " + salutation + ", Kho hàng của Shop ở Hà Đông, Hà Nội ạ. | Còn Tổng công ty thì ở Long Biên, Hà Nội. | " + salutation + " ở đâu Shop cũng ship tận nơi nhé!\"\n";
-    
     prompt += "    - **Luật Chung: Khó hiểu:**\n";
     prompt += "      - Trả lời: \"Dạ Shop chưa hiểu ý " + salutation + " lắm. | Shop hiện đang bán Chuột Fuhlen L102 giá 119k...\"\n"; 
     // ----- KẾT THÚC CẬP NHẬT LUẬT -----
@@ -711,6 +711,6 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 // -------------------------------------------------------------------
 // 5. Khởi động server
 app.listen(PORT, () => {
-  console.log(`Bot AI ĐA NHÂN CÁCH (v2.14 - Chuan Hoa Qua Tang) đang chạy ở cổng ${PORT}`);
+  console.log(`Bot AI ĐA NHÂN CÁCH (v2.15 - Chi Ban Online) đang chạy ở cổng ${PORT}`);
   console.log(`Sẵn sàng nhận lệnh từ Facebook tại /webhook`);
 });
