@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.19" - Bỏ Cao Sâm 4 Lọ)
+// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.20" - Fix Giờ Giấc Chuẩn Cả 2 Bot)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -216,7 +216,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
 
 
 // -------------------------------------------------------------------
-// BỘ NÃO 1: KIẾN THỨC SẢN PHẨM (THẢO KOREA - ĐÃ BỎ CAO SÂM 4 LỌ)
+// BỘ NÃO 1: KIẾN THỨC SẢN PHẨM (THẢO KOREA)
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
@@ -382,7 +382,7 @@ async function saveState(uniqueStorageId, userMessage, botMessage) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI 1 (CHO TRANG THẢO KOREA - ĐÃ BỎ CAO SÂM 4 LỌ)
+// HÀM GỌI GEMINI 1 (CHO TRANG THẢO KOREA - FIX GIỜ GIẤC)
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) {
@@ -393,14 +393,23 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     const historyString = userState.history.map(h => `${h.role}: ${h.content}`).join('\n');
     const greetingName = userName ? "Bác " + userName : "Bác";
 
+    // ----- LẤY GIỜ VIỆT NAM CHUẨN (FIX LỖI TIMEZONE) -----
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const vnTime = new Date(utc + (3600000 * 7)); // Cộng 7 tiếng
+    const currentHour = vnTime.getHours();
+    // ---------------------------------------------------
+
     // --- PROMPT 1: KỊCH BẢN THẢO KOREA (BÁC-SHOP) ---
     let prompt = "**Nhiệm vụ:** Bạn là chuyên viên tư vấn (Trang Thảo Korea). Xưng hô 'Shop - Bác'. **LUẬT BÍ MẬT:** TUYỆT ĐỐI KHÔNG BAO GIỜ được nói mình là 'bot' hay 'AI'. Phải hành văn 1 cách tự nhiên nhất, giống như người thật đang chat.\n\n";
     prompt += productKnowledge + "\n\n";
     
-    prompt += `**THỜI GIAN HIỆN TẠI:** ${new Date().getHours()} giờ.\n`;
-    prompt += "**LUẬT GIỜ GIẤC:**\n";
-    prompt += "- 8h - 17h: 'Shop sẽ gọi điện xác nhận ngay ạ'.\n";
-    prompt += "- 17h - 8h sáng: 'Dạ Shop đã nhận thông tin. Vì giờ cũng muộn rồi, sáng mai nhân viên Shop sẽ gọi lại sớm nhất cho Bác nhé ạ!'.\n\n";
+    // ----- CẬP NHẬT LUẬT GIỜ GIẤC (8H-17H) -----
+    prompt += `**THỜI GIAN HIỆN TẠI:** ${currentHour} giờ.\n`;
+    prompt += "**LUẬT GIỜ GIẤC (QUAN TRỌNG):**\n";
+    prompt += "- Nếu từ 8h - 17h (Giờ làm việc): Nói 'Shop sẽ gọi điện xác nhận ngay ạ'.\n";
+    prompt += "- Nếu từ 17h - 8h sáng hôm sau (Ngoài giờ): Nói 'Dạ Shop đã nhận thông tin. Tuy nhiên hiện tại đã hết giờ làm việc (8h-17h), sáng mai nhân viên Shop sẽ ưu tiên gọi lại sớm nhất cho Bác nhé ạ!'.\n\n";
+    // -------------------------------------------
 
     prompt += "**Lịch sử chat (10 tin nhắn gần nhất):**\n";
     prompt += (historyString || "(Chưa có lịch sử chat)") + "\n\n";
@@ -437,12 +446,11 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     // ----- LUẬT MỚI -----
     prompt += "    - **Luật 1: Yêu Cầu Phân Loại:**\n";
     prompt += "      - Nếu khách hỏi 'an cung': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi An Cung Samsung (780.000đ) hay An Cung Trầm Hương Kwangdong (1.290.000đ, 15% trầm hương) hay An Cung Royal Family (690k, 5% trầm hương) ạ?\"\n"; 
-    prompt += "      - Nếu khách hỏi 'cao sâm' (mà không hỏi loại): Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi về Hộp Cao Hồng Sâm 365 (450.000đ/hộp 2 lọ) đúng không ạ?\"\n"; // Sửa
     prompt += "      - Nếu khách hỏi 'nhung hươu' / 'sâm nhung hươu': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi Nước Sâm Nhung Hươu loại Hộp 20 gói (330.000đ) hay Hộp 30 gói (420.000đ) ạ?\"\n";
     
     prompt += "    - **Luật 2: Gửi Ảnh Sản Phẩm:**\n";
-    prompt += "      - (Hành động): Xác định khách đang hỏi ảnh sản phẩm nào (dựa vào 'Từ Khóa' và Lịch sử chat). Nếu khách chỉ nói 'an cung', hãy hỏi lại. Nếu khách nói rõ, tra cứu 'KHỐI KIẾN THỨC' để lấy **1 link `Image_URL`**.\n";
-    prompt += "      - (Trả lời): Trả về JSON có 2 trường: `response_message` (ví dụ: \"Dạ " + greetingName + ", Shop gửi Bác xem ảnh thật sản phẩm [Tên SP] ạ. | Bác xem có cần Shop tư vấn gì thêm không ạ?\") VÀ `image_url_to_send` (một chuỗi string chứa 1 link ảnh).\n";
+    prompt += "      - (Hành động): Xác định SP, tra cứu 'Image_URL'. Nếu hỏi chung 'an cung', 'cao sâm', 'nhung hươu' -> Áp dụng 'Luật 1: Yêu Cầu Phân Loại' trước.\n";
+    prompt += "      - (Trả lời): Trả về JSON: `response_message` (ví dụ: \"Dạ " + greetingName + ", Shop gửi Bác xem ảnh thật...\") VÀ `image_url_to_send` (1 link ảnh).\n";
     
     prompt += "    - **Luật 3: Ghi Nhận Đơn Hàng (SĐT/Địa chỉ):**\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin (SĐT/Địa chỉ) của Bác ạ. | [Dựa vào 'LUẬT GIỜ GIẤC' để chọn câu chốt phù hợp]\"\n";
@@ -517,7 +525,7 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI 2 (CHO TRANG ĐỒ CHƠI MÁY TÍNH - NÂNG CẤP GỬI ẢNH)
+// HÀM GỌI GEMINI 2 (CHO TRANG ĐỒ CHƠI MÁY TÍNH - FIX GIỜ GIẤC)
 // -------------------------------------------------------------------
 async function callGemini_MayTinh(userMessage, userName, userState, productKnowledge) {
   if (!model) {
@@ -529,9 +537,22 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
     const salutation = "bạn"; 
     const greetingName = userName ? userName : salutation;
     
+    // ----- LẤY GIỜ VIỆT NAM -----
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const vnTime = new Date(utc + (3600000 * 7)); // Cộng 7 tiếng
+    const currentHour = vnTime.getHours();
+    // -----------------------------
+
     // --- PROMPT 2: KỊCH BẢN MÁY TÍNH (SHOP-BẠN) ---
     let prompt = "**Nhiệm vụ:** Bạn là nhân viên tư vấn (Trang Đồ Chơi Máy Tính). **LUẬT BÍ MẬT:** TUYỆT ĐỐI KHÔNG BAO GIỜ được nói mình là 'bot' hay 'AI'. Phải chat 1 cách tự nhiên nhất, giọng văn giới trẻ (dùng 'sp', 'k', 'đc', 'ib', 'bao phê', 'hàng xịn'...). Xưng hô 'Shop' và gọi khách là '" + salutation + "'. Nếu biết tên, hãy chào tên (ví dụ 'Chào " + greetingName + "').\n\n";
     prompt += productKnowledge + "\n\n";
+    
+    prompt += `**THỜI GIAN HIỆN TẠI:** ${currentHour} giờ.\n`;
+    prompt += "**LUẬT GIỜ GIẤC:**\n";
+    prompt += "- Nếu từ 8h - 17h: Nói 'Shop sẽ chốt đơn ngay'.\n";
+    prompt += "- Nếu từ 17h - 8h sáng hôm sau: Nói 'Giờ muộn rồi, Shop nhận đơn và sáng mai sẽ alo chốt đơn với " + salutation + " sớm nhé!'.\n\n";
+
     prompt += "**ƯU ĐÃI HIỆN TẠI (Đồ Chơi Máy Tính):**\n";
     prompt += "- Mua 1 con: Giá 119k + 30k ship.\n";
     prompt += "- Mua từ 2 con chuột Fuhlen L102 trở lên: Giá 119k/con + MIỄN PHÍ SHIP (FREESHIP) toàn quốc.\n\n";
@@ -725,6 +746,6 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 // -------------------------------------------------------------------
 // 5. Khởi động server
 app.listen(PORT, () => {
-  console.log(`Bot AI ĐA NHÂN CÁCH (v2.19 - Bo Cao Sam 4 Lo) đang chạy ở cổng ${PORT}`);
+  console.log(`Bot AI ĐA NHÂN CÁCH (v2.20 - Fix Gio Giac + Mui Gio VN) đang chạy ở cổng ${PORT}`);
   console.log(`Sẵn sàng nhận lệnh từ Facebook tại /webhook`);
 });
