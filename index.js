@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.17" - Fix Lỗi Xin SĐT)
+// File: index.js (Phiên bản "ĐA NHÂN CÁCH v2.19" - Bỏ Cao Sâm 4 Lọ)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -216,7 +216,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
 
 
 // -------------------------------------------------------------------
-// BỘ NÃO 1: KIẾN THỨC SẢN PHẨM (THẢO KOREA)
+// BỘ NÃO 1: KIẾN THỨC SẢN PHẨM (THẢO KOREA - ĐÃ BỎ CAO SÂM 4 LỌ)
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
@@ -246,12 +246,12 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Không dùng buổi tối. Không dùng khi bụng đói. Giá: 780.000đ/hộp (ƯU ĐÃI) + MIỄN SHIP. (Mua 1 hộp TẶNG 1 Dầu Lạnh hoặc 1 Cao Dán).\n";
     knowledgeString += "-----------------\n\n";
 
-    // == SẢN PHẨM 2 ==
+    // == SẢN PHẨM 2 (ĐÃ SỬA: CHỈ CÒN HỘP 2 LỌ) ==
     knowledgeString += "---[SẢN PHẨM]---\n";
-    knowledgeString += "Tên Sản Phẩm: HỘP CAO HỒNG SÂM 365 HÀN QUỐC (Loại 2 lọ & 4 lọ)\n";
-    knowledgeString += "Từ Khóa: cao hồng sâm, cao sâm, sâm 365, hồng sâm 365, sâm hàn quốc, bồi bổ, tăng đề kháng, suy nhược, mệt mỏi, người ốm, quà biếu, ốm dậy, ăn không ngon, ngủ không sâu, hộp 2 lọ, hộp 4 lọ\n";
+    knowledgeString += "Tên Sản Phẩm: HỘP CAO HỒNG SÂM 365 HÀN QUỐC (Hộp 2 lọ)\n"; // <--- SỬA TÊN
+    knowledgeString += "Từ Khóa: cao hồng sâm, cao sâm, sâm 365, hồng sâm 365, sâm hàn quốc, bồi bổ, tăng đề kháng, suy nhược, mệt mỏi, người ốm, quà biếu, ốm dậy, ăn không ngon, ngủ không sâu, hộp 2 lọ\n"; // <--- BỎ "hộp 4 lọ"
     knowledgeString += "Image_URL: \"https://product.hstatic.net/200000494375/product/z4941235209154_120a0977cf9b70138a2330b5fee4f1db_8ddbf4c7f03244e6a24e49551e83dee2_master.jpg\"\n"; 
-    knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Người huyết áp cao nên dùng liều nhỏ. Shop bán theo hộp:\n - Hộp 2 lọ: 450.000đ/hộp (ƯU ĐÃI). (Dưới 500k, chưa Freeship)\n - Hộp 4 lọ: 850.000đ/hộp (ƯU ĐÃI) + MIỄN SHIP.\n"; 
+    knowledgeString += "Lưu Ý / Giá: KHÔNG PHẢI LÀ THUỐC. Người huyết áp cao nên dùng liều nhỏ. Giá: 450.000đ/hộp (2 lọ). (Dưới 500k chưa Freeship, mua 2 hộp được Freeship).\n"; // <--- SỬA GIÁ
     knowledgeString += "-----------------\n\n";
 
     // == SẢN PHẨM 3 ==
@@ -305,6 +305,11 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "-----------------\n\n";
 
     knowledgeString += "\n----- HẾT KHỐI KIẾN THỨC -----\n\n";
+    
+    knowledgeString += "**KIẾN THỨC QUÀ TẶNG (Dùng để tra cứu):**\n";
+    knowledgeString += "- Quà mặc định (An Cung Samsung, An Cung Kwangdong): 1 Lọ Dầu Lạnh.\n";
+    knowledgeString += "- Quà mặc định (Tinh Dầu Thông Đỏ): 1 Gói Cao Dán 20 miếng.\n";
+    knowledgeString += "- QUÀ CÓ THỂ ĐỔI (Nếu khách yêu cầu): Khách có thể đổi Dầu Lạnh lấy Cao Dán và ngược lại. Hãy xác nhận yêu cầu của khách.\n\n";
     
     return knowledgeString;
 }
@@ -377,7 +382,7 @@ async function saveState(uniqueStorageId, userMessage, botMessage) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI 1 (CHO TRANG THẢO KOREA - FIX LỖI XIN SĐT + LỖI TẶNG QUÀ)
+// HÀM GỌI GEMINI 1 (CHO TRANG THẢO KOREA - ĐÃ BỎ CAO SÂM 4 LỌ)
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) {
@@ -388,17 +393,11 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     const historyString = userState.history.map(h => `${h.role}: ${h.content}`).join('\n');
     const greetingName = userName ? "Bác " + userName : "Bác";
 
-    // ----- LẤY GIỜ VIỆT NAM -----
-    const now = new Date();
-    const vietnamTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
-    const currentHour = vietnamTime.getHours();
-    // -----------------------------
-
     // --- PROMPT 1: KỊCH BẢN THẢO KOREA (BÁC-SHOP) ---
     let prompt = "**Nhiệm vụ:** Bạn là chuyên viên tư vấn (Trang Thảo Korea). Xưng hô 'Shop - Bác'. **LUẬT BÍ MẬT:** TUYỆT ĐỐI KHÔNG BAO GIỜ được nói mình là 'bot' hay 'AI'. Phải hành văn 1 cách tự nhiên nhất, giống như người thật đang chat.\n\n";
     prompt += productKnowledge + "\n\n";
     
-    prompt += `**THỜI GIAN HIỆN TẠI:** ${currentHour} giờ.\n`;
+    prompt += `**THỜI GIAN HIỆN TẠI:** ${new Date().getHours()} giờ.\n`;
     prompt += "**LUẬT GIỜ GIẤC:**\n";
     prompt += "- 8h - 17h: 'Shop sẽ gọi điện xác nhận ngay ạ'.\n";
     prompt += "- 17h - 8h sáng: 'Dạ Shop đã nhận thông tin. Vì giờ cũng muộn rồi, sáng mai nhân viên Shop sẽ gọi lại sớm nhất cho Bác nhé ạ!'.\n\n";
@@ -411,42 +410,43 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** KHÔNG lặp lại. Trả lời NGẮN GỌN. Tách câu bằng |\n";
     prompt += "2.  **Phân tích tin nhắn:**\n";
     prompt += "    - Đọc tin nhắn: \"" + userMessage + "\".\n";
-    prompt += "    - (Kiểm tra SĐT): Tin nhắn có chứa số điện thoại (10 số) không?\n";
-    prompt += "    - (Kiểm tra Địa Chỉ): Tin nhắn có chứa địa chỉ (sn, ngõ, phố...) không?\n";
-    prompt += "    - (Kiểm tra Mua Hàng): Tin nhắn có ý định mua hàng ('lấy 1 hộp', 'mua 2', 'đặt hàng') không?\n";
-    prompt += "    - (Kiểm tra Hình Ảnh)...\n";
+    prompt += "    - (Kiểm tra SĐT/Địa chỉ)...\n";
+    prompt += "    - **(Kiểm tra Hình Ảnh):** Tin nhắn có chứa từ khóa yêu cầu ảnh ('ảnh', 'hình', 'video', 'xem hộp', 'nắp hộp', 'bên ngoài', 'gửi mẫu') không?\n";
     prompt += "    - (Kiểm tra Giá)...\n";
-    prompt += "    - (Kiểm tra Đổi Quà)...\n";
-    prompt += "    - (Kiểm tra Phân Loại)...\n";
-    prompt += "    - (Kiểm tra Đòi Quà)...\n";
+    prompt += "    - (Kiểm tra Đổi Quà): Tin nhắn có chứa từ khóa đổi quà ('đổi quà', 'lấy cao dán', 'lấy dầu lạnh', 'không lấy dầu lạnh') không?\n";
+    prompt += "    - **(Kiểm tra Phân Loại):** Tin nhắn có chứa từ khóa chung chung ('an cung', 'nhung hươu', 'sâm nhung hươu') MÀ KHÔNG chứa từ khóa cụ thể (samsung, kwangdong, royal family, 20 gói, 30 gói) không?\n";
+    prompt += "    - **(Kiểm tra Đòi Quà):** Khách có đòi thêm quà (như 'tặng thêm đi', 'cho thêm cao dán', 'tặng 2 hộp') không?\n";
+    prompt += "    - **(Kiểm tra Freeship):** Tin nhắn có chứa từ khóa 'ship', 'miễn ship', 'vận chuyển', 'phí ship' không?\n"; 
+    prompt += "    - **(Kiểm tra Địa Chỉ Shop):** Khách có hỏi 'shop ở đâu', 'địa chỉ shop' không?\n"; 
     
-    // ----- SỬA LUẬT ƯU TIÊN 3 -----
-    prompt += "    - **(Ưu tiên 1 - Cần Phân Loại):** ... -> Luật 1.\n"; 
-    prompt += "    - **(Ưu tiên 2 - Yêu cầu Hình Ảnh):** ... -> Luật 2.\n";
-    prompt += "    - **(Ưu tiên 3 - ĐÃ CÓ SĐT):** Nếu tin nhắn chứa SĐT (bất kể có địa chỉ hay không) -> Kích hoạt 'Luật 3a: Đã Có SĐT'.\n"; // <--- TÁCH RA
-    prompt += "    - **(Ưu tiên 3b - CHƯA CÓ SĐT):** Nếu tin nhắn chỉ có Địa chỉ HOẶC ý định mua hàng ('lấy 1 hộp') nhưng KHÔNG có SĐT -> Kích hoạt 'Luật 3b: Xin SĐT'.\n"; // <--- TÁCH RA
-    
-    prompt += "    - **(Ưu tiên 4 - Đổi Quà):** ... -> Luật 4.\n";
-    prompt += "    - **(Ưu tiên 5 - Đòi Quà):** ... -> Luật 5.\n";
-    prompt += "    - (Ưu tiên 6 - Hết Hàng): ... -> Luật 6.\n";
-    prompt += "    - (Ưu tiên 7 - Freeship): ... -> Luật 7.\n";
-    prompt += "    - (Ưu tiên 8 - Địa Chỉ Shop): ... -> Luật 8.\n"; 
-    prompt += "    - (Ưu tiên 9 - Câu hỏi mặc định)... -> Luật 9.\n";
-    prompt += "    - (Ưu tiên 10 - Hỏi Giá): ... -> Luật 10.\n";
+    prompt += "    - **(Ưu tiên 1 - Cần Phân Loại):** Nếu 'Kiểm tra Phân Loại' (CÓ) VÀ KHÔNG 'Kiểm tra Hình Ảnh' (KHÔNG) -> Kích hoạt 'Luật 1: Yêu Cầu Phân Loại'.\n"; 
+    prompt += "    - **(Ưu tiên 2 - Yêu cầu Hình Ảnh):** Nếu 'Kiểm tra Hình Ảnh' (CÓ) -> Kích hoạt 'Luật 2: Gửi Ảnh Sản Phẩm'.\n";
+    prompt += "    - **(Ưu tiên 3 - Gửi SĐT/Địa chỉ):** ... Kích hoạt 'Luật 3: Ghi Nhận Đơn Hàng'.\n";
+    prompt += "    - **(Ưu tiên 4 - Đổi Quà):** ... Kích hoạt 'Luật 4: Xử Lý Đổi Quà'.\n";
+    prompt += "    - **(Ưu tiên 5 - Đòi Quà):** ... Kích hoạt 'Luật 5: Xử Lý Đòi Quà'.\n";
+    prompt += "    - **(Ưu tiên 6 - Hết Hàng):** ... Kích hoạt 'Luật 6: Chuyển Hướng SP Hết Hàng'.\n";
+    prompt += "    - **(Ưu tiên 7 - Hỏi Freeship):** Nếu 'Kiểm tra Freeship' (CÓ) -> Kích hoạt 'Luật 7: Trả Lời Freeship'.\n";
+    prompt += "    - **(Ưu tiên 8 - Hỏi Địa Chỉ Shop):** Nếu 'Kiểm tra Địa Chỉ Shop' (CÓ) -> Kích hoạt 'Luật 8: Trả Lời Địa Chỉ'.\n"; 
+    prompt += "    - (Ưu tiên 9 - Câu hỏi mặc định SĐT)...\n";
+    prompt += "    - (Ưu tiên 10 - Câu hỏi mặc định Mua SP)...\n";
+    prompt += "    - (Ưu tiên 11 - Hỏi Giá)...\n";
+    prompt += "    - (Ưu tiên 12 - Tra cứu)...\n";
     
     prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n";
     
-    prompt += "    - **Luật 1: Yêu Cầu Phân Loại:** ...\n";
-    prompt += "    - **Luật 2: Gửi Ảnh Sản Phẩm:** ...\n";
+    // ----- LUẬT MỚI -----
+    prompt += "    - **Luật 1: Yêu Cầu Phân Loại:**\n";
+    prompt += "      - Nếu khách hỏi 'an cung': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi An Cung Samsung (780.000đ) hay An Cung Trầm Hương Kwangdong (1.290.000đ, 15% trầm hương) hay An Cung Royal Family (690k, 5% trầm hương) ạ?\"\n"; 
+    prompt += "      - Nếu khách hỏi 'cao sâm' (mà không hỏi loại): Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi về Hộp Cao Hồng Sâm 365 (450.000đ/hộp 2 lọ) đúng không ạ?\"\n"; // Sửa
+    prompt += "      - Nếu khách hỏi 'nhung hươu' / 'sâm nhung hươu': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi Nước Sâm Nhung Hươu loại Hộp 20 gói (330.000đ) hay Hộp 30 gói (420.000đ) ạ?\"\n";
     
-    // ----- LUẬT 3A & 3B MỚI -----
-    prompt += "    - **Luật 3a: Đã Có SĐT (Chốt Đơn Thành Công):**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được số điện thoại của Bác ạ. | [Dựa vào 'LUẬT GIỜ GIẤC' để chọn câu chốt phù hợp]\"\n";
+    prompt += "    - **Luật 2: Gửi Ảnh Sản Phẩm:**\n";
+    prompt += "      - (Hành động): Xác định khách đang hỏi ảnh sản phẩm nào (dựa vào 'Từ Khóa' và Lịch sử chat). Nếu khách chỉ nói 'an cung', hãy hỏi lại. Nếu khách nói rõ, tra cứu 'KHỐI KIẾN THỨC' để lấy **1 link `Image_URL`**.\n";
+    prompt += "      - (Trả lời): Trả về JSON có 2 trường: `response_message` (ví dụ: \"Dạ " + greetingName + ", Shop gửi Bác xem ảnh thật sản phẩm [Tên SP] ạ. | Bác xem có cần Shop tư vấn gì thêm không ạ?\") VÀ `image_url_to_send` (một chuỗi string chứa 1 link ảnh).\n";
     
-    prompt += "    - **Luật 3b: Xin SĐT (Chưa Chốt Được):**\n";
-    prompt += "      - Trả lời: \"Dạ Shop đã ghi nhận thông tin/địa chỉ của Bác rồi ạ. | Tuy nhiên, Bác vui lòng bổ sung thêm **Số Điện Thoại** để nhân viên Shop gọi điện chốt đơn chính xác cho Bác nhé ạ!\"\n";
-    // ---------------------------
-
+    prompt += "    - **Luật 3: Ghi Nhận Đơn Hàng (SĐT/Địa chỉ):**\n";
+    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin (SĐT/Địa chỉ) của Bác ạ. | [Dựa vào 'LUẬT GIỜ GIẤC' để chọn câu chốt phù hợp]\"\n";
+    
     prompt += "    - **Luật 4: Xử Lý Đổi Quà:**\n";
     prompt += "      - Trả lời: \"Dạ vâng " + greetingName + ". Shop đã ghi nhận Bác muốn đổi quà (từ Dầu Lạnh sang Cao Dán hoặc ngược lại) ạ. | Shop sẽ xác nhận lại khi gọi chốt đơn cho Bác nhé!\"\n";
     
@@ -466,6 +466,8 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | ... \n1. AN CUNG SAMSUNG (Hỗ trợ tai biến)\n(Và 7 sản phẩm khác)\n8. AN CUNG ROYAL FAMILY (32 viên)\"\n"; 
     
     prompt += "    - **Luật 10: Báo Giá Công Khai (KHÔNG XIN SĐT):**\n";
+    prompt += "      - (Quan trọng): Nếu khách hỏi giá chung chung ('giá?', 'giá sp?') -> KHÔNG trả lời 'chưa hiểu', mà phải áp dụng 'Luật 1: Yêu Cầu Phân Loại' trước.\n";
+    prompt += "      - (Hành động): Nếu khách hỏi giá RÕ RÀNG, tra cứu 'KHỐI KIẾN THỨC'.\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP] là [Giá SP] ạ...\"\n";
     
     prompt += "    - **Luật Chung (Mặc định):**\n";
@@ -548,7 +550,7 @@ async function callGemini_MayTinh(userMessage, userName, userState, productKnowl
     prompt += "    - (Kiểm tra Chào/Hỏi Mơ Hồ)...\n";
     prompt += "    - (Kiểm tra Đồng Ý)...\n";
     
-    prompt += "    - **(Ưu tiên 1 - Yêu cầu Hình Ảnh):** Nếu 'Kiểm tra Hình Ảnh' (CÓ) -> Kích hoạt 'Luật 1: Gửi Ảnh Sản Phẩm'.\n"; // <--- LUẬT MỚI
+    prompt += "    - **(Ưu tiên 1 - Yêu cầu Hình Ảnh):** Nếu 'Kiểm tra Hình Ảnh' (CÓ) -> Kích hoạt 'Luật 1: Gửi Ảnh Sản Phẩm'.\n"; 
     prompt += "    - (Ưu tiên 2 - Gửi SĐT/Địa chỉ)...\n";
     prompt += "    - (Ưu tiên 3 - Hỏi SP Khác)...\n";
     prompt += "    - (Ưu tiên 4 - Chào/Hỏi mơ hồ LẦN ĐẦU)...\n";
@@ -723,6 +725,6 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 // -------------------------------------------------------------------
 // 5. Khởi động server
 app.listen(PORT, () => {
-  console.log(`Bot AI ĐA NHÂN CÁCH (v2.14 - Chuan Hoa Qua Tang) đang chạy ở cổng ${PORT}`);
+  console.log(`Bot AI ĐA NHÂN CÁCH (v2.19 - Bo Cao Sam 4 Lo) đang chạy ở cổng ${PORT}`);
   console.log(`Sẵn sàng nhận lệnh từ Facebook tại /webhook`);
 });
