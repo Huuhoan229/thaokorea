@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "SINGLE PERSONA v2.70" - Chỉ Chạy Thảo Korea)
+// File: index.js (Phiên bản "SINGLE PERSONA v2.80" - Fix Lỗi Gửi Nhiều Ảnh)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -43,8 +43,6 @@ if (process.env.PAGE_ID_TRANG_MOI && process.env.FB_PAGE_TOKEN_TRANG_MOI) {
     pageTokenMap.set(process.env.PAGE_ID_TRANG_MOI, process.env.FB_PAGE_TOKEN_TRANG_MOI);
     console.log(`Đã tải Token cho trang Trang Moi: ${process.env.PAGE_ID_TRANG_MOI}`);
 }
-
-// Đã loại bỏ phần load token MÁY TÍNH ở đây
 
 console.log(`Bot đã được khởi tạo cho ${pageTokenMap.size} Fanpage.`);
 if (pageTokenMap.size === 0) {
@@ -134,7 +132,7 @@ app.post('/webhook', (req, res) => {
 });
 
 // -------------------------------------------------------------------
-// HÀM XỬ LÝ CHÍNH (ĐÃ LOẠI BỎ ROUTING MÁY TÍNH)
+// HÀM XỬ LÝ CHÍNH (ĐÃ FIX LOGIC GỬI NHIỀU ẢNH)
 // -------------------------------------------------------------------
 async function processMessage(pageId, sender_psid, userMessage) {
     const FB_PAGE_TOKEN = pageTokenMap.get(pageId);
@@ -167,7 +165,6 @@ async function processMessage(pageId, sender_psid, userMessage) {
           geminiResult = await callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge);
       
       } else {
-          // Nếu không phải 2 trang kia thì bỏ qua luôn (Vì đã xóa máy tính)
           console.error(`PAGE ID KHÔNG ĐƯỢC HỖ TRỢ: ${pageId}`);
           processingUserSet.delete(uniqueStorageId);
           return;
@@ -180,18 +177,27 @@ async function processMessage(pageId, sender_psid, userMessage) {
       
       await saveState(uniqueStorageId, userMessage, geminiResult.response_message);
 
-      // ----- GỬI ẢNH -----
+      // === [LOGIC MỚI] GỬI NHIỀU ẢNH ===
+      // Nếu Gemini trả về danh sách ảnh cách nhau bởi dấu phẩy
       if (geminiResult.image_url_to_send && geminiResult.image_url_to_send.length > 0) {
-          console.log(`Đang gửi 1 ảnh: ${geminiResult.image_url_to_send}`);
-          await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, true);
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Tách chuỗi bằng dấu phẩy và xóa khoảng trắng thừa
+          const imageUrls = geminiResult.image_url_to_send.split(',').map(url => url.trim()).filter(url => url.length > 0);
           
-          try {
-            await sendFacebookImage(FB_PAGE_TOKEN, sender_psid, geminiResult.image_url_to_send);
-          } catch (imgError) {
-            console.error("LỖI KHI GỬI ẢNH (sẽ tiếp tục gửi text):", imgError.message);
+          console.log(`Đang gửi ${imageUrls.length} ảnh...`);
+          
+          // Gửi lần lượt từng ảnh
+          for (const imgUrl of imageUrls) {
+              await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, true);
+              await new Promise(resolve => setTimeout(resolve, 500)); // Nghỉ xíu giữa các ảnh
+              
+              try {
+                await sendFacebookImage(FB_PAGE_TOKEN, sender_psid, imgUrl);
+              } catch (imgError) {
+                console.error("LỖI KHI GỬI ẢNH:", imgError.message);
+              }
           }
       }
+      // ====================================
       
       // ----- GỬI CHỮ (TÁCH CÂU) -----
       const messages = geminiResult.response_message.split('|');
@@ -316,9 +322,6 @@ function getProductKnowledge_ThaoKorea() {
     return knowledgeString;
 }
 
-// (Đã XÓA hàm getProductKnowledge_MayTinh)
-
-
 // -------------------------------------------------------------------
 // HÀM QUẢN LÝ BỘ NHỚ (FIRESTORE) - [HỖ TRỢ LƯU TIN ADMIN]
 // -------------------------------------------------------------------
@@ -383,7 +386,7 @@ async function saveAdminReply(pageId, customerId, text) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI (THẢO KOREA)
+// HÀM GỌI GEMINI (THẢO KOREA) - [ĐÃ CẬP NHẬT PROMPT CHẶN LINK TEXT]
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) return { response_message: "Dạ, nhân viên Shop chưa trực tuyến..." };
@@ -403,8 +406,6 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     // ----- LUẬT TỐI CAO (ĐỌC TIN ADMIN) -----
     prompt += "**LUẬT TỐI CAO:**\n";
     prompt += "Hãy đọc kỹ 'Lịch sử chat'. Nếu thấy 'Shop' (Admin) vừa nhắn tin trả lời khách, bạn PHẢI NƯƠNG THEO nội dung đó.\n";
-    prompt += "- Ví dụ: Nếu Shop đang tư vấn 'Mát Gan', thì bạn cũng phải nói về 'Mát Gan', KHÔNG ĐƯỢC quay lại hỏi 'Bác mua An Cung hay Nhung Hươu'.\n";
-    prompt += "- Ví dụ: Nếu Shop đã chốt giá, hãy tuân theo giá Shop vừa báo.\n\n";
     // -------------------------------------------
 
     prompt += productKnowledge + "\n\n";
@@ -421,74 +422,30 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     prompt += "1.  **LUẬT CHAT (QUAN TRỌNG NHẤT):** KHÔNG lặp lại. Trả lời NGẮN GỌN. Tách câu bằng |\n";
     prompt += "2.  **Phân tích tin nhắn:**\n";
     prompt += "    - Đọc tin nhắn: \"" + userMessage + "\".\n";
-    prompt += "    - (Kiểm tra SĐT/Địa chỉ)...\n";
-    prompt += "    - **(Kiểm tra Hình Ảnh):** Tin nhắn có chứa từ khóa yêu cầu ảnh ('ảnh', 'hình', 'video', 'xem hộp', 'nắp hộp', 'bên ngoài', 'gửi mẫu') không?\n";
-    prompt += "    - (Kiểm tra Giá)...\n";
-    prompt += "    - (Kiểm tra Đổi Quà): Tin nhắn có chứa từ khóa đổi quà ('đổi quà', 'lấy cao dán', 'lấy dầu lạnh', 'không lấy dầu lạnh') không?\n";
-    prompt += "    - **(Kiểm tra Phân Loại):** Tin nhắn có chứa từ khóa chung chung ('an cung', 'nhung hươu', 'sâm nhung hươu') MÀ KHÔNG chứa từ khóa cụ thể (samsung, kwangdong, royal family, 20 gói, 30 gói) không?\n";
-    prompt += "    - **(Kiểm tra Đòi Quà):** Khách có đòi thêm quà (như 'tặng thêm đi', 'cho thêm cao dán', 'tặng 2 hộp') không?\n";
-    prompt += "    - **(Kiểm tra Freeship):** Tin nhắn có chứa từ khóa 'ship', 'miễn ship', 'vận chuyển', 'phí ship' không?\n"; 
-    prompt += "    - **(Kiểm tra Địa Chỉ Shop):** Khách có hỏi 'shop ở đâu', 'địa chỉ shop' không?\n"; 
+    prompt += "    - **(Kiểm tra Hình Ảnh):** Tin nhắn có chứa từ khóa yêu cầu ảnh ('ảnh', 'hình', 'video', 'xem hộp', 'cả 3', 'mẫu') không?\n";
     
-    prompt += "    - **(Ưu tiên 1 - Cần Phân Loại):** Nếu 'Kiểm tra Phân Loại' (CÓ) VÀ KHÔNG 'Kiểm tra Hình Ảnh' (KHÔNG) -> Kích hoạt 'Luật 1: Yêu Cầu Phân Loại'.\n"; 
-    prompt += "    - **(Ưu tiên 2 - Yêu cầu Hình Ảnh):** Nếu 'Kiểm tra Hình Ảnh' (CÓ) -> Kích hoạt 'Luật 2: Gửi Ảnh Sản Phẩm'.\n";
-    prompt += "    - **(Ưu tiên 3 - Gửi SĐT/Địa chỉ):** ... Kích hoạt 'Luật 3: Ghi Nhận Đơn Hàng'.\n";
-    prompt += "    - **(Ưu tiên 4 - Đổi Quà):** ... Kích hoạt 'Luật 4: Xử Lý Đổi Quà'.\n";
-    prompt += "    - **(Ưu tiên 5 - Đòi Quà):** ... Kích hoạt 'Luật 5: Xử Lý Đòi Quà'.\n";
-    prompt += "    - **(Ưu tiên 6 - Hết Hàng):** ... Kích hoạt 'Luật 6: Chuyển Hướng SP Hết Hàng'.\n";
-    prompt += "    - **(Ưu tiên 7 - Hỏi Freeship):** Nếu 'Kiểm tra Freeship' (CÓ) -> Kích hoạt 'Luật 7: Trả Lời Freeship'.\n";
-    prompt += "    - **(Ưu tiên 8 - Hỏi Địa Chỉ Shop):** Nếu 'Kiểm tra Địa Chỉ Shop' (CÓ) -> Kích hoạt 'Luật 8: Trả Lời Địa Chỉ'.\n"; 
-    prompt += "    - (Ưu tiên 9 - Câu hỏi mặc định SĐT)...\n";
-    prompt += "    - (Ưu tiên 10 - Câu hỏi mặc định Mua SP)...\n";
-    prompt += "    - (Ưu tiên 11 - Hỏi Giá)...\n";
-    prompt += "    - (Ưu tiên 12 - Tra cứu)...\n";
+    prompt += "    - **(Ưu tiên 1 - Yêu cầu Hình Ảnh):** Nếu 'Kiểm tra Hình Ảnh' (CÓ) -> Kích hoạt 'Luật 2: Gửi Ảnh Sản Phẩm'.\n";
+    prompt += "    - (Ưu tiên 3 - Gửi SĐT/Địa chỉ): ... Kích hoạt 'Luật 3: Ghi Nhận Đơn Hàng'.\n";
     
     prompt += "3.  **Luật Trả Lời (dựa trên Phân tích):**\n";
     
-    prompt += "    - **Luật 1: Yêu Cầu Phân Loại:**\n";
-    prompt += "      - Nếu khách hỏi 'an cung': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi An Cung Samsung (780.000đ) hay An Cung Trầm Hương Kwangdong (1.290.000đ, 15% trầm hương) hay An Cung Royal Family (690k, 5% trầm hương) ạ?\"\n"; 
-    prompt += "      - Nếu khách hỏi 'nhung hươu' / 'sâm nhung hươu': Trả lời: \"Dạ " + greetingName + ", Bác muốn hỏi Nước Sâm Nhung Hươu loại Hộp 20 gói (330.000đ) hay Hộp 30 gói (420.000đ) ạ?\"\n";
+    prompt += "    - **Luật 2: Gửi Ảnh Sản Phẩm (QUAN TRỌNG):**\n";
+    prompt += "      - (Hành động): Xác định SP khách muốn xem. Tra cứu 'Image_URL'.\n";
+    prompt += "      - **NẾU KHÁCH MUỐN XEM NHIỀU ẢNH:** Hãy điền TẤT CẢ các link ảnh vào trường `image_url_to_send`, cách nhau bằng dấu phẩy (,).\n";
+    prompt += "      - **CẤM:** TUYỆT ĐỐI KHÔNG chèn link ảnh vào `response_message`. Chỉ được viết text mô tả vào đó.\n";
+    prompt += "      - (Ví dụ đúng): response_message: \"Dạ đây là ảnh 3 loại Bác tham khảo ạ\", image_url_to_send: \"link1.jpg, link2.jpg, link3.jpg\"\n";
     
-    prompt += "    - **Luật 2: Gửi Ảnh Sản Phẩm:**\n";
-    prompt += "      - (Hành động): Xác định SP, tra cứu 'Image_URL'. Nếu hỏi chung 'an cung', 'cao sâm', 'nhung hươu' -> Áp dụng 'Luật 1: Yêu Cầu Phân Loại' trước.\n";
-    prompt += "      - (Trả lời): Trả về JSON: `response_message` (ví dụ: \"Dạ " + greetingName + ", Shop gửi Bác xem ảnh thật...\") VÀ `image_url_to_send` (1 link ảnh).\n";
-    
-    prompt += "    - **Luật 3: Ghi Nhận Đơn Hàng (SĐT/Địa chỉ):**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop đã nhận được thông tin (SĐT/Địa chỉ) của Bác ạ. | [Dựa vào 'LUẬT GIỜ GIẤC' để chọn câu chốt phù hợp]\"\n";
-    
-    prompt += "    - **Luật 4: Xử Lý Đổi Quà:**\n";
-    prompt += "      - Trả lời: \"Dạ vâng " + greetingName + ". Shop đã ghi nhận Bác muốn đổi quà (từ Dầu Lạnh sang Cao Dán hoặc ngược lại) ạ. | Shop sẽ xác nhận lại khi gọi chốt đơn cho Bác nhé!\"\n";
-    
-    prompt += "    - **Luật 5: Xử Lý Đòi Quà:**\n";
-    prompt += "      - Trả lời: \"Dạ Bác thông cảm giúp Shop ạ, mua 1 hộp thì Shop chỉ tặng được 1 phần quà thôi ạ. | Nếu Bác lấy từ 2 hộp trở lên Shop sẽ ưu đãi tặng thêm quà cho Bác ạ! Bác lấy thêm 1 hộp nữa nhé?\"\n";
-    
-    prompt += "    - **Luật 6: Chuyển Hướng SP Hết Hàng:**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop xin lỗi Bác ạ! | Loại Nước Sâm Nhung Hươu 20 gói (330k) hiện đang tạm hết hàng rồi ạ. | Bác tham khảo sang Hộp 30 gói (giá 420k) được không ạ? Tính ra vẫn tiết kiệm mà dùng được lâu hơn ạ!\"\n";
-
-    prompt += "    - **Luật 7: Trả Lời Freeship:**\n";
-    prompt += "      - Trả lời: \"Dạ " + greetingName + ", Shop có chính sách MIỄN SHIP (Freeship) toàn quốc cho các đơn hàng từ 500.000đ trở lên ạ. | Các đơn dưới 500k Shop sẽ báo phí ship sau nhé ạ. | Bác đang quan tâm sản phẩm nào ạ?\"\n";
-    
-    prompt += "    - **Luật 8: Trả Lời Địa Chỉ (Chỉ Bán Online):**\n";
-    prompt += "      - Trả lời: \"Dạ kho Shop ở Hà Đông, Hà Nội nhưng hiện tại Shop chỉ bán ONLINE thôi ạ. | Shop giao hàng tận nơi toàn quốc, Bác được kiểm tra hàng thoải mái rồi mới thanh toán ạ! | Bác yên tâm nhé!\"\n";
-
-    prompt += "    - **Luật 9: Hỏi Vague & Liệt Kê SP (DANH SÁCH VĂN BẢN):**\n"; 
-    prompt += "      - Trả lời: \"Dạ Shop chào " + greetingName + " ạ. | ... \n1. AN CUNG SAMSUNG (Hỗ trợ tai biến)\n(Và 7 sản phẩm khác)\n8. AN CUNG ROYAL FAMILY (32 viên)\"\n"; 
-    
-    prompt += "    - **Luật 10: Báo Giá Công Khai (KHÔNG XIN SĐT):**\n";
-    prompt += "      - (Quan trọng): Nếu khách hỏi giá chung chung ('giá?', 'giá sp?') -> KHÔNG trả lời 'chưa hiểu', mà phải áp dụng 'Luật 1: Yêu Cầu Phân Loại' trước.\n";
-    prompt += "      - (Hành động): Nếu khách hỏi giá RÕ RÀNG, tra cứu 'KHỐI KIẾN THỨC'.\n";
+    prompt += "    - **Luật 10: Báo Giá:**\n";
     prompt += "      - Trả lời: \"Dạ " + greetingName + ", giá của [Tên SP] là [Giá SP] ạ...\"\n";
     
     prompt += "    - **Luật Chung (Mặc định):**\n";
-    prompt += "      - Nếu tin nhắn khó hiểu: -> Trả lời: \"Dạ " + greetingName + ", Shop chưa hiểu ý Bác lắm ạ...\"\n";
-    prompt += "      - Nếu không khó hiểu: Trả lời NGẮN GỌN dựa trên 'KHỐI KIẾN THỨC'.\n";
     prompt += "      - Tách câu trả lời bằng dấu |\n\n";
     
     prompt += "**YÊU CẦU ĐẦU RA (JSON):**\n";
     prompt += "Bạn PHẢI trả lời dưới dạng một JSON string duy nhất, không có giải thích, không có \\```json ... \\```.\n";
     prompt += "{\n";
-    prompt += "  \"response_message\": \"Câu trả lời cho khách | tách bằng dấu |\",\n";
-    prompt += "  \"image_url_to_send\": \"link1.jpg\" (Chỉ dùng cho 'Luật 2: Gửi Ảnh SP'. Nếu không, trả về chuỗi rỗng \"\")\n";
+    prompt += "  \"response_message\": \"Câu trả lời cho khách (CHỈ TEXT, KHÔNG LINK) | tách bằng dấu |\",\n";
+    prompt += "  \"image_url_to_send\": \"link1.jpg, link2.jpg\" (Nếu nhiều ảnh thì cách nhau bằng dấu phẩy)\n";
     prompt += "}\n";
     
     prompt += "---\n";
@@ -521,8 +478,6 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     };
   }
 }
-
-// (Đã XÓA hàm callGemini_MayTinh)
 
 // -------------------------------------------------------------------
 // HÀM LẤY TÊN NGƯỜI DÙNG
@@ -620,6 +575,6 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 // -------------------------------------------------------------------
 // 5. Khởi động server
 app.listen(PORT, () => {
-  console.log(`Bot AI (v2.70 - Single Persona: Thao Korea Only) đang chạy ở cổng ${PORT}`);
+  console.log(`Bot AI (v2.80 - Fix Link Ảnh) đang chạy ở cổng ${PORT}`);
   console.log(`Sẵn sàng nhận lệnh từ Facebook tại /webhook`);
 });
