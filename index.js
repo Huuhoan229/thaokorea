@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "SINGLE PERSONA v2.97" - Fix Spam Ảnh + Logic Chào Hỏi Chuẩn)
+// File: index.js (Phiên bản "SINGLE PERSONA v2.98" - Update Hotline & Địa Chỉ)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -190,15 +190,24 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // -------------------------------------------------------------------
-// BỘ NÃO (THẢO KOREA)
+// BỘ NÃO (THẢO KOREA) - [ĐÃ CẬP NHẬT HOTLINE & ĐỊA CHỈ]
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
+    
+    // --- THÔNG TIN LIÊN HỆ ---
+    knowledgeString += "**THÔNG TIN SHOP:**\n";
+    knowledgeString += "- Địa chỉ Tổng công ty: Long Biên, Hà Nội.\n";
+    knowledgeString += "- Địa chỉ Kho: Hà Đông, Hà Nội.\n";
+    knowledgeString += "- LƯU Ý QUAN TRỌNG: Shop CHỈ BÁN ONLINE, ship COD toàn quốc, khách không đến kho mua trực tiếp.\n";
+    knowledgeString += "- **HOTLINE (Hỗ trợ gấp):** 0986.646.845 - 0948.686.946 - 0946.686.474\n\n";
+    
+    knowledgeString += "**CHÍNH SÁCH:**\n";
     knowledgeString += "- GIỜ LÀM VIỆC: 8h00 - 17h00 hàng ngày.\n";
     knowledgeString += "- FREESHIP: Đơn hàng từ 500.000đ trở lên.\n";
-    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng Dầu Lạnh (có thể đổi sang Cao Dán).\n\n";
+    knowledgeString += "- QUÀ TẶNG: Mua 1 hộp tặng Dầu Lạnh (có thể đổi sang Cao Dán).\n\n";
     
-    // --- SẢN PHẨM CHÍNH ---
+    // --- SẢN PHẨM ---
     knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN (780.000đ)\n";
     knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
@@ -266,7 +275,7 @@ async function saveAdminReply(pageId, customerId, text) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI [LOGIC MỚI: PHÂN LOẠI + CHỐNG SPAM ẢNH]
+// HÀM GỌI GEMINI [LOGIC: HOTLINE + PHÂN LOẠI + CHỐNG SPAM]
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) return { response_message: "..." };
@@ -286,17 +295,17 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 2. KHÔNG gửi link trong text.
 3. KHÔNG lặp lại câu "Shop đã nhận thông tin" nếu đã nói rồi.
 
+**LUẬT HOTLINE & ĐỊA CHỈ:**
+- Nếu khách hỏi địa chỉ: Nhấn mạnh Shop chỉ bán ONLINE, Tổng công ty ở Long Biên, Kho ở Hà Đông.
+- Nếu khách CẦN GẤP (ví dụ: 'gấp lắm', 'giao ngay', 'cần luôn'): Cung cấp ngay 3 số HOTLINE: 0986.646.845 - 0948.686.946 - 0946.686.474 để khách gọi cho nhanh.
+
 **LUẬT GỬI ẢNH (KHẮT KHE):**
-- Chỉ điền link vào 'image_url_to_send' khi khách có ý YÊU CẦU XEM ẢNH (ví dụ: 'gửi ảnh', 'xem mẫu', 'hộp thế nào', 'cho xem hình').
-- Nếu khách chỉ hỏi giá, than đắt, hỏi cách dùng, hoặc đang trò chuyện bình thường -> **TUYỆT ĐỐI KHÔNG** gửi lại ảnh để tránh spam. Để trống trường ảnh.
+- Chỉ điền link vào 'image_url_to_send' khi khách ĐÒI XEM ẢNH.
+- Nếu đang tư vấn bình thường -> ĐỂ TRỐNG trường ảnh.
 
 **LUẬT TƯ VẤN SẢN PHẨM:**
-1. **KHÁCH HỎI CHUNG CHUNG** ("Tôi muốn mua", "Shop bán gì"):
-   -> Chào khách và liệt kê ngắn gọn các dòng chính (An Cung, Cao Sâm, Thông Đỏ...). Hỏi khách quan tâm dòng nào.
-   -> KHÔNG được mặc định là An Cung ngay.
-
-2. **KHÁCH HỎI VỀ "AN CUNG" / "ĐỘT QUỴ"**:
-   -> Tư vấn thẳng vào **An Cung Samsung (780k)** (Sản phẩm chủ đạo).
+1. Hỏi chung chung ("Shop bán gì"): Liệt kê các dòng chính -> Hỏi khách quan tâm gì.
+2. Hỏi "An Cung" / "Đột Quỵ": Tư vấn thẳng **An Cung Samsung (780k)**.
 
 **LUẬT GIỜ GIẤC (Hiện tại là ${currentHour} giờ):**
 - Nếu 17h-8h sáng hôm sau:
@@ -313,7 +322,7 @@ ${historyString || "(Chưa có)"}
 **Yêu cầu JSON:**
 {
   "response_message": "Câu trả lời text | tách ý bằng dấu |",
-  "image_url_to_send": "" (Chỉ điền nếu khách ĐÒI xem ảnh. Nếu không, để chuỗi rỗng "")
+  "image_url_to_send": "" (Chỉ điền nếu khách ĐÒI xem ảnh)
 }
 `;
 
@@ -377,5 +386,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v2.97 (Fix Spam Ảnh + Logic Chào Hỏi) chạy tại port ${PORT}`);
+  console.log(`Bot v2.98 (Update Hotline & Dia Chi) chạy tại port ${PORT}`);
 });
