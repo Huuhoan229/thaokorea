@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "SINGLE PERSONA v2.96" - Fix Lỗi Đoán Mò + Logic Chào Hỏi)
+// File: index.js (Phiên bản "SINGLE PERSONA v2.97" - Fix Spam Ảnh + Logic Chào Hỏi Chuẩn)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -69,7 +69,7 @@ app.get('/webhook', (req, res) => {
 });
 
 // -------------------------------------------------------------------
-// Endpoint 2: Nhận tin nhắn (Logic Đọc Tin Admin)
+// Endpoint 2: Nhận tin nhắn
 // -------------------------------------------------------------------
 app.post('/webhook', (req, res) => {
   let body = req.body;
@@ -266,7 +266,7 @@ async function saveAdminReply(pageId, customerId, text) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI [LOGIC MỚI: PHÂN LOẠI KHÁCH HÀNG]
+// HÀM GỌI GEMINI [LOGIC MỚI: PHÂN LOẠI + CHỐNG SPAM ẢNH]
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) return { response_message: "..." };
@@ -286,22 +286,21 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 2. KHÔNG gửi link trong text.
 3. KHÔNG lặp lại câu "Shop đã nhận thông tin" nếu đã nói rồi.
 
-**LUẬT TƯ VẤN SẢN PHẨM (CỰC KỲ QUAN TRỌNG):**
-1. **KHÁCH HỎI CHUNG CHUNG** ("Tôi muốn mua sản phẩm", "Shop có gì bán", "Tư vấn cho tôi"):
-   -> **HÀNH ĐỘNG:** KHÔNG ĐƯỢC mặc định là An Cung.
-   -> **TRẢ LỜI:** Hãy chào khách và liệt kê ngắn gọn các dòng sản phẩm chính để khách chọn:
-      - An Cung Ngưu Hoàng (Phòng chống đột quỵ)
-      - Cao Hồng Sâm (Bồi bổ sức khỏe)
-      - Tinh Dầu Thông Đỏ (Mỡ máu)
-      - Nước Mát Gan, Nước Hồng Sâm...
-   -> Hỏi lại: "Bác đang quan tâm đến dòng sản phẩm nào để Shop tư vấn kỹ hơn ạ?"
+**LUẬT GỬI ẢNH (KHẮT KHE):**
+- Chỉ điền link vào 'image_url_to_send' khi khách có ý YÊU CẦU XEM ẢNH (ví dụ: 'gửi ảnh', 'xem mẫu', 'hộp thế nào', 'cho xem hình').
+- Nếu khách chỉ hỏi giá, than đắt, hỏi cách dùng, hoặc đang trò chuyện bình thường -> **TUYỆT ĐỐI KHÔNG** gửi lại ảnh để tránh spam. Để trống trường ảnh.
 
-2. **KHÁCH HỎI CỤ THỂ "AN CUNG"** ("An cung", "thuốc đột quỵ", "hộp gỗ"):
-   -> **HÀNH ĐỘNG:** Lúc này mới được tư vấn thẳng vào **An Cung Samsung (780k)** (vì đây là sản phẩm chủ đạo).
+**LUẬT TƯ VẤN SẢN PHẨM:**
+1. **KHÁCH HỎI CHUNG CHUNG** ("Tôi muốn mua", "Shop bán gì"):
+   -> Chào khách và liệt kê ngắn gọn các dòng chính (An Cung, Cao Sâm, Thông Đỏ...). Hỏi khách quan tâm dòng nào.
+   -> KHÔNG được mặc định là An Cung ngay.
+
+2. **KHÁCH HỎI VỀ "AN CUNG" / "ĐỘT QUỴ"**:
+   -> Tư vấn thẳng vào **An Cung Samsung (780k)** (Sản phẩm chủ đạo).
 
 **LUẬT GIỜ GIẤC (Hiện tại là ${currentHour} giờ):**
 - Nếu 17h-8h sáng hôm sau:
-  - Khách CHỈ HỎI: Trả lời bình thường + "Bác để lại SĐT mai con gọi". (KHÔNG nói "Đã nhận thông tin").
+  - Khách CHỈ HỎI: Trả lời bình thường + "Bác để lại SĐT mai con gọi".
   - Khách CHỐT ĐƠN / GỬI SĐT: Mới nói "Dạ Shop đã nhận thông tin, mai gọi lại ạ".
 
 ${productKnowledge}
@@ -314,7 +313,7 @@ ${historyString || "(Chưa có)"}
 **Yêu cầu JSON:**
 {
   "response_message": "Câu trả lời text | tách ý bằng dấu |",
-  "image_url_to_send": "link1, link2" (Nếu cần gửi ảnh)
+  "image_url_to_send": "" (Chỉ điền nếu khách ĐÒI xem ảnh. Nếu không, để chuỗi rỗng "")
 }
 `;
 
@@ -378,5 +377,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v2.96 (Fix Doan Mo + Mac Dinh Samsung) chạy tại port ${PORT}`);
+  console.log(`Bot v2.97 (Fix Spam Ảnh + Logic Chào Hỏi) chạy tại port ${PORT}`);
 });
