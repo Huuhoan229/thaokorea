@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "SINGLE PERSONA v2.95" - Fix Lặp Vô Tri + Mặc Định Samsung)
+// File: index.js (Phiên bản "SINGLE PERSONA v2.96" - Fix Lỗi Đoán Mò + Logic Chào Hỏi)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -32,15 +32,13 @@ const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
-// ----- BỘ MAP TOKEN (CHỈ CÒN THẢO KOREA & TRANG MỚI) -----
+// ----- BỘ MAP TOKEN -----
 const pageTokenMap = new Map();
 if (process.env.PAGE_ID_THAO_KOREA && process.env.FB_PAGE_TOKEN_THAO_KOREA) {
     pageTokenMap.set(process.env.PAGE_ID_THAO_KOREA, process.env.FB_PAGE_TOKEN_THAO_KOREA);
-    console.log(`Đã tải Token cho trang Thao Korea: ${process.env.PAGE_ID_THAO_KOREA}`);
 }
 if (process.env.PAGE_ID_TRANG_MOI && process.env.FB_PAGE_TOKEN_TRANG_MOI) {
     pageTokenMap.set(process.env.PAGE_ID_TRANG_MOI, process.env.FB_PAGE_TOKEN_TRANG_MOI);
-    console.log(`Đã tải Token cho trang Trang Moi: ${process.env.PAGE_ID_TRANG_MOI}`);
 }
 
 console.log(`Bot đã được khởi tạo cho ${pageTokenMap.size} Fanpage.`);
@@ -49,9 +47,8 @@ console.log(`Bot đã được khởi tạo cho ${pageTokenMap.size} Fanpage.`);
 let model;
 try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    // Dùng flash 2.0 cho thông minh và nhanh hơn
     model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); 
-    console.log("Đã kết nối với Gemini API (Model: gemini-2.0-flash).");
+    console.log("Đã kết nối với Gemini API.");
 } catch(error) {
     console.error("LỖI KHI KHỞI TẠO GEMINI:", error);
     process.exit(1);
@@ -158,9 +155,8 @@ async function processMessage(pageId, sender_psid, userMessage) {
       await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, false);
       await saveState(uniqueStorageId, userMessage, geminiResult.response_message);
 
-      // === GỬI ẢNH (Logic tách nhiều ảnh bằng dấu phẩy) ===
+      // === GỬI ẢNH ===
       if (geminiResult.image_url_to_send && geminiResult.image_url_to_send.length > 0) {
-          // Tách chuỗi bằng dấu phẩy
           const imageUrls = geminiResult.image_url_to_send.split(',').map(url => url.trim()).filter(url => url.length > 0);
           
           for (const imgUrl of imageUrls) {
@@ -168,13 +164,11 @@ async function processMessage(pageId, sender_psid, userMessage) {
               await new Promise(resolve => setTimeout(resolve, 500));
               try {
                 await sendFacebookImage(FB_PAGE_TOKEN, sender_psid, imgUrl);
-              } catch (imgError) {
-                 console.error("Lỗi gửi ảnh:", imgError.message);
-              }
+              } catch (imgError) {}
           }
       }
       
-      // === GỬI TEXT (Tách câu) ===
+      // === GỬI TEXT ===
       const messages = geminiResult.response_message.split('|');
       for (let i = 0; i < messages.length; i++) {
           const msg = messages[i].trim();
@@ -204,11 +198,11 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "- FREESHIP: Đơn hàng từ 500.000đ trở lên.\n";
     knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng Dầu Lạnh (có thể đổi sang Cao Dán).\n\n";
     
-    // --- SẢN PHẨM CHÍNH (MẶC ĐỊNH) ---
-    knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO - MẶC ĐỊNH]---\n";
+    // --- SẢN PHẨM CHÍNH ---
+    knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN (780.000đ)\n";
     knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
-    knowledgeString += "Đặc điểm: Hộp gỗ màu nâu. Chứa 1% trầm hương. Giúp bổ não, ổn định huyết áp, phòng ngừa tai biến. Đây là loại phổ biến nhất.\n";
+    knowledgeString += "Đặc điểm: Hộp gỗ màu nâu. 1% trầm hương. Loại phổ biến nhất.\n";
     knowledgeString += "-----------------\n\n";
     
     knowledgeString += "---[SẢN PHẨM KHÁC]---\n";
@@ -228,7 +222,7 @@ function getProductKnowledge_ThaoKorea() {
 
     knowledgeString += "7. AN CUNG TRẦM HƯƠNG KWANGDONG 60 VIÊN (1.290.000đ)\n";
     knowledgeString += "Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
-    knowledgeString += "Đặc điểm: Hộp màu đen/xám. 15% trầm hương (cao cấp nhất). Dùng cho người đã bị tai biến hoặc muốn loại tốt nhất.\n";
+    knowledgeString += "Đặc điểm: Hộp màu đen/xám. 15% trầm hương (cao cấp).\n";
 
     knowledgeString += "8. AN CUNG ROYAL FAMILY 32 VIÊN (690.000đ)\n";
     knowledgeString += "Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_-600x449.jpg\"\n";
@@ -272,7 +266,7 @@ async function saveAdminReply(pageId, customerId, text) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI [UPDATE LOGIC MỚI: MẶC ĐỊNH SAMSUNG + FIX LẶP]
+// HÀM GỌI GEMINI [LOGIC MỚI: PHÂN LOẠI KHÁCH HÀNG]
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) return { response_message: "..." };
@@ -287,25 +281,28 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     // --- PROMPT MỚI ---
     let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' và gọi khách là '${greetingName}'.
     
-**LUẬT CẤM (TUÂN THỦ TUYỆT ĐỐI):**
-1. KHÔNG dùng từ 'Admin', 'Bot'. Gọi người trả lời trước đó là 'Shop'.
-2. KHÔNG gửi link trong text (chỉ gửi text).
-3. **KHÔNG LẶP LẠI:** Nếu trong lịch sử chat, Shop vừa nói "Shop đã nhận thông tin..." thì tuyệt đối không nói lại câu đó nữa.
+**LUẬT CẤM:**
+1. KHÔNG dùng từ 'Admin', 'Bot'.
+2. KHÔNG gửi link trong text.
+3. KHÔNG lặp lại câu "Shop đã nhận thông tin" nếu đã nói rồi.
 
-**LUẬT SẢN PHẨM (MẶC ĐỊNH SAMSUNG):**
-- Nếu khách hỏi chung chung "An Cung", "thuốc chống đột quỵ", "loại hộp gỗ"... -> **Tư vấn NGAY vào An Cung Samsung (780k)**.
-- Không cần hỏi ngược lại "Bác muốn loại nào". Cứ giới thiệu Samsung trước.
-- Chỉ khi khách chê đắt hoặc hỏi loại tốt hơn thì mới giới thiệu Royal (690k) hoặc Kwangdong (1290k).
+**LUẬT TƯ VẤN SẢN PHẨM (CỰC KỲ QUAN TRỌNG):**
+1. **KHÁCH HỎI CHUNG CHUNG** ("Tôi muốn mua sản phẩm", "Shop có gì bán", "Tư vấn cho tôi"):
+   -> **HÀNH ĐỘNG:** KHÔNG ĐƯỢC mặc định là An Cung.
+   -> **TRẢ LỜI:** Hãy chào khách và liệt kê ngắn gọn các dòng sản phẩm chính để khách chọn:
+      - An Cung Ngưu Hoàng (Phòng chống đột quỵ)
+      - Cao Hồng Sâm (Bồi bổ sức khỏe)
+      - Tinh Dầu Thông Đỏ (Mỡ máu)
+      - Nước Mát Gan, Nước Hồng Sâm...
+   -> Hỏi lại: "Bác đang quan tâm đến dòng sản phẩm nào để Shop tư vấn kỹ hơn ạ?"
+
+2. **KHÁCH HỎI CỤ THỂ "AN CUNG"** ("An cung", "thuốc đột quỵ", "hộp gỗ"):
+   -> **HÀNH ĐỘNG:** Lúc này mới được tư vấn thẳng vào **An Cung Samsung (780k)** (vì đây là sản phẩm chủ đạo).
 
 **LUẬT GIỜ GIẤC (Hiện tại là ${currentHour} giờ):**
-- Nếu là giờ hành chính (8h-17h): Tư vấn và chốt đơn bình thường.
-- **NẾU LÀ NGOÀI GIỜ (17h-8h sáng hôm sau):**
-  - **Trường hợp A (Khách CHỈ HỎI/TƯ VẤN):**
-    -> Trả lời câu hỏi của khách một cách nhiệt tình.
-    -> Kết thúc bằng câu: *"Bác cần tư vấn kỹ hơn thì cứ để lại SĐT mai con gọi tư vấn cho Bác nhé!"*.
-    -> **CẤM** nói "Shop đã nhận thông tin" ở trường hợp này.
-  - **Trường hợp B (Khách ĐÃ CHỐT ĐƠN hoặc ĐÃ GỬI SĐT):**
-    -> Lúc này mới nói: *"Dạ Shop đã nhận đủ thông tin. Giờ muộn rồi, sáng mai nhân viên Shop sẽ ưu tiên gọi lại xác nhận đơn cho Bác sớm nhất ạ!"*.
+- Nếu 17h-8h sáng hôm sau:
+  - Khách CHỈ HỎI: Trả lời bình thường + "Bác để lại SĐT mai con gọi". (KHÔNG nói "Đã nhận thông tin").
+  - Khách CHỐT ĐƠN / GỬI SĐT: Mới nói "Dạ Shop đã nhận thông tin, mai gọi lại ạ".
 
 ${productKnowledge}
 
@@ -317,7 +314,7 @@ ${historyString || "(Chưa có)"}
 **Yêu cầu JSON:**
 {
   "response_message": "Câu trả lời text | tách ý bằng dấu |",
-  "image_url_to_send": "link1, link2" (Nếu cần gửi ảnh, cách nhau bằng dấu phẩy)
+  "image_url_to_send": "link1, link2" (Nếu cần gửi ảnh)
 }
 `;
 
@@ -381,5 +378,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v2.95 (Fix Vô Tri + Mặc Định Samsung) chạy tại port ${PORT}`);
+  console.log(`Bot v2.96 (Fix Doan Mo + Mac Dinh Samsung) chạy tại port ${PORT}`);
 });
