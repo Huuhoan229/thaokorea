@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "SINGLE PERSONA v2.98" - Update Hotline & Địa Chỉ)
+// File: index.js (Phiên bản "SINGLE PERSONA v2.99" - Cấm Tự Ý Tặng Quà + Fix Mặc Cả)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -82,11 +82,11 @@ app.post('/webhook', (req, res) => {
       if (entry.messaging && entry.messaging.length > 0) {
         const webhook_event = entry.messaging[0];
         
-        // === XỬ LÝ ECHO (TIN NHẮN TỪ PAGE/ADMIN) ===
+        // === XỬ LÝ ECHO ===
         if (webhook_event.message && webhook_event.message.is_echo) {
             const metadata = webhook_event.message.metadata;
             if (metadata === "FROM_BOT_AUTO") {
-                return; // Bot tự nói -> Bỏ qua
+                return; 
             } else {
                 // Admin chat tay -> Lưu lại
                 const adminText = webhook_event.message.text;
@@ -98,7 +98,7 @@ app.post('/webhook', (req, res) => {
                 return;
             }
         }
-        // ============================================
+        // ==================
 
         const sender_psid = webhook_event.sender.id;
         let userMessage = null;
@@ -190,22 +190,23 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // -------------------------------------------------------------------
-// BỘ NÃO (THẢO KOREA) - [ĐÃ CẬP NHẬT HOTLINE & ĐỊA CHỈ]
+// BỘ NÃO (THẢO KOREA) - [CẬP NHẬT LUẬT TẶNG QUÀ]
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
     
-    // --- THÔNG TIN LIÊN HỆ ---
+    // --- THÔNG TIN ---
     knowledgeString += "**THÔNG TIN SHOP:**\n";
     knowledgeString += "- Địa chỉ Tổng công ty: Long Biên, Hà Nội.\n";
     knowledgeString += "- Địa chỉ Kho: Hà Đông, Hà Nội.\n";
-    knowledgeString += "- LƯU Ý QUAN TRỌNG: Shop CHỈ BÁN ONLINE, ship COD toàn quốc, khách không đến kho mua trực tiếp.\n";
+    knowledgeString += "- LƯU Ý: Shop CHỈ BÁN ONLINE, ship COD toàn quốc.\n";
     knowledgeString += "- **HOTLINE (Hỗ trợ gấp):** 0986.646.845 - 0948.686.946 - 0946.686.474\n\n";
     
-    knowledgeString += "**CHÍNH SÁCH:**\n";
-    knowledgeString += "- GIỜ LÀM VIỆC: 8h00 - 17h00 hàng ngày.\n";
-    knowledgeString += "- FREESHIP: Đơn hàng từ 500.000đ trở lên.\n";
-    knowledgeString += "- QUÀ TẶNG: Mua 1 hộp tặng Dầu Lạnh (có thể đổi sang Cao Dán).\n\n";
+    // --- QUY ĐỊNH QUÀ TẶNG (QUAN TRỌNG) ---
+    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG (NGHIÊM NGẶT):**\n";
+    knowledgeString += "- Mua 1 hộp (các SP có quà): Tặng 1 Dầu Lạnh (hoặc đổi sang 1 Cao Dán).\n";
+    knowledgeString += "- **TUYỆT ĐỐI KHÔNG:** Không được tự ý tặng thêm quà ngoài danh sách (KHÔNG trà sâm, KHÔNG kẹo, KHÔNG giảm giá).\n";
+    knowledgeString += "- Nếu khách mặc cả hoặc đòi thêm quà: Hãy nói 'Dạ giá niêm yết công ty rồi ạ, Shop tặng Bác Dầu Lạnh là ưu đãi tốt nhất rồi Bác thông cảm giúp Shop nha'.\n\n";
     
     // --- SẢN PHẨM ---
     knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO]---\n";
@@ -275,7 +276,7 @@ async function saveAdminReply(pageId, customerId, text) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI [LOGIC: HOTLINE + PHÂN LOẠI + CHỐNG SPAM]
+// HÀM GỌI GEMINI [UPDATE LOGIC CẤM TẶNG QUÀ]
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) return { response_message: "..." };
@@ -290,25 +291,25 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     // --- PROMPT MỚI ---
     let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' và gọi khách là '${greetingName}'.
     
-**LUẬT CẤM:**
-1. KHÔNG dùng từ 'Admin', 'Bot'.
-2. KHÔNG gửi link trong text.
-3. KHÔNG lặp lại câu "Shop đã nhận thông tin" nếu đã nói rồi.
+**LUẬT CẤM (NGHIÊM NGẶT):**
+1. **CẤM BỊA QUÀ TẶNG:** Chỉ được tặng Dầu Lạnh hoặc Cao Dán. TUYỆT ĐỐI KHÔNG tặng trà sâm, kẹo, hay bất cứ thứ gì khác kể cả khi khách đòi.
+2. **CẤM GIẢM GIÁ:** Giá bán là cố định. Nếu khách mặc cả, hãy từ chối khéo: "Dạ giá này là giá công ty niêm yết rồi ạ".
+3. **CẤM LẶP LẠI:** Không nói lặp "Shop đã nhận thông tin" nếu đã nói rồi.
+4. **CẤM GỬI LINK TRONG TEXT.**
 
-**LUẬT HOTLINE & ĐỊA CHỈ:**
-- Nếu khách hỏi địa chỉ: Nhấn mạnh Shop chỉ bán ONLINE, Tổng công ty ở Long Biên, Kho ở Hà Đông.
-- Nếu khách CẦN GẤP (ví dụ: 'gấp lắm', 'giao ngay', 'cần luôn'): Cung cấp ngay 3 số HOTLINE: 0986.646.845 - 0948.686.946 - 0946.686.474 để khách gọi cho nhanh.
+**LUẬT HOTLINE:**
+- Khách cần gấp -> Gửi ngay 3 số Hotline (0986.646.845...).
+
+**LUẬT TƯ VẤN:**
+- Khách hỏi "An Cung" -> Tư vấn ngay **An Cung Samsung (780k)**.
+- Khách hỏi chung chung -> Liệt kê các dòng SP.
 
 **LUẬT GỬI ẢNH (KHẮT KHE):**
 - Chỉ điền link vào 'image_url_to_send' khi khách ĐÒI XEM ẢNH.
 - Nếu đang tư vấn bình thường -> ĐỂ TRỐNG trường ảnh.
 
-**LUẬT TƯ VẤN SẢN PHẨM:**
-1. Hỏi chung chung ("Shop bán gì"): Liệt kê các dòng chính -> Hỏi khách quan tâm gì.
-2. Hỏi "An Cung" / "Đột Quỵ": Tư vấn thẳng **An Cung Samsung (780k)**.
-
-**LUẬT GIỜ GIẤC (Hiện tại là ${currentHour} giờ):**
-- Nếu 17h-8h sáng hôm sau:
+**LUẬT GIỜ GIẤC (Hiện tại ${currentHour} giờ):**
+- 17h-8h sáng hôm sau:
   - Khách CHỈ HỎI: Trả lời bình thường + "Bác để lại SĐT mai con gọi".
   - Khách CHỐT ĐƠN / GỬI SĐT: Mới nói "Dạ Shop đã nhận thông tin, mai gọi lại ạ".
 
@@ -386,5 +387,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v2.98 (Update Hotline & Dia Chi) chạy tại port ${PORT}`);
+  console.log(`Bot v2.99 (Cam Tu Y Tang Qua) chạy tại port ${PORT}`);
 });
