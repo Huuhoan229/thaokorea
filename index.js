@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "SINGLE PERSONA v3.1 - STABLE" - Quay Lại Bản Ổn Định Nhất)
+// File: index.js (Phiên bản "SINGLE PERSONA v3.5" - Logic Tính Ship: >500k Freeship, <500k +30k)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -69,7 +69,7 @@ app.get('/webhook', (req, res) => {
 });
 
 // -------------------------------------------------------------------
-// Endpoint 2: Nhận tin nhắn (QUAY VỀ LOGIC CƠ BẢN - CHỈ XỬ LÝ TEXT)
+// Endpoint 2: Nhận tin nhắn
 // -------------------------------------------------------------------
 app.post('/webhook', (req, res) => {
   let body = req.body;
@@ -82,13 +82,12 @@ app.post('/webhook', (req, res) => {
       if (entry.messaging && entry.messaging.length > 0) {
         const webhook_event = entry.messaging[0];
         
-        // === XỬ LÝ ECHO (TIN NHẮN TỪ PAGE/ADMIN) ===
+        // === XỬ LÝ ECHO (TIN ADMIN) ===
         if (webhook_event.message && webhook_event.message.is_echo) {
             const metadata = webhook_event.message.metadata;
             if (metadata === "FROM_BOT_AUTO") {
-                return; // Bot tự nói -> Bỏ qua
+                return; 
             } else {
-                // Admin chat tay -> Lưu lại
                 const adminText = webhook_event.message.text;
                 const recipientID = webhook_event.recipient.id;
                 if (adminText && recipientID) {
@@ -102,8 +101,7 @@ app.post('/webhook', (req, res) => {
         const sender_psid = webhook_event.sender.id;
         let userMessage = null;
 
-        // === CHỈ LẤY TIN NHẮN CÓ CHỮ (TEXT) HOẶC QUICK REPLY ===
-        // Bỏ qua mọi thứ khác (Sticker, Gọi nhỡ, Ảnh, File...) để tránh lỗi
+        // === CHỈ LẤY TIN NHẮN CÓ CHỮ HOẶC QUICK REPLY ===
         if (webhook_event.message) {
             if (webhook_event.message.text) {
                 userMessage = webhook_event.message.text;
@@ -140,8 +138,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
       await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, true);
       
       let userName = await getFacebookUserName(FB_PAGE_TOKEN, sender_psid);
-      // Load 20 tin nhắn để nhớ lịch sử
-      const userState = await loadState(uniqueStorageId); 
+      const userState = await loadState(uniqueStorageId);
       
       let productKnowledge;
       let geminiResult;
@@ -193,40 +190,50 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // -------------------------------------------------------------------
-// BỘ NÃO (THẢO KOREA)
+// BỘ NÃO (THẢO KOREA) - [UPDATE QUY ĐỊNH SHIP]
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
-    knowledgeString += "- GIỜ LÀM VIỆC: 8h00 - 17h00 hàng ngày.\n";
-    knowledgeString += "- FREESHIP: Đơn hàng từ 500.000đ trở lên.\n";
+    knowledgeString += "- Shop CHỈ BÁN ONLINE. Kho Hà Đông, VP Long Biên.\n";
     knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
-    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng Dầu Lạnh (có thể đổi sang Cao Dán).\n\n";
+    knowledgeString += "- QUÀ TẶNG: Mua 1 hộp tặng 1 Dầu Lạnh (hoặc Cao Dán). KHÔNG tặng trà/kẹo. KHÔNG giảm giá.\n\n";
     
-    // --- SẢN PHẨM CHÍNH ---
-    knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO - MẶC ĐỊNH]---\n";
+    // --- QUY ĐỊNH SHIP (QUAN TRỌNG) ---
+    knowledgeString += "**QUY ĐỊNH SHIP:**\n";
+    knowledgeString += "- Đơn hàng >= 500.000đ: FREESHIP (Miễn phí vận chuyển).\n";
+    knowledgeString += "- Đơn hàng < 500.000đ: Phí ship 30.000đ.\n";
+    knowledgeString += "- Ví dụ: Cao Sâm 2 lọ (450k) -> Tổng thanh toán: 480k (450k + 30k ship).\n\n";
+    // ----------------------------------
+
+    knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN (780.000đ)\n";
     knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
-    knowledgeString += "Đặc điểm: Hộp gỗ màu nâu. 1% trầm hương. Loại phổ biến nhất.\n";
+    knowledgeString += "Đặc điểm: Hộp gỗ màu nâu. 1% trầm hương. (Giá > 500k -> Freeship).\n";
     knowledgeString += "-----------------\n\n";
     
     knowledgeString += "---[SẢN PHẨM KHÁC]---\n";
-    knowledgeString += "2. HỘP CAO HỒNG SÂM 365 HÀN QUỐC (Hộp 2 lọ - 450.000đ)\n";
-    knowledgeString += "Image_URL: \"https://product.hstatic.net/200000494375/product/z4941235209154_120a0977cf9b70138a2330b5fee4f1db_8ddbf4c7f03244e6a24e49551e83dee2_master.jpg\"\n";
+    
+    knowledgeString += "2. HỘP CAO HỒNG SÂM 365 HÀN QUỐC (Mỗi lọ 240g)\n";
+    knowledgeString += "   - Hộp 2 Lọ: 450.000đ (Dưới 500k -> +30k Ship = 480k).\n";
+    knowledgeString += "   - Hộp 4 Lọ: 850.000đ (Trên 500k -> FREESHIP).\n";
+    knowledgeString += "   - Image_URL (Loại 2 Lọ): \"https://ghshop.vn/images/upload/images/Cao-H%E1%BB%93ng-S%C3%A2m-365-H%C3%A0n-Qu%E1%BB%91c-Lo%E1%BA%A1i-2-L%E1%BB%8D.png\"\n";
+    knowledgeString += "   - Image_URL (Loại 4 Lọ): \"https://thuoc365.vn/wp-content/uploads/2017/12/cao-hong-sam-4.jpg\"\n";
 
     knowledgeString += "3. HỘP TINH DẦU THÔNG ĐỎ KWANGDONG (1.150.000đ - 120 viên)\n";
     knowledgeString += "Image_URL: \"https://product.hstatic.net/1000260265/product/tinh_dau_thong_do_tai_da_nang_5b875a5a4c114cb09455e328aee71b97_master.jpg\"\n";
 
     knowledgeString += "4. NƯỚC HỒNG SÂM NHUNG HƯƠU 30 GÓI (420.000đ)\n";
     knowledgeString += "Image_URL: \"https://samyenthinhphat.com/uploads/Images/sam-nuoc/tinh-chat-hong-sam-nhung-huou-hop-30-goi-006.jpg\"\n";
+    knowledgeString += "Lưu ý: Giá 420k (Dưới 500k -> +30k Ship = 450k).\n";
 
     knowledgeString += "5. NƯỚC HỒNG SÂM NHUNG HƯƠU 20 GÓI (HẾT HÀNG)\n";
     
     knowledgeString += "6. NƯỚC MÁT GAN ĐÔNG TRÙNG NGHỆ SAMSUNG (390.000đ)\n";
     knowledgeString += "Image_URL: \"https://hueminhkorea.com/wp-content/uploads/2025/02/mat-gan-nghe-dong-trung-tw-han-quoc-2.jpg\"\n";
+    knowledgeString += "Lưu ý: Giá 390k (Dưới 500k -> +30k Ship = 420k).\n";
 
     knowledgeString += "7. AN CUNG TRẦM HƯƠNG KWANGDONG 60 VIÊN (1.290.000đ)\n";
     knowledgeString += "Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
-    knowledgeString += "Đặc điểm: Hộp màu đen/xám. 15% trầm hương (cao cấp).\n";
 
     knowledgeString += "8. AN CUNG ROYAL FAMILY 32 VIÊN (690.000đ)\n";
     knowledgeString += "Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_-600x449.jpg\"\n";
@@ -270,7 +277,7 @@ async function saveAdminReply(pageId, customerId, text) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI [PROMPT CHUẨN]
+// HÀM GỌI GEMINI [PROMPT UPDATE LOGIC SHIP]
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) return { response_message: "..." };
@@ -278,7 +285,6 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     const historyString = userState.history.map(h => `${h.role === 'user' ? 'Khách' : 'Shop'}: ${h.content}`).join('\n');
     const greetingName = userName ? "Bác " + userName : "Bác";
 
-    // ----- XỬ LÝ LOGIC THỜI GIAN (THỨ + GIỜ) -----
     const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
     const hour = now.getHours();
     const day = now.getDay();
@@ -289,35 +295,35 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
         if (hour >= 8 && hour < 17) {
             timeContext = "Hiện tại là GIỜ HÀNH CHÍNH (8h-17h). Chốt đơn bình thường.";
         } else {
-            timeContext = "Hiện tại là NGOÀI GIỜ. Khách chốt đơn -> Hẹn 8h sáng mai (hoặc lát nữa nếu là sáng sớm) gọi lại.";
+            timeContext = "Hiện tại là NGOÀI GIỜ. Khách chốt đơn -> Hẹn 8h sáng mai gọi lại.";
         }
     }
-    // --------------------------------
 
-    // --- PROMPT MỚI ---
-    let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' và gọi khách là '${greetingName}'.
+    let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' - '${greetingName}'.
     
-**LUẬT CẤM (TUÂN THỦ TUYỆT ĐỐI):**
+**LUẬT CẤM:**
 1. CẤM dùng từ 'Admin', 'Bot'.
 2. CẤM gửi link trong text.
-3. CẤM bịa quà (Chỉ tặng Dầu Lạnh/Cao Dán). CẤM giảm giá.
-4. CẤM nói lặp "Shop đã nhận thông tin" nếu trong lịch sử đã nói rồi.
+3. CẤM bịa quà. CẤM giảm giá.
+4. CẤM nói lặp "Shop đã nhận thông tin".
 
-**LUẬT RÀ SOÁT THÔNG TIN (RẤT QUAN TRỌNG):**
-- Trước khi xin SĐT/Địa chỉ, **PHẢI** đọc kỹ "Lịch sử chat" bên dưới.
-- Nếu trong lịch sử Khách đã từng gửi SĐT hoặc Địa chỉ -> **TUYỆT ĐỐI KHÔNG XIN LẠI**.
-- Thay vào đó hãy nói: "Dạ Shop đã có thông tin của Bác rồi ạ. Shop chốt đơn gửi về [Nhắc lại địa chỉ] cho Bác nhé?".
+**LUẬT TÍNH SHIP (CỰC KỲ QUAN TRỌNG):**
+- **ĐƠN HÀNG < 500K:** BẮT BUỘC cộng thêm 30k phí ship.
+  -> Ví dụ: Cao Sâm 2 lọ (450k) -> Báo giá: "Dạ 450k + 30k ship là 480k ạ".
+  -> Ví dụ: Mát gan (390k) -> Báo giá: "Dạ 390k + 30k ship là 420k ạ".
+- **ĐƠN HÀNG >= 500K:** FREESHIP.
+  -> Ví dụ: 2 hộp Cao Sâm 2 lọ (450k x 2 = 900k) -> Freeship.
+  -> Ví dụ: Cao Sâm 4 lọ (850k) -> Freeship.
+
+**LUẬT RÀ SOÁT THÔNG TIN:**
+- Trước khi xin SĐT/Địa chỉ, **PHẢI** đọc kỹ "Lịch sử chat". Nếu có rồi thì KHÔNG xin lại.
 
 **LUẬT TƯ VẤN:**
 - Hỏi "An Cung" -> Tư vấn **Samsung (780k)**.
 - Gửi ảnh: Chỉ gửi khi khách ĐÒI.
 
-**NGỮ CẢNH THỜI GIAN HIỆN TẠI:**
+**NGỮ CẢNH THỜI GIAN:**
 ${timeContext}
-
-**LUẬT XỬ LÝ NGOÀI GIỜ:**
-- Nếu là Ngoài giờ: Chỉ nói câu "Shop đã nhận thông tin" KHI VÀ CHỈ KHI khách đã **Chốt đơn** hoặc **Gửi SĐT**.
-- Nếu khách chỉ hỏi vu vơ: Trả lời bình thường + "Bác để lại SĐT mai con gọi".
 
 ${productKnowledge}
 
@@ -393,5 +399,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v3.1 (Stable Version) chạy tại port ${PORT}`);
+  console.log(`Bot v3.5 (Tinh Ship Chuan 100%) chạy tại port ${PORT}`);
 });
