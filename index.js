@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "SINGLE PERSONA v3.1" - Fix Lỗi Xin Lại Địa Chỉ + Rà Soát Lịch Sử)
+// File: index.js (Phiên bản "SINGLE PERSONA v3.3" - Bắt Cuộc Gọi Nhỡ Tự Động)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -32,7 +32,7 @@ const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
-// ----- BỘ MAP TOKEN -----
+// ----- BỘ MAP TOKEN (CHỈ CÒN THẢO KOREA & TRANG MỚI) -----
 const pageTokenMap = new Map();
 if (process.env.PAGE_ID_THAO_KOREA && process.env.FB_PAGE_TOKEN_THAO_KOREA) {
     pageTokenMap.set(process.env.PAGE_ID_THAO_KOREA, process.env.FB_PAGE_TOKEN_THAO_KOREA);
@@ -47,7 +47,6 @@ console.log(`Bot đã được khởi tạo cho ${pageTokenMap.size} Fanpage.`);
 let model;
 try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    // Vẫn dùng 2.0 flash để đọc hiểu ngữ cảnh tốt nhất
     model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); 
     console.log("Đã kết nối với Gemini API.");
 } catch(error) {
@@ -83,12 +82,13 @@ app.post('/webhook', (req, res) => {
       if (entry.messaging && entry.messaging.length > 0) {
         const webhook_event = entry.messaging[0];
         
-        // === XỬ LÝ ECHO ===
+        // === XỬ LÝ ECHO (TIN NHẮN TỪ PAGE/ADMIN) ===
         if (webhook_event.message && webhook_event.message.is_echo) {
             const metadata = webhook_event.message.metadata;
             if (metadata === "FROM_BOT_AUTO") {
-                return; 
+                return; // Bot tự nói -> Bỏ qua
             } else {
+                // Admin chat tay -> Lưu lại
                 const adminText = webhook_event.message.text;
                 const recipientID = webhook_event.recipient.id;
                 if (adminText && recipientID) {
@@ -98,7 +98,7 @@ app.post('/webhook', (req, res) => {
                 return;
             }
         }
-        // ==================
+        // ============================================
 
         const sender_psid = webhook_event.sender.id;
         let userMessage = null;
@@ -136,8 +136,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
       await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, true);
       
       let userName = await getFacebookUserName(FB_PAGE_TOKEN, sender_psid);
-      // Tải nhiều lịch sử hơn (20 tin) để Bot soi kỹ
-      const userState = await loadState(uniqueStorageId); 
+      const userState = await loadState(uniqueStorageId);
       
       let productKnowledge;
       let geminiResult;
@@ -158,6 +157,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
       // === GỬI ẢNH ===
       if (geminiResult.image_url_to_send && geminiResult.image_url_to_send.length > 0) {
           const imageUrls = geminiResult.image_url_to_send.split(',').map(url => url.trim()).filter(url => url.length > 0);
+          
           for (const imgUrl of imageUrls) {
               await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, true);
               await new Promise(resolve => setTimeout(resolve, 500));
@@ -193,13 +193,20 @@ async function processMessage(pageId, sender_psid, userMessage) {
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
-    knowledgeString += "- Shop CHỈ BÁN ONLINE. Kho Hà Đông, VP Long Biên.\n";
-    knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
-    knowledgeString += "- QUÀ TẶNG: Mua 1 hộp tặng 1 Dầu Lạnh (hoặc Cao Dán). KHÔNG tặng trà/kẹo. KHÔNG giảm giá.\n\n";
+    
+    knowledgeString += "**THÔNG TIN SHOP:**\n";
+    knowledgeString += "- Địa chỉ: Long Biên (VP) & Hà Đông (Kho), Hà Nội.\n";
+    knowledgeString += "- LƯU Ý: Shop CHỈ BÁN ONLINE, ship COD toàn quốc.\n";
+    knowledgeString += "- **HOTLINE GẤP:** 0986.646.845 - 0948.686.946 - 0946.686.474\n\n";
+    
+    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG (NGHIÊM NGẶT):**\n";
+    knowledgeString += "- Mua 1 hộp: Tặng 1 Dầu Lạnh (hoặc Cao Dán).\n";
+    knowledgeString += "- **TUYỆT ĐỐI KHÔNG:** Tặng trà, kẹo, hay giảm giá.\n\n";
     
     knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN (780.000đ)\n";
     knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
+    knowledgeString += "Đặc điểm: 1% trầm hương. Hộp gỗ nâu. Loại phổ biến nhất.\n";
     knowledgeString += "-----------------\n\n";
     
     knowledgeString += "---[SẢN PHẨM KHÁC]---\n";
@@ -219,6 +226,7 @@ function getProductKnowledge_ThaoKorea() {
 
     knowledgeString += "7. AN CUNG TRẦM HƯƠNG KWANGDONG 60 VIÊN (1.290.000đ)\n";
     knowledgeString += "Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
+    knowledgeString += "Đặc điểm: 15% trầm hương (cao cấp nhất).\n";
 
     knowledgeString += "8. AN CUNG ROYAL FAMILY 32 VIÊN (690.000đ)\n";
     knowledgeString += "Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_-600x449.jpg\"\n";
@@ -233,7 +241,6 @@ async function loadState(uniqueStorageId) {
   if (!db) return { history: [] }; 
   try {
       const doc = await db.collection('users').doc(uniqueStorageId).get();
-      // Tăng lên 20 tin để nhớ được SĐT khách gửi từ lâu
       return doc.exists ? { history: doc.data().history ? doc.data().history.slice(-20) : [] } : { history: [] };
   } catch (error) { return { history: [] }; }
 }
@@ -263,7 +270,7 @@ async function saveAdminReply(pageId, customerId, text) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI [FIX LỖI: MÙ NGỮ CẢNH + SPAM XIN SỐ]
+// HÀM GỌI GEMINI [UPDATE LOGIC MỚI: BẮT CUỘC GỌI NHỠ]
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) return { response_message: "..." };
@@ -282,36 +289,38 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
         if (hour >= 8 && hour < 17) {
             timeContext = "Hiện tại là GIỜ HÀNH CHÍNH (8h-17h). Chốt đơn bình thường.";
         } else {
-            timeContext = "Hiện tại là NGOÀI GIỜ. Khách chốt đơn -> Hẹn 8h sáng mai (hoặc lát nữa nếu là sáng sớm) gọi lại.";
+            timeContext = "Hiện tại là NGOÀI GIỜ. Khách chốt đơn -> Hẹn 8h sáng mai gọi lại.";
         }
     }
     // --------------------------------
 
-    // --- PROMPT MỚI: THÊM LUẬT RÀ SOÁT LỊCH SỬ ---
-    let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' - '${greetingName}'.
+    // --- PROMPT MỚI ---
+    let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' và gọi khách là '${greetingName}'.
     
-**LUẬT CẤM (TUÂN THỦ TUYỆT ĐỐI):**
+**LUẬT XỬ LÝ CUỘC GỌI NHỠ / GẤP (ƯU TIÊN SỐ 1):**
+- Nếu tin nhắn của khách là: **"Đã bỏ lỡ cuộc gọi thoại"** (Đây là thông báo hệ thống), "Cuộc gọi video bị nhỡ", "alo", "nghe máy đi"...
+- Hoặc khách nói: "cần gấp", "giao ngay".
+-> **HÀNH ĐỘNG NGAY:** Xin lỗi vì đang bận đóng hàng và gửi 3 số Hotline: **0986.646.845 - 0948.686.946 - 0946.686.474** để khách gọi lại cho nhanh.
+
+**LUẬT CẤM (NGHIÊM NGẶT):**
 1. CẤM dùng từ 'Admin', 'Bot'.
 2. CẤM gửi link trong text.
-3. CẤM tặng quà linh tinh (Chỉ Dầu Lạnh/Cao Dán).
-4. CẤM nói lặp "Shop đã nhận thông tin".
+3. CẤM bịa quà. CẤM giảm giá.
+4. CẤM nói lặp "Shop đã nhận thông tin" nếu lịch sử đã có.
 
-**LUẬT QUAN TRỌNG NHẤT - RÀ SOÁT THÔNG TIN:**
-- Trước khi xin Địa Chỉ hay SĐT, **BẮT BUỘC** phải đọc kỹ "Lịch sử chat" bên dưới.
-- Nếu trong lịch sử, Khách **ĐÃ TỪNG** nhắn SĐT (dãy số) hoặc Địa chỉ (tên tỉnh, đường...), thì **TUYỆT ĐỐI KHÔNG ĐƯỢC XIN LẠI**.
-- **Hành động đúng:** Hãy nói "Dạ Shop đã có thông tin của Bác rồi ạ. Shop chốt đơn [Tên SP] gửi về [Địa chỉ trong lịch sử] cho Bác nhé?".
+**LUẬT RÀ SOÁT THÔNG TIN:**
+- Trước khi xin SĐT/Địa chỉ, **PHẢI** đọc "Lịch sử chat". Nếu có rồi thì KHÔNG xin lại.
 
 **LUẬT TƯ VẤN:**
 - Hỏi "An Cung" -> Tư vấn **Samsung (780k)**.
-- Hỏi chung chung -> Liệt kê các dòng SP.
-- Gửi ảnh: Chỉ gửi khi khách ĐÒI (từ khóa: 'ảnh', 'hình', 'xem mẫu').
+- Gửi ảnh: Chỉ gửi khi khách ĐÒI.
 
 **NGỮ CẢNH THỜI GIAN:**
 ${timeContext}
 
 ${productKnowledge}
 
-**Lịch sử chat (HÃY ĐỌC KỸ ĐỂ TÌM SĐT/ĐỊA CHỈ):**
+**Lịch sử chat:**
 ${historyString || "(Chưa có)"}
 
 **Khách nhắn:** "${userMessage}"
@@ -319,7 +328,7 @@ ${historyString || "(Chưa có)"}
 **Yêu cầu JSON:**
 {
   "response_message": "Câu trả lời text | tách ý bằng dấu |",
-  "image_url_to_send": "" (Chỉ điền nếu khách ĐÒI xem ảnh)
+  "image_url_to_send": "link1, link2" (Nếu cần gửi ảnh)
 }
 `;
 
@@ -383,5 +392,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v3.1 (Fix Xin Lai Dia Chi + Ra Soat Lich Su) chạy tại port ${PORT}`);
+  console.log(`Bot v3.3 (Fix Missed Call) chạy tại port ${PORT}`);
 });
