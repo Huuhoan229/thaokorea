@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "SINGLE PERSONA v3.3" - Bắt Cuộc Gọi Nhỡ Tự Động)
+// File: index.js (Phiên bản "SINGLE PERSONA v3.5" - Anti-Spam Sticker & Xử Lý Ảnh)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -32,7 +32,7 @@ const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
-// ----- BỘ MAP TOKEN (CHỈ CÒN THẢO KOREA & TRANG MỚI) -----
+// ----- BỘ MAP TOKEN -----
 const pageTokenMap = new Map();
 if (process.env.PAGE_ID_THAO_KOREA && process.env.FB_PAGE_TOKEN_THAO_KOREA) {
     pageTokenMap.set(process.env.PAGE_ID_THAO_KOREA, process.env.FB_PAGE_TOKEN_THAO_KOREA);
@@ -69,7 +69,7 @@ app.get('/webhook', (req, res) => {
 });
 
 // -------------------------------------------------------------------
-// Endpoint 2: Nhận tin nhắn
+// Endpoint 2: Nhận tin nhắn (LOGIC PHÂN LOẠI TIN NHẮN CỰC MẠNH)
 // -------------------------------------------------------------------
 app.post('/webhook', (req, res) => {
   let body = req.body;
@@ -82,7 +82,7 @@ app.post('/webhook', (req, res) => {
       if (entry.messaging && entry.messaging.length > 0) {
         const webhook_event = entry.messaging[0];
         
-        // === XỬ LÝ ECHO (TIN NHẮN TỪ PAGE/ADMIN) ===
+        // === 1. XỬ LÝ ECHO (TIN ADMIN) ===
         if (webhook_event.message && webhook_event.message.is_echo) {
             const metadata = webhook_event.message.metadata;
             if (metadata === "FROM_BOT_AUTO") {
@@ -98,15 +98,36 @@ app.post('/webhook', (req, res) => {
                 return;
             }
         }
-        // ============================================
-
+        
         const sender_psid = webhook_event.sender.id;
         let userMessage = null;
-        if (webhook_event.message && webhook_event.message.text) {
-            userMessage = webhook_event.message.text;
-        } else if (webhook_event.message && webhook_event.message.quick_reply) {
-            userMessage = webhook_event.message.quick_reply.payload;
+
+        // === 2. PHÂN LOẠI TIN NHẮN (QUAN TRỌNG) ===
+        if (webhook_event.message) {
+            // A. NẾU LÀ STICKER -> BỎ QUA (CHỐNG SPAM)
+            if (webhook_event.message.sticker_id) {
+                console.log(`[SPAM STICKER] Bỏ qua sticker từ ${sender_psid}`);
+                return; // Dừng ngay, không làm gì cả
+            }
+
+            // B. NẾU LÀ ẢNH/VIDEO/FILE -> ĐỔI THÀNH TEXT ĐỂ BOT HIỂU
+            if (webhook_event.message.attachments) {
+                console.log(`[IMAGE] Khách gửi ảnh.`);
+                userMessage = "[Khách vừa gửi hình ảnh]";
+            }
+            
+            // C. NẾU LÀ TEXT BÌNH THƯỜNG
+            else if (webhook_event.message.text) {
+                userMessage = webhook_event.message.text;
+            }
+            
+            // D. NẾU KHÔNG PHẢI CÁC LOẠI TRÊN -> GIẢ ĐỊNH LÀ GỌI NHỠ (System Event)
+            else {
+                console.log(`[SYSTEM EVENT] Khả năng là gọi nhỡ.`);
+                userMessage = "Đã bỏ lỡ cuộc gọi thoại";
+            }
         }
+        // ------------------------------------------------------------
 
         if (userMessage && sender_psid) {
           processMessage(pageId, sender_psid, userMessage);
@@ -193,20 +214,16 @@ async function processMessage(pageId, sender_psid, userMessage) {
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
+    knowledgeString += "- GIỜ LÀM VIỆC: 8h00 - 17h00 hàng ngày.\n";
+    knowledgeString += "- FREESHIP: Đơn hàng từ 500.000đ trở lên.\n";
+    knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
+    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng Dầu Lạnh (có thể đổi sang Cao Dán).\n\n";
     
-    knowledgeString += "**THÔNG TIN SHOP:**\n";
-    knowledgeString += "- Địa chỉ: Long Biên (VP) & Hà Đông (Kho), Hà Nội.\n";
-    knowledgeString += "- LƯU Ý: Shop CHỈ BÁN ONLINE, ship COD toàn quốc.\n";
-    knowledgeString += "- **HOTLINE GẤP:** 0986.646.845 - 0948.686.946 - 0946.686.474\n\n";
-    
-    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG (NGHIÊM NGẶT):**\n";
-    knowledgeString += "- Mua 1 hộp: Tặng 1 Dầu Lạnh (hoặc Cao Dán).\n";
-    knowledgeString += "- **TUYỆT ĐỐI KHÔNG:** Tặng trà, kẹo, hay giảm giá.\n\n";
-    
+    // --- SẢN PHẨM CHÍNH ---
     knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN (780.000đ)\n";
     knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
-    knowledgeString += "Đặc điểm: 1% trầm hương. Hộp gỗ nâu. Loại phổ biến nhất.\n";
+    knowledgeString += "Đặc điểm: Hộp gỗ màu nâu. 1% trầm hương. Loại phổ biến nhất.\n";
     knowledgeString += "-----------------\n\n";
     
     knowledgeString += "---[SẢN PHẨM KHÁC]---\n";
@@ -226,7 +243,7 @@ function getProductKnowledge_ThaoKorea() {
 
     knowledgeString += "7. AN CUNG TRẦM HƯƠNG KWANGDONG 60 VIÊN (1.290.000đ)\n";
     knowledgeString += "Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
-    knowledgeString += "Đặc điểm: 15% trầm hương (cao cấp nhất).\n";
+    knowledgeString += "Đặc điểm: Hộp màu đen/xám. 15% trầm hương (cao cấp).\n";
 
     knowledgeString += "8. AN CUNG ROYAL FAMILY 32 VIÊN (690.000đ)\n";
     knowledgeString += "Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_-600x449.jpg\"\n";
@@ -270,7 +287,7 @@ async function saveAdminReply(pageId, customerId, text) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI [UPDATE LOGIC MỚI: BẮT CUỘC GỌI NHỠ]
+// HÀM GỌI GEMINI [PROMPT]
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) return { response_message: "..." };
@@ -294,19 +311,21 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     }
     // --------------------------------
 
-    // --- PROMPT MỚI ---
+    // --- PROMPT ---
     let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' và gọi khách là '${greetingName}'.
     
-**LUẬT XỬ LÝ CUỘC GỌI NHỠ / GẤP (ƯU TIÊN SỐ 1):**
-- Nếu tin nhắn của khách là: **"Đã bỏ lỡ cuộc gọi thoại"** (Đây là thông báo hệ thống), "Cuộc gọi video bị nhỡ", "alo", "nghe máy đi"...
-- Hoặc khách nói: "cần gấp", "giao ngay".
--> **HÀNH ĐỘNG NGAY:** Xin lỗi vì đang bận đóng hàng và gửi 3 số Hotline: **0986.646.845 - 0948.686.946 - 0946.686.474** để khách gọi lại cho nhanh.
+**LUẬT XỬ LÝ CUỘC GỌI NHỠ (QUAN TRỌNG):**
+- Nếu tin nhắn của khách là: **"Đã bỏ lỡ cuộc gọi thoại"**, "alo", "nghe máy đi", "cần gấp"...
+- **HÀNH ĐỘNG NGAY:** Xin lỗi vì đang bận đóng hàng chưa kịp nghe máy và gửi 3 số Hotline: **0986.646.845 - 0948.686.946 - 0946.686.474** để khách gọi lại.
 
-**LUẬT CẤM (NGHIÊM NGẶT):**
+**LUẬT XỬ LÝ ẢNH:**
+- Nếu khách gửi ảnh (tin nhắn là "[Khách vừa gửi hình ảnh]"): Hãy nói "Dạ Shop đã nhận được ảnh Bác gửi ạ. Bác cần Shop tư vấn gì về sản phẩm trong ảnh không ạ?".
+
+**LUẬT CẤM:**
 1. CẤM dùng từ 'Admin', 'Bot'.
 2. CẤM gửi link trong text.
-3. CẤM bịa quà. CẤM giảm giá.
-4. CẤM nói lặp "Shop đã nhận thông tin" nếu lịch sử đã có.
+3. CẤM bịa quà (Chỉ tặng Dầu Lạnh/Cao Dán). CẤM giảm giá.
+4. CẤM nói lặp "Shop đã nhận thông tin".
 
 **LUẬT RÀ SOÁT THÔNG TIN:**
 - Trước khi xin SĐT/Địa chỉ, **PHẢI** đọc "Lịch sử chat". Nếu có rồi thì KHÔNG xin lại.
@@ -392,5 +411,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v3.3 (Fix Missed Call) chạy tại port ${PORT}`);
+  console.log(`Bot v3.5 (Anti-Spam Sticker) chạy tại port ${PORT}`);
 });
