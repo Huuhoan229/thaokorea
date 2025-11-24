@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "SINGLE PERSONA v2.99" - Cấm Tự Ý Tặng Quà + Fix Mặc Cả)
+// File: index.js (Phiên bản "SINGLE PERSONA v3.0" - Logic Thời Gian & Thứ Ngày Thông Minh)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -88,7 +88,6 @@ app.post('/webhook', (req, res) => {
             if (metadata === "FROM_BOT_AUTO") {
                 return; 
             } else {
-                // Admin chat tay -> Lưu lại
                 const adminText = webhook_event.message.text;
                 const recipientID = webhook_event.recipient.id;
                 if (adminText && recipientID) {
@@ -190,29 +189,24 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // -------------------------------------------------------------------
-// BỘ NÃO (THẢO KOREA) - [CẬP NHẬT LUẬT TẶNG QUÀ]
+// BỘ NÃO (THẢO KOREA)
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
     
-    // --- THÔNG TIN ---
     knowledgeString += "**THÔNG TIN SHOP:**\n";
-    knowledgeString += "- Địa chỉ Tổng công ty: Long Biên, Hà Nội.\n";
-    knowledgeString += "- Địa chỉ Kho: Hà Đông, Hà Nội.\n";
+    knowledgeString += "- Địa chỉ: Long Biên (VP) & Hà Đông (Kho), Hà Nội.\n";
     knowledgeString += "- LƯU Ý: Shop CHỈ BÁN ONLINE, ship COD toàn quốc.\n";
-    knowledgeString += "- **HOTLINE (Hỗ trợ gấp):** 0986.646.845 - 0948.686.946 - 0946.686.474\n\n";
+    knowledgeString += "- **HOTLINE GẤP:** 0986.646.845 - 0948.686.946 - 0946.686.474\n\n";
     
-    // --- QUY ĐỊNH QUÀ TẶNG (QUAN TRỌNG) ---
     knowledgeString += "**QUY ĐỊNH QUÀ TẶNG (NGHIÊM NGẶT):**\n";
-    knowledgeString += "- Mua 1 hộp (các SP có quà): Tặng 1 Dầu Lạnh (hoặc đổi sang 1 Cao Dán).\n";
-    knowledgeString += "- **TUYỆT ĐỐI KHÔNG:** Không được tự ý tặng thêm quà ngoài danh sách (KHÔNG trà sâm, KHÔNG kẹo, KHÔNG giảm giá).\n";
-    knowledgeString += "- Nếu khách mặc cả hoặc đòi thêm quà: Hãy nói 'Dạ giá niêm yết công ty rồi ạ, Shop tặng Bác Dầu Lạnh là ưu đãi tốt nhất rồi Bác thông cảm giúp Shop nha'.\n\n";
+    knowledgeString += "- Mua 1 hộp: Tặng 1 Dầu Lạnh (hoặc Cao Dán).\n";
+    knowledgeString += "- **TUYỆT ĐỐI KHÔNG:** Tặng trà, kẹo, hay giảm giá khi khách mặc cả.\n\n";
     
-    // --- SẢN PHẨM ---
     knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN (780.000đ)\n";
     knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
-    knowledgeString += "Đặc điểm: Hộp gỗ màu nâu. 1% trầm hương. Loại phổ biến nhất.\n";
+    knowledgeString += "Đặc điểm: 1% trầm hương. Hộp gỗ nâu. Loại phổ biến nhất.\n";
     knowledgeString += "-----------------\n\n";
     
     knowledgeString += "---[SẢN PHẨM KHÁC]---\n";
@@ -232,7 +226,7 @@ function getProductKnowledge_ThaoKorea() {
 
     knowledgeString += "7. AN CUNG TRẦM HƯƠNG KWANGDONG 60 VIÊN (1.290.000đ)\n";
     knowledgeString += "Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
-    knowledgeString += "Đặc điểm: Hộp màu đen/xám. 15% trầm hương (cao cấp).\n";
+    knowledgeString += "Đặc điểm: 15% trầm hương (cao cấp).\n";
 
     knowledgeString += "8. AN CUNG ROYAL FAMILY 32 VIÊN (690.000đ)\n";
     knowledgeString += "Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_-600x449.jpg\"\n";
@@ -276,7 +270,7 @@ async function saveAdminReply(pageId, customerId, text) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI [UPDATE LOGIC CẤM TẶNG QUÀ]
+// HÀM GỌI GEMINI [LOGIC: THỜI GIAN THÔNG MINH]
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) return { response_message: "..." };
@@ -284,34 +278,63 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     const historyString = userState.history.map(h => `${h.role === 'user' ? 'Khách' : 'Shop'}: ${h.content}`).join('\n');
     const greetingName = userName ? "Bác " + userName : "Bác";
 
-    const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const currentHour = new Date(utc + (3600000 * 7)).getHours();
+    // ----- XỬ LÝ LOGIC THỜI GIAN (Javascript) -----
+    const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
+    const hour = now.getHours();
+    const day = now.getDay(); // 0 = Chủ Nhật, 1 = Thứ 2, ..., 6 = Thứ 7
+
+    let timeContext = "";
+    let isWorkingHours = false;
+
+    if (day === 0) {
+        // Chủ Nhật
+        timeContext = "Hiện tại là CHỦ NHẬT (Shop nghỉ). Nếu khách chốt đơn, hãy nói: 'Dạ hôm nay kho nghỉ, sáng Thứ 2 nhân viên Shop sẽ gọi lại xác nhận cho Bác ạ'.";
+    } else {
+        // Thứ 2 - Thứ 7
+        if (hour >= 8 && hour < 17) {
+            // Giờ hành chính
+            isWorkingHours = true;
+            timeContext = "Hiện tại là GIỜ HÀNH CHÍNH (8h-17h). Tư vấn và chốt đơn bình thường.";
+        } else if (hour < 8) {
+            // Sáng sớm (ví dụ 6h sáng)
+            timeContext = `Hiện tại là SÁNG SỚM (${hour}h sáng). Chưa đến giờ làm. Nếu khách chốt đơn, hãy nói: 'Dạ Shop đã nhận thông tin. Lát nữa 8h vào giờ làm việc nhân viên Shop sẽ gọi điện ngay cho Bác ạ'.`;
+        } else {
+            // Buổi tối (sau 17h)
+            if (day === 6) {
+                // Tối Thứ 7
+                timeContext = "Hiện tại là TỐI THỨ 7 (Mai là Chủ Nhật nghỉ). Nếu khách chốt đơn, hãy nói: 'Dạ Shop đã nhận thông tin. Shop sẽ liên hệ lại với Bác sớm nhất để xác nhận đơn ạ'. (TRÁNH nói 'sáng mai' vì mai là Chủ Nhật).";
+            } else {
+                // Tối ngày thường
+                timeContext = "Hiện tại là BUỔI TỐI (Hết giờ làm). Nếu khách chốt đơn, hãy nói: 'Dạ Shop đã nhận thông tin. Sáng mai nhân viên Shop sẽ ưu tiên gọi lại cho Bác ạ'.";
+            }
+        }
+    }
+    // -----------------------------------------------
 
     // --- PROMPT MỚI ---
     let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' và gọi khách là '${greetingName}'.
     
 **LUẬT CẤM (NGHIÊM NGẶT):**
-1. **CẤM BỊA QUÀ TẶNG:** Chỉ được tặng Dầu Lạnh hoặc Cao Dán. TUYỆT ĐỐI KHÔNG tặng trà sâm, kẹo, hay bất cứ thứ gì khác kể cả khi khách đòi.
-2. **CẤM GIẢM GIÁ:** Giá bán là cố định. Nếu khách mặc cả, hãy từ chối khéo: "Dạ giá này là giá công ty niêm yết rồi ạ".
-3. **CẤM LẶP LẠI:** Không nói lặp "Shop đã nhận thông tin" nếu đã nói rồi.
-4. **CẤM GỬI LINK TRONG TEXT.**
+1. CẤM bịa quà (Chỉ tặng Dầu Lạnh/Cao Dán).
+2. CẤM giảm giá.
+3. CẤM gửi link trong text.
+4. CẤM nói lặp "Shop đã nhận thông tin".
 
-**LUẬT HOTLINE:**
-- Khách cần gấp -> Gửi ngay 3 số Hotline (0986.646.845...).
+**NGỮ CẢNH THỜI GIAN HIỆN TẠI (BẮT BUỘC TUÂN THEO):**
+${timeContext}
+
+**LUẬT XỬ LÝ NGOÀI GIỜ (Khi không phải giờ hành chính):**
+- **Trường hợp A (Khách CHỈ HỎI/TƯ VẤN):**
+  -> Trả lời câu hỏi bình thường.
+  -> Cuối câu thêm: *"Bác cần tư vấn kỹ hơn thì cứ để lại SĐT lát nữa/mai con gọi tư vấn cho Bác nhé!"*.
+  -> **KHÔNG** nói câu "Shop đã nhận thông tin" ở đây.
+- **Trường hợp B (Khách CHỐT ĐƠN / GỬI SĐT):**
+  -> Mới sử dụng câu chốt đơn theo hướng dẫn ở phần "NGỮ CẢNH THỜI GIAN HIỆN TẠI" bên trên.
 
 **LUẬT TƯ VẤN:**
-- Khách hỏi "An Cung" -> Tư vấn ngay **An Cung Samsung (780k)**.
-- Khách hỏi chung chung -> Liệt kê các dòng SP.
-
-**LUẬT GỬI ẢNH (KHẮT KHE):**
-- Chỉ điền link vào 'image_url_to_send' khi khách ĐÒI XEM ẢNH.
-- Nếu đang tư vấn bình thường -> ĐỂ TRỐNG trường ảnh.
-
-**LUẬT GIỜ GIẤC (Hiện tại ${currentHour} giờ):**
-- 17h-8h sáng hôm sau:
-  - Khách CHỈ HỎI: Trả lời bình thường + "Bác để lại SĐT mai con gọi".
-  - Khách CHỐT ĐƠN / GỬI SĐT: Mới nói "Dạ Shop đã nhận thông tin, mai gọi lại ạ".
+- Hotline gấp: 0986.646.845...
+- Hỏi "An Cung": Tư vấn ngay **An Cung Samsung (780k)**.
+- Gửi ảnh: Chỉ gửi khi khách ĐÒI.
 
 ${productKnowledge}
 
@@ -387,5 +410,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v2.99 (Cam Tu Y Tang Qua) chạy tại port ${PORT}`);
+  console.log(`Bot v3.0 (Smart Time Logic) chạy tại port ${PORT}`);
 });
