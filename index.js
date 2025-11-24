@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "SINGLE PERSONA v3.5" - Anti-Spam Sticker & Xử Lý Ảnh)
+// File: index.js (Phiên bản "SINGLE PERSONA v3.6" - Fix Triệt Để Gọi Nhỡ bằng Code Cứng)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -69,7 +69,7 @@ app.get('/webhook', (req, res) => {
 });
 
 // -------------------------------------------------------------------
-// Endpoint 2: Nhận tin nhắn (LOGIC PHÂN LOẠI TIN NHẮN CỰC MẠNH)
+// Endpoint 2: Nhận tin nhắn
 // -------------------------------------------------------------------
 app.post('/webhook', (req, res) => {
   let body = req.body;
@@ -86,9 +86,8 @@ app.post('/webhook', (req, res) => {
         if (webhook_event.message && webhook_event.message.is_echo) {
             const metadata = webhook_event.message.metadata;
             if (metadata === "FROM_BOT_AUTO") {
-                return; // Bot tự nói -> Bỏ qua
+                return; 
             } else {
-                // Admin chat tay -> Lưu lại
                 const adminText = webhook_event.message.text;
                 const recipientID = webhook_event.recipient.id;
                 if (adminText && recipientID) {
@@ -100,37 +99,45 @@ app.post('/webhook', (req, res) => {
         }
         
         const sender_psid = webhook_event.sender.id;
-        let userMessage = null;
-
-        // === 2. PHÂN LOẠI TIN NHẮN (QUAN TRỌNG) ===
+        
+        // === 2. PHÂN LOẠI TIN NHẮN (LOGIC MỚI) ===
         if (webhook_event.message) {
-            // A. NẾU LÀ STICKER -> BỎ QUA (CHỐNG SPAM)
+            // A. STICKER -> BỎ QUA
             if (webhook_event.message.sticker_id) {
-                console.log(`[SPAM STICKER] Bỏ qua sticker từ ${sender_psid}`);
-                return; // Dừng ngay, không làm gì cả
+                console.log("Bỏ qua Sticker.");
+                return; 
             }
 
-            // B. NẾU LÀ ẢNH/VIDEO/FILE -> ĐỔI THÀNH TEXT ĐỂ BOT HIỂU
-            if (webhook_event.message.attachments) {
-                console.log(`[IMAGE] Khách gửi ảnh.`);
-                userMessage = "[Khách vừa gửi hình ảnh]";
+            // B. KIỂM TRA GỌI NHỠ (QUAN TRỌNG)
+            // Nếu không có text (sự kiện hệ thống) HOẶC có text chứa từ khóa gọi nhỡ
+            const textLower = webhook_event.message.text ? webhook_event.message.text.toLowerCase() : "";
+            const isMissedCall = !webhook_event.message.text || // Không có chữ (thường là sự kiện gọi)
+                                 textLower.includes("bỏ lỡ cuộc gọi") || 
+                                 textLower.includes("missed call") ||
+                                 textLower.includes("gọi lại") ||
+                                 textLower.includes("cuộc gọi video");
+
+            // C. ẢNH
+            const isImage = webhook_event.message.attachments && webhook_event.message.attachments[0].type === 'image';
+
+            if (isMissedCall && !isImage) {
+                // -> XỬ LÝ NGAY BẰNG CODE CỨNG (Không gọi Gemini)
+                console.log("Phát hiện gọi nhỡ -> Auto Reply Hotline.");
+                await handleMissedCall(pageId, sender_psid);
+                return; // Dừng luôn
             }
-            
-            // C. NẾU LÀ TEXT BÌNH THƯỜNG
-            else if (webhook_event.message.text) {
+
+            // D. CÁC TRƯỜNG HỢP CÒN LẠI -> GỌI GEMINI
+            let userMessage = "";
+            if (isImage) {
+                userMessage = "[Khách gửi hình ảnh]";
+            } else if (webhook_event.message.text) {
                 userMessage = webhook_event.message.text;
             }
-            
-            // D. NẾU KHÔNG PHẢI CÁC LOẠI TRÊN -> GIẢ ĐỊNH LÀ GỌI NHỠ (System Event)
-            else {
-                console.log(`[SYSTEM EVENT] Khả năng là gọi nhỡ.`);
-                userMessage = "Đã bỏ lỡ cuộc gọi thoại";
-            }
-        }
-        // ------------------------------------------------------------
 
-        if (userMessage && sender_psid) {
-          processMessage(pageId, sender_psid, userMessage);
+            if (userMessage) {
+                processMessage(pageId, sender_psid, userMessage);
+            }
         }
       }
     });
@@ -140,7 +147,23 @@ app.post('/webhook', (req, res) => {
 });
 
 // -------------------------------------------------------------------
-// HÀM XỬ LÝ CHÍNH
+// HÀM XỬ LÝ GỌI NHỠ (HARD-CODE) - CHẠY NGAY LẬP TỨC
+// -------------------------------------------------------------------
+async function handleMissedCall(pageId, sender_psid) {
+    const FB_PAGE_TOKEN = pageTokenMap.get(pageId);
+    if (!FB_PAGE_TOKEN) return;
+
+    const message = "Dạ Shop thấy Bác vừa gọi nhỡ ạ. Hiện nhân viên đang đóng hàng nên chưa nghe kịp máy. Bác cần gấp vui lòng gọi Hotline: 0986.646.845 - 0948.686.946 - 0946.686.474 để được hỗ trợ ngay nhé ạ!";
+    
+    // Gửi tin nhắn ngay
+    await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, message);
+    
+    // Lưu vào lịch sử để Bot nhớ lần sau
+    await saveState(`${pageId}_${sender_psid}`, "[Khách gọi nhỡ]", message);
+}
+
+// -------------------------------------------------------------------
+// HÀM XỬ LÝ CHÍNH (CHO GEMINI)
 // -------------------------------------------------------------------
 async function processMessage(pageId, sender_psid, userMessage) {
     const FB_PAGE_TOKEN = pageTokenMap.get(pageId);
@@ -148,9 +171,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
     
     const uniqueStorageId = `${pageId}_${sender_psid}`;
     
-    if (processingUserSet.has(uniqueStorageId)) {
-        return;
-    }
+    if (processingUserSet.has(uniqueStorageId)) return;
     processingUserSet.add(uniqueStorageId);
 
     try {
@@ -175,10 +196,9 @@ async function processMessage(pageId, sender_psid, userMessage) {
       await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, false);
       await saveState(uniqueStorageId, userMessage, geminiResult.response_message);
 
-      // === GỬI ẢNH ===
+      // GỬI ẢNH
       if (geminiResult.image_url_to_send && geminiResult.image_url_to_send.length > 0) {
           const imageUrls = geminiResult.image_url_to_send.split(',').map(url => url.trim()).filter(url => url.length > 0);
-          
           for (const imgUrl of imageUrls) {
               await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, true);
               await new Promise(resolve => setTimeout(resolve, 500));
@@ -188,7 +208,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
           }
       }
       
-      // === GỬI TEXT ===
+      // GỬI TEXT
       const messages = geminiResult.response_message.split('|');
       for (let i = 0; i < messages.length; i++) {
           const msg = messages[i].trim();
@@ -216,14 +236,12 @@ function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
     knowledgeString += "- GIỜ LÀM VIỆC: 8h00 - 17h00 hàng ngày.\n";
     knowledgeString += "- FREESHIP: Đơn hàng từ 500.000đ trở lên.\n";
-    knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
     knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng Dầu Lạnh (có thể đổi sang Cao Dán).\n\n";
     
-    // --- SẢN PHẨM CHÍNH ---
-    knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO]---\n";
+    knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO - MẶC ĐỊNH]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN (780.000đ)\n";
     knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
-    knowledgeString += "Đặc điểm: Hộp gỗ màu nâu. 1% trầm hương. Loại phổ biến nhất.\n";
+    knowledgeString += "Đặc điểm: 1% trầm hương. Hộp gỗ màu nâu. Loại phổ biến nhất.\n";
     knowledgeString += "-----------------\n\n";
     
     knowledgeString += "---[SẢN PHẨM KHÁC]---\n";
@@ -243,7 +261,7 @@ function getProductKnowledge_ThaoKorea() {
 
     knowledgeString += "7. AN CUNG TRẦM HƯƠNG KWANGDONG 60 VIÊN (1.290.000đ)\n";
     knowledgeString += "Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
-    knowledgeString += "Đặc điểm: Hộp màu đen/xám. 15% trầm hương (cao cấp).\n";
+    knowledgeString += "Đặc điểm: 15% trầm hương (cao cấp nhất).\n";
 
     knowledgeString += "8. AN CUNG ROYAL FAMILY 32 VIÊN (690.000đ)\n";
     knowledgeString += "Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_-600x449.jpg\"\n";
@@ -287,7 +305,7 @@ async function saveAdminReply(pageId, customerId, text) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI [PROMPT]
+// HÀM GỌI GEMINI
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) return { response_message: "..." };
@@ -295,7 +313,6 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     const historyString = userState.history.map(h => `${h.role === 'user' ? 'Khách' : 'Shop'}: ${h.content}`).join('\n');
     const greetingName = userName ? "Bác " + userName : "Bác";
 
-    // ----- XỬ LÝ LOGIC THỜI GIAN -----
     const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
     const hour = now.getHours();
     const day = now.getDay();
@@ -309,19 +326,10 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
             timeContext = "Hiện tại là NGOÀI GIỜ. Khách chốt đơn -> Hẹn 8h sáng mai gọi lại.";
         }
     }
-    // --------------------------------
 
-    // --- PROMPT ---
-    let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' và gọi khách là '${greetingName}'.
+    let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' - '${greetingName}'.
     
-**LUẬT XỬ LÝ CUỘC GỌI NHỠ (QUAN TRỌNG):**
-- Nếu tin nhắn của khách là: **"Đã bỏ lỡ cuộc gọi thoại"**, "alo", "nghe máy đi", "cần gấp"...
-- **HÀNH ĐỘNG NGAY:** Xin lỗi vì đang bận đóng hàng chưa kịp nghe máy và gửi 3 số Hotline: **0986.646.845 - 0948.686.946 - 0946.686.474** để khách gọi lại.
-
-**LUẬT XỬ LÝ ẢNH:**
-- Nếu khách gửi ảnh (tin nhắn là "[Khách vừa gửi hình ảnh]"): Hãy nói "Dạ Shop đã nhận được ảnh Bác gửi ạ. Bác cần Shop tư vấn gì về sản phẩm trong ảnh không ạ?".
-
-**LUẬT CẤM:**
+**LUẬT CẤM (TUÂN THỦ TUYỆT ĐỐI):**
 1. CẤM dùng từ 'Admin', 'Bot'.
 2. CẤM gửi link trong text.
 3. CẤM bịa quà (Chỉ tặng Dầu Lạnh/Cao Dán). CẤM giảm giá.
@@ -411,5 +419,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v3.5 (Anti-Spam Sticker) chạy tại port ${PORT}`);
+  console.log(`Bot v3.6 (Fix Call Missed 100%) chạy tại port ${PORT}`);
 });
