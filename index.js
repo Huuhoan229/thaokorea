@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "SINGLE PERSONA v3.6" - Luat Van Chuyen Nghiem Ngat)
+// File: index.js (Phiên bản "SINGLE PERSONA v3.7" - Them Lenh Tat/Bat Bot: !tatbot, !batbot)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -69,7 +69,7 @@ app.get('/webhook', (req, res) => {
 });
 
 // -------------------------------------------------------------------
-// Endpoint 2: Nhận tin nhắn
+// Endpoint 2: Nhận tin nhắn (XỬ LÝ LỆNH ADMIN)
 // -------------------------------------------------------------------
 app.post('/webhook', (req, res) => {
   let body = req.body;
@@ -82,15 +82,31 @@ app.post('/webhook', (req, res) => {
       if (entry.messaging && entry.messaging.length > 0) {
         const webhook_event = entry.messaging[0];
         
-        // === XỬ LÝ ECHO (TIN ADMIN) ===
+        // === 1. XỬ LÝ ECHO (TIN NHẮN TỪ ADMIN/PAGE) ===
         if (webhook_event.message && webhook_event.message.is_echo) {
             const metadata = webhook_event.message.metadata;
             if (metadata === "FROM_BOT_AUTO") {
-                return; 
+                return; // Bot tự nói -> Bỏ qua
             } else {
+                // ĐÂY LÀ ADMIN CHAT TAY
                 const adminText = webhook_event.message.text;
-                const recipientID = webhook_event.recipient.id;
+                const recipientID = webhook_event.recipient.id; // ID Khách hàng
+
                 if (adminText && recipientID) {
+                    // --- KIỂM TRA LỆNH TẮT/BẬT BOT ---
+                    const lowerText = adminText.trim().toLowerCase();
+                    if (lowerText === '!tatbot') {
+                        console.log(`[CMD] Admin tắt bot với khách ${recipientID}`);
+                        await setBotStatus(pageId, recipientID, true); // True = Paused
+                        return;
+                    }
+                    if (lowerText === '!batbot') {
+                        console.log(`[CMD] Admin bật bot với khách ${recipientID}`);
+                        await setBotStatus(pageId, recipientID, false); // False = Active
+                        return;
+                    }
+                    // ----------------------------------
+
                     console.log(`[ADMIN CHAT TAY]: "${adminText}" -> Lưu.`);
                     await saveAdminReply(pageId, recipientID, adminText);
                 }
@@ -99,19 +115,46 @@ app.post('/webhook', (req, res) => {
         }
         
         const sender_psid = webhook_event.sender.id;
-        let userMessage = null;
-
-        // === CHỈ LẤY TIN NHẮN CÓ CHỮ HOẶC QUICK REPLY ===
+        
+        // === 2. XỬ LÝ TIN NHẮN KHÁCH HÀNG ===
         if (webhook_event.message) {
-            if (webhook_event.message.text) {
-                userMessage = webhook_event.message.text;
-            } else if (webhook_event.message.quick_reply) {
-                userMessage = webhook_event.message.quick_reply.payload;
+            // A. STICKER -> BỎ QUA
+            if (webhook_event.message.sticker_id) {
+                return; 
             }
-        }
 
-        if (userMessage && sender_psid) {
-          processMessage(pageId, sender_psid, userMessage);
+            // B. KIỂM TRA GỌI NHỠ (Hard-code) - CHỈ CHẠY KHI BOT ĐANG BẬT
+            const textLower = webhook_event.message.text ? webhook_event.message.text.toLowerCase() : "";
+            const isMissedCall = !webhook_event.message.text || 
+                                 textLower.includes("bỏ lỡ cuộc gọi") || 
+                                 textLower.includes("missed call") ||
+                                 textLower.includes("gọi lại") ||
+                                 textLower.includes("cuộc gọi video");
+            const isImage = webhook_event.message.attachments && webhook_event.message.attachments[0].type === 'image';
+
+            // Kiểm tra trạng thái Bot trước khi xử lý gọi nhỡ
+            const userState = await loadState(`${pageId}_${sender_psid}`);
+            if (userState.is_paused) {
+                console.log(`[PAUSED] Bot đang tắt, bỏ qua tin nhắn của ${sender_psid}`);
+                return; // BOT ĐANG TẮT -> KHÔNG LÀM GÌ CẢ
+            }
+
+            if (isMissedCall && !isImage) {
+                await handleMissedCall(pageId, sender_psid);
+                return; 
+            }
+
+            // C. XỬ LÝ TEXT/ẢNH QUA GEMINI
+            let userMessage = "";
+            if (isImage) {
+                userMessage = "[Khách gửi hình ảnh]";
+            } else if (webhook_event.message.text) {
+                userMessage = webhook_event.message.text;
+            }
+
+            if (userMessage) {
+                processMessage(pageId, sender_psid, userMessage);
+            }
         }
       }
     });
@@ -121,7 +164,35 @@ app.post('/webhook', (req, res) => {
 });
 
 // -------------------------------------------------------------------
-// HÀM XỬ LÝ CHÍNH
+// HÀM BẬT/TẮT BOT (MỚI)
+// -------------------------------------------------------------------
+async function setBotStatus(pageId, customerId, isPaused) {
+    if (!db) return;
+    const uniqueStorageId = `${pageId}_${customerId}`;
+    try {
+        await db.collection('users').doc(uniqueStorageId).set({
+            is_paused: isPaused, // Lưu trạng thái vào DB
+            last_updated: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        console.log(`-> Đã set trạng thái Bot cho ${customerId}: ${isPaused ? 'TẮT' : 'BẬT'}`);
+    } catch (e) { console.error("Lỗi setBotStatus:", e); }
+}
+
+// -------------------------------------------------------------------
+// HÀM XỬ LÝ GỌI NHỠ
+// -------------------------------------------------------------------
+async function handleMissedCall(pageId, sender_psid) {
+    const FB_PAGE_TOKEN = pageTokenMap.get(pageId);
+    if (!FB_PAGE_TOKEN) return;
+
+    const message = "Dạ Shop thấy Bác vừa gọi nhỡ ạ. Hiện nhân viên đang đóng hàng nên chưa nghe kịp máy. Bác cần gấp vui lòng gọi Hotline: 0986.646.845 - 0948.686.946 - 0946.686.474 để được hỗ trợ ngay nhé ạ!";
+    
+    await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, message);
+    await saveState(`${pageId}_${sender_psid}`, "[Khách gọi nhỡ]", message);
+}
+
+// -------------------------------------------------------------------
+// HÀM XỬ LÝ CHÍNH (GEMINI) - CÓ CHECK TRẠNG THÁI BOT
 // -------------------------------------------------------------------
 async function processMessage(pageId, sender_psid, userMessage) {
     const FB_PAGE_TOKEN = pageTokenMap.get(pageId);
@@ -129,16 +200,20 @@ async function processMessage(pageId, sender_psid, userMessage) {
     
     const uniqueStorageId = `${pageId}_${sender_psid}`;
     
-    if (processingUserSet.has(uniqueStorageId)) {
-        return;
-    }
+    if (processingUserSet.has(uniqueStorageId)) return;
     processingUserSet.add(uniqueStorageId);
 
     try {
+      // 1. KIỂM TRA XEM BOT CÓ BỊ TẮT KHÔNG
+      const userState = await loadState(uniqueStorageId);
+      if (userState.is_paused) {
+          console.log(`[PAUSED] Bot đang tắt với user ${sender_psid}. Bỏ qua.`);
+          return; // Dừng ngay, không typing, không gọi Gemini
+      }
+
       await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, true);
       
       let userName = await getFacebookUserName(FB_PAGE_TOKEN, sender_psid);
-      const userState = await loadState(uniqueStorageId);
       
       let productKnowledge;
       let geminiResult;
@@ -190,26 +265,20 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // -------------------------------------------------------------------
-// BỘ NÃO (THẢO KOREA) - [UPDATE LUẬT VẬN CHUYỂN]
+// BỘ NÃO (THẢO KOREA)
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
-    
-    // --- QUY ĐỊNH VẬN CHUYỂN (CỐT LÕI) ---
-    knowledgeString += "**THÔNG TIN VẬN CHUYỂN (BẮT BUỘC):**\n";
-    knowledgeString += "- Shop CHỈ BÁN ONLINE. Không có cửa hàng trưng bày, không bán trực tiếp tại kho.\n";
-    knowledgeString += "- Hàng gửi qua Bưu Cục (Đơn vị vận chuyển). Thời gian nhận 1-3 ngày.\n";
-    knowledgeString += "- KHÔNG ship hỏa tốc, KHÔNG gửi Grab/Bee (Vì kho chỉ làm việc với bưu cục).\n\n";
-    
-    knowledgeString += "**THÔNG TIN KHÁC:**\n";
+    knowledgeString += "- GIỜ LÀM VIỆC: 8h00 - 17h00 hàng ngày.\n";
+    knowledgeString += "- FREESHIP: Đơn hàng từ 500.000đ trở lên.\n";
     knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
-    knowledgeString += "- QUÀ TẶNG: Mua 1 hộp tặng 1 Dầu Lạnh (hoặc Cao Dán). KHÔNG tặng trà/kẹo. KHÔNG giảm giá.\n";
-    knowledgeString += "- PHÍ SHIP: Đơn < 500k cộng 30k ship. Đơn >= 500k Freeship.\n\n";
+    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng Dầu Lạnh (có thể đổi sang Cao Dán).\n\n";
     
-    knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO]---\n";
+    // --- SẢN PHẨM CHÍNH ---
+    knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO - MẶC ĐỊNH]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN (780.000đ)\n";
     knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
-    knowledgeString += "Đặc điểm: Hộp gỗ màu nâu. 1% trầm hương. Loại phổ biến nhất. (Freeship).\n";
+    knowledgeString += "Đặc điểm: Hộp gỗ màu nâu. 1% trầm hương. Loại phổ biến nhất.\n";
     knowledgeString += "-----------------\n\n";
     
     knowledgeString += "---[SẢN PHẨM KHÁC]---\n";
@@ -243,14 +312,21 @@ function getProductKnowledge_ThaoKorea() {
 }
 
 // -------------------------------------------------------------------
-// HÀM LƯU TRỮ
+// HÀM LƯU TRỮ (ĐÃ CẬP NHẬT LẤY BIẾN PAUSED)
 // -------------------------------------------------------------------
 async function loadState(uniqueStorageId) { 
-  if (!db) return { history: [] }; 
+  if (!db) return { history: [], is_paused: false }; // Default
   try {
       const doc = await db.collection('users').doc(uniqueStorageId).get();
-      return doc.exists ? { history: doc.data().history ? doc.data().history.slice(-20) : [] } : { history: [] };
-  } catch (error) { return { history: [] }; }
+      if (doc.exists) {
+          const data = doc.data();
+          return { 
+              history: data.history ? data.history.slice(-20) : [],
+              is_paused: data.is_paused || false // Lấy trạng thái tắt/bật
+          };
+      }
+      return { history: [], is_paused: false };
+  } catch (error) { return { history: [], is_paused: false }; }
 }
 
 async function saveState(uniqueStorageId, userMessage, botMessage) { 
@@ -278,7 +354,7 @@ async function saveAdminReply(pageId, customerId, text) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI [PROMPT UPDATE]
+// HÀM GỌI GEMINI
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) return { response_message: "..." };
@@ -300,24 +376,17 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
         }
     }
 
-    let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' - '${greetingName}'.
+    let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' và gọi khách là '${greetingName}'.
     
-**LUẬT VẬN CHUYỂN (TUYỆT ĐỐI):**
-- Chỉ bán Online, gửi qua Bưu cục.
-- **CẤM:** Hứa ship Grab, hỏa tốc, hay mời khách qua kho lấy. Nếu khách đòi, hãy từ chối khéo.
-
 **LUẬT CẤM:**
 1. CẤM dùng từ 'Admin', 'Bot'.
 2. CẤM gửi link trong text.
 3. CẤM bịa quà. CẤM giảm giá.
 4. CẤM nói lặp "Shop đã nhận thông tin".
 
-**LUẬT SHIP:**
-- Đơn < 500k: +30k Ship.
-- Đơn >= 500k: Freeship.
-
 **LUẬT RÀ SOÁT THÔNG TIN:**
-- Trước khi xin SĐT/Địa chỉ, **PHẢI** đọc kỹ "Lịch sử chat". Nếu có rồi thì KHÔNG xin lại.
+- Trước khi xin SĐT/Địa chỉ, **PHẢI** đọc kỹ "Lịch sử chat" bên dưới.
+- Nếu khách đã từng gửi SĐT/Địa chỉ -> **KHÔNG XIN LẠI**.
 
 **LUẬT TƯ VẤN:**
 - Hỏi "An Cung" -> Tư vấn **Samsung (780k)**.
@@ -400,5 +469,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v3.6 (Luat Van Chuyen Nghiem Ngat) chạy tại port ${PORT}`);
+  console.log(`Bot v3.7 (Anti-Spam + Tat/Bat Bot) chạy tại port ${PORT}`);
 });
