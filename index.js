@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "SINGLE PERSONA v3.5" - Logic Tính Ship: >500k Freeship, <500k +30k)
+// File: index.js (Phiên bản "SINGLE PERSONA v3.6" - Luat Van Chuyen Nghiem Ngat)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -190,32 +190,33 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // -------------------------------------------------------------------
-// BỘ NÃO (THẢO KOREA) - [UPDATE QUY ĐỊNH SHIP]
+// BỘ NÃO (THẢO KOREA) - [UPDATE LUẬT VẬN CHUYỂN]
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
-    knowledgeString += "- Shop CHỈ BÁN ONLINE. Kho Hà Đông, VP Long Biên.\n";
-    knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
-    knowledgeString += "- QUÀ TẶNG: Mua 1 hộp tặng 1 Dầu Lạnh (hoặc Cao Dán). KHÔNG tặng trà/kẹo. KHÔNG giảm giá.\n\n";
     
-    // --- QUY ĐỊNH SHIP (QUAN TRỌNG) ---
-    knowledgeString += "**QUY ĐỊNH SHIP:**\n";
-    knowledgeString += "- Đơn hàng >= 500.000đ: FREESHIP (Miễn phí vận chuyển).\n";
-    knowledgeString += "- Đơn hàng < 500.000đ: Phí ship 30.000đ.\n";
-    knowledgeString += "- Ví dụ: Cao Sâm 2 lọ (450k) -> Tổng thanh toán: 480k (450k + 30k ship).\n\n";
-    // ----------------------------------
-
+    // --- QUY ĐỊNH VẬN CHUYỂN (CỐT LÕI) ---
+    knowledgeString += "**THÔNG TIN VẬN CHUYỂN (BẮT BUỘC):**\n";
+    knowledgeString += "- Shop CHỈ BÁN ONLINE. Không có cửa hàng trưng bày, không bán trực tiếp tại kho.\n";
+    knowledgeString += "- Hàng gửi qua Bưu Cục (Đơn vị vận chuyển). Thời gian nhận 1-3 ngày.\n";
+    knowledgeString += "- KHÔNG ship hỏa tốc, KHÔNG gửi Grab/Bee (Vì kho chỉ làm việc với bưu cục).\n\n";
+    
+    knowledgeString += "**THÔNG TIN KHÁC:**\n";
+    knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
+    knowledgeString += "- QUÀ TẶNG: Mua 1 hộp tặng 1 Dầu Lạnh (hoặc Cao Dán). KHÔNG tặng trà/kẹo. KHÔNG giảm giá.\n";
+    knowledgeString += "- PHÍ SHIP: Đơn < 500k cộng 30k ship. Đơn >= 500k Freeship.\n\n";
+    
     knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN (780.000đ)\n";
     knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
-    knowledgeString += "Đặc điểm: Hộp gỗ màu nâu. 1% trầm hương. (Giá > 500k -> Freeship).\n";
+    knowledgeString += "Đặc điểm: Hộp gỗ màu nâu. 1% trầm hương. Loại phổ biến nhất. (Freeship).\n";
     knowledgeString += "-----------------\n\n";
     
     knowledgeString += "---[SẢN PHẨM KHÁC]---\n";
     
     knowledgeString += "2. HỘP CAO HỒNG SÂM 365 HÀN QUỐC (Mỗi lọ 240g)\n";
-    knowledgeString += "   - Hộp 2 Lọ: 450.000đ (Dưới 500k -> +30k Ship = 480k).\n";
-    knowledgeString += "   - Hộp 4 Lọ: 850.000đ (Trên 500k -> FREESHIP).\n";
+    knowledgeString += "   - Hộp 2 Lọ: 450.000đ (Cộng 30k Ship = 480k).\n";
+    knowledgeString += "   - Hộp 4 Lọ: 850.000đ (FREESHIP).\n";
     knowledgeString += "   - Image_URL (Loại 2 Lọ): \"https://ghshop.vn/images/upload/images/Cao-H%E1%BB%93ng-S%C3%A2m-365-H%C3%A0n-Qu%E1%BB%91c-Lo%E1%BA%A1i-2-L%E1%BB%8D.png\"\n";
     knowledgeString += "   - Image_URL (Loại 4 Lọ): \"https://thuoc365.vn/wp-content/uploads/2017/12/cao-hong-sam-4.jpg\"\n";
 
@@ -224,13 +225,13 @@ function getProductKnowledge_ThaoKorea() {
 
     knowledgeString += "4. NƯỚC HỒNG SÂM NHUNG HƯƠU 30 GÓI (420.000đ)\n";
     knowledgeString += "Image_URL: \"https://samyenthinhphat.com/uploads/Images/sam-nuoc/tinh-chat-hong-sam-nhung-huou-hop-30-goi-006.jpg\"\n";
-    knowledgeString += "Lưu ý: Giá 420k (Dưới 500k -> +30k Ship = 450k).\n";
+    knowledgeString += "Lưu ý: Giá 420k (Cộng 30k Ship = 450k).\n";
 
     knowledgeString += "5. NƯỚC HỒNG SÂM NHUNG HƯƠU 20 GÓI (HẾT HÀNG)\n";
     
     knowledgeString += "6. NƯỚC MÁT GAN ĐÔNG TRÙNG NGHỆ SAMSUNG (390.000đ)\n";
     knowledgeString += "Image_URL: \"https://hueminhkorea.com/wp-content/uploads/2025/02/mat-gan-nghe-dong-trung-tw-han-quoc-2.jpg\"\n";
-    knowledgeString += "Lưu ý: Giá 390k (Dưới 500k -> +30k Ship = 420k).\n";
+    knowledgeString += "Lưu ý: Giá 390k (Cộng 30k Ship = 420k).\n";
 
     knowledgeString += "7. AN CUNG TRẦM HƯƠNG KWANGDONG 60 VIÊN (1.290.000đ)\n";
     knowledgeString += "Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
@@ -277,7 +278,7 @@ async function saveAdminReply(pageId, customerId, text) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI [PROMPT UPDATE LOGIC SHIP]
+// HÀM GỌI GEMINI [PROMPT UPDATE]
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) return { response_message: "..." };
@@ -301,19 +302,19 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 
     let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' - '${greetingName}'.
     
+**LUẬT VẬN CHUYỂN (TUYỆT ĐỐI):**
+- Chỉ bán Online, gửi qua Bưu cục.
+- **CẤM:** Hứa ship Grab, hỏa tốc, hay mời khách qua kho lấy. Nếu khách đòi, hãy từ chối khéo.
+
 **LUẬT CẤM:**
 1. CẤM dùng từ 'Admin', 'Bot'.
 2. CẤM gửi link trong text.
 3. CẤM bịa quà. CẤM giảm giá.
 4. CẤM nói lặp "Shop đã nhận thông tin".
 
-**LUẬT TÍNH SHIP (CỰC KỲ QUAN TRỌNG):**
-- **ĐƠN HÀNG < 500K:** BẮT BUỘC cộng thêm 30k phí ship.
-  -> Ví dụ: Cao Sâm 2 lọ (450k) -> Báo giá: "Dạ 450k + 30k ship là 480k ạ".
-  -> Ví dụ: Mát gan (390k) -> Báo giá: "Dạ 390k + 30k ship là 420k ạ".
-- **ĐƠN HÀNG >= 500K:** FREESHIP.
-  -> Ví dụ: 2 hộp Cao Sâm 2 lọ (450k x 2 = 900k) -> Freeship.
-  -> Ví dụ: Cao Sâm 4 lọ (850k) -> Freeship.
+**LUẬT SHIP:**
+- Đơn < 500k: +30k Ship.
+- Đơn >= 500k: Freeship.
 
 **LUẬT RÀ SOÁT THÔNG TIN:**
 - Trước khi xin SĐT/Địa chỉ, **PHẢI** đọc kỹ "Lịch sử chat". Nếu có rồi thì KHÔNG xin lại.
@@ -399,5 +400,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v3.5 (Tinh Ship Chuan 100%) chạy tại port ${PORT}`);
+  console.log(`Bot v3.6 (Luat Van Chuyen Nghiem Ngat) chạy tại port ${PORT}`);
 });
