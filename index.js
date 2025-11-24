@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "SINGLE PERSONA v3.0" - Logic Thời Gian & Thứ Ngày Thông Minh)
+// File: index.js (Phiên bản "SINGLE PERSONA v3.1" - Fix Lỗi Xin Lại Địa Chỉ + Rà Soát Lịch Sử)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -47,6 +47,7 @@ console.log(`Bot đã được khởi tạo cho ${pageTokenMap.size} Fanpage.`);
 let model;
 try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    // Vẫn dùng 2.0 flash để đọc hiểu ngữ cảnh tốt nhất
     model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); 
     console.log("Đã kết nối với Gemini API.");
 } catch(error) {
@@ -127,7 +128,6 @@ async function processMessage(pageId, sender_psid, userMessage) {
     const uniqueStorageId = `${pageId}_${sender_psid}`;
     
     if (processingUserSet.has(uniqueStorageId)) {
-        console.log(`[CHỐNG LẶP]: Bỏ qua tin nhắn dồn dập từ ${uniqueStorageId}`);
         return;
     }
     processingUserSet.add(uniqueStorageId);
@@ -136,7 +136,8 @@ async function processMessage(pageId, sender_psid, userMessage) {
       await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, true);
       
       let userName = await getFacebookUserName(FB_PAGE_TOKEN, sender_psid);
-      const userState = await loadState(uniqueStorageId);
+      // Tải nhiều lịch sử hơn (20 tin) để Bot soi kỹ
+      const userState = await loadState(uniqueStorageId); 
       
       let productKnowledge;
       let geminiResult;
@@ -157,7 +158,6 @@ async function processMessage(pageId, sender_psid, userMessage) {
       // === GỬI ẢNH ===
       if (geminiResult.image_url_to_send && geminiResult.image_url_to_send.length > 0) {
           const imageUrls = geminiResult.image_url_to_send.split(',').map(url => url.trim()).filter(url => url.length > 0);
-          
           for (const imgUrl of imageUrls) {
               await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, true);
               await new Promise(resolve => setTimeout(resolve, 500));
@@ -193,20 +193,13 @@ async function processMessage(pageId, sender_psid, userMessage) {
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
-    
-    knowledgeString += "**THÔNG TIN SHOP:**\n";
-    knowledgeString += "- Địa chỉ: Long Biên (VP) & Hà Đông (Kho), Hà Nội.\n";
-    knowledgeString += "- LƯU Ý: Shop CHỈ BÁN ONLINE, ship COD toàn quốc.\n";
-    knowledgeString += "- **HOTLINE GẤP:** 0986.646.845 - 0948.686.946 - 0946.686.474\n\n";
-    
-    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG (NGHIÊM NGẶT):**\n";
-    knowledgeString += "- Mua 1 hộp: Tặng 1 Dầu Lạnh (hoặc Cao Dán).\n";
-    knowledgeString += "- **TUYỆT ĐỐI KHÔNG:** Tặng trà, kẹo, hay giảm giá khi khách mặc cả.\n\n";
+    knowledgeString += "- Shop CHỈ BÁN ONLINE. Kho Hà Đông, VP Long Biên.\n";
+    knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
+    knowledgeString += "- QUÀ TẶNG: Mua 1 hộp tặng 1 Dầu Lạnh (hoặc Cao Dán). KHÔNG tặng trà/kẹo. KHÔNG giảm giá.\n\n";
     
     knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN (780.000đ)\n";
     knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
-    knowledgeString += "Đặc điểm: 1% trầm hương. Hộp gỗ nâu. Loại phổ biến nhất.\n";
     knowledgeString += "-----------------\n\n";
     
     knowledgeString += "---[SẢN PHẨM KHÁC]---\n";
@@ -226,7 +219,6 @@ function getProductKnowledge_ThaoKorea() {
 
     knowledgeString += "7. AN CUNG TRẦM HƯƠNG KWANGDONG 60 VIÊN (1.290.000đ)\n";
     knowledgeString += "Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
-    knowledgeString += "Đặc điểm: 15% trầm hương (cao cấp).\n";
 
     knowledgeString += "8. AN CUNG ROYAL FAMILY 32 VIÊN (690.000đ)\n";
     knowledgeString += "Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_-600x449.jpg\"\n";
@@ -241,7 +233,8 @@ async function loadState(uniqueStorageId) {
   if (!db) return { history: [] }; 
   try {
       const doc = await db.collection('users').doc(uniqueStorageId).get();
-      return doc.exists ? { history: doc.data().history ? doc.data().history.slice(-15) : [] } : { history: [] };
+      // Tăng lên 20 tin để nhớ được SĐT khách gửi từ lâu
+      return doc.exists ? { history: doc.data().history ? doc.data().history.slice(-20) : [] } : { history: [] };
   } catch (error) { return { history: [] }; }
 }
 
@@ -270,7 +263,7 @@ async function saveAdminReply(pageId, customerId, text) {
 }
 
 // -------------------------------------------------------------------
-// HÀM GỌI GEMINI [LOGIC: THỜI GIAN THÔNG MINH]
+// HÀM GỌI GEMINI [FIX LỖI: MÙ NGỮ CẢNH + SPAM XIN SỐ]
 // -------------------------------------------------------------------
 async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
   if (!model) return { response_message: "..." };
@@ -278,67 +271,47 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     const historyString = userState.history.map(h => `${h.role === 'user' ? 'Khách' : 'Shop'}: ${h.content}`).join('\n');
     const greetingName = userName ? "Bác " + userName : "Bác";
 
-    // ----- XỬ LÝ LOGIC THỜI GIAN (Javascript) -----
+    // ----- XỬ LÝ LOGIC THỜI GIAN -----
     const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
     const hour = now.getHours();
-    const day = now.getDay(); // 0 = Chủ Nhật, 1 = Thứ 2, ..., 6 = Thứ 7
-
+    const day = now.getDay();
     let timeContext = "";
-    let isWorkingHours = false;
-
     if (day === 0) {
-        // Chủ Nhật
-        timeContext = "Hiện tại là CHỦ NHẬT (Shop nghỉ). Nếu khách chốt đơn, hãy nói: 'Dạ hôm nay kho nghỉ, sáng Thứ 2 nhân viên Shop sẽ gọi lại xác nhận cho Bác ạ'.";
+        timeContext = "Hiện tại là CHỦ NHẬT (Nghỉ). Khách chốt đơn -> Hẹn sáng Thứ 2 gọi xác nhận.";
     } else {
-        // Thứ 2 - Thứ 7
         if (hour >= 8 && hour < 17) {
-            // Giờ hành chính
-            isWorkingHours = true;
-            timeContext = "Hiện tại là GIỜ HÀNH CHÍNH (8h-17h). Tư vấn và chốt đơn bình thường.";
-        } else if (hour < 8) {
-            // Sáng sớm (ví dụ 6h sáng)
-            timeContext = `Hiện tại là SÁNG SỚM (${hour}h sáng). Chưa đến giờ làm. Nếu khách chốt đơn, hãy nói: 'Dạ Shop đã nhận thông tin. Lát nữa 8h vào giờ làm việc nhân viên Shop sẽ gọi điện ngay cho Bác ạ'.`;
+            timeContext = "Hiện tại là GIỜ HÀNH CHÍNH (8h-17h). Chốt đơn bình thường.";
         } else {
-            // Buổi tối (sau 17h)
-            if (day === 6) {
-                // Tối Thứ 7
-                timeContext = "Hiện tại là TỐI THỨ 7 (Mai là Chủ Nhật nghỉ). Nếu khách chốt đơn, hãy nói: 'Dạ Shop đã nhận thông tin. Shop sẽ liên hệ lại với Bác sớm nhất để xác nhận đơn ạ'. (TRÁNH nói 'sáng mai' vì mai là Chủ Nhật).";
-            } else {
-                // Tối ngày thường
-                timeContext = "Hiện tại là BUỔI TỐI (Hết giờ làm). Nếu khách chốt đơn, hãy nói: 'Dạ Shop đã nhận thông tin. Sáng mai nhân viên Shop sẽ ưu tiên gọi lại cho Bác ạ'.";
-            }
+            timeContext = "Hiện tại là NGOÀI GIỜ. Khách chốt đơn -> Hẹn 8h sáng mai (hoặc lát nữa nếu là sáng sớm) gọi lại.";
         }
     }
-    // -----------------------------------------------
+    // --------------------------------
 
-    // --- PROMPT MỚI ---
-    let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' và gọi khách là '${greetingName}'.
+    // --- PROMPT MỚI: THÊM LUẬT RÀ SOÁT LỊCH SỬ ---
+    let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' - '${greetingName}'.
     
-**LUẬT CẤM (NGHIÊM NGẶT):**
-1. CẤM bịa quà (Chỉ tặng Dầu Lạnh/Cao Dán).
-2. CẤM giảm giá.
-3. CẤM gửi link trong text.
+**LUẬT CẤM (TUÂN THỦ TUYỆT ĐỐI):**
+1. CẤM dùng từ 'Admin', 'Bot'.
+2. CẤM gửi link trong text.
+3. CẤM tặng quà linh tinh (Chỉ Dầu Lạnh/Cao Dán).
 4. CẤM nói lặp "Shop đã nhận thông tin".
 
-**NGỮ CẢNH THỜI GIAN HIỆN TẠI (BẮT BUỘC TUÂN THEO):**
-${timeContext}
-
-**LUẬT XỬ LÝ NGOÀI GIỜ (Khi không phải giờ hành chính):**
-- **Trường hợp A (Khách CHỈ HỎI/TƯ VẤN):**
-  -> Trả lời câu hỏi bình thường.
-  -> Cuối câu thêm: *"Bác cần tư vấn kỹ hơn thì cứ để lại SĐT lát nữa/mai con gọi tư vấn cho Bác nhé!"*.
-  -> **KHÔNG** nói câu "Shop đã nhận thông tin" ở đây.
-- **Trường hợp B (Khách CHỐT ĐƠN / GỬI SĐT):**
-  -> Mới sử dụng câu chốt đơn theo hướng dẫn ở phần "NGỮ CẢNH THỜI GIAN HIỆN TẠI" bên trên.
+**LUẬT QUAN TRỌNG NHẤT - RÀ SOÁT THÔNG TIN:**
+- Trước khi xin Địa Chỉ hay SĐT, **BẮT BUỘC** phải đọc kỹ "Lịch sử chat" bên dưới.
+- Nếu trong lịch sử, Khách **ĐÃ TỪNG** nhắn SĐT (dãy số) hoặc Địa chỉ (tên tỉnh, đường...), thì **TUYỆT ĐỐI KHÔNG ĐƯỢC XIN LẠI**.
+- **Hành động đúng:** Hãy nói "Dạ Shop đã có thông tin của Bác rồi ạ. Shop chốt đơn [Tên SP] gửi về [Địa chỉ trong lịch sử] cho Bác nhé?".
 
 **LUẬT TƯ VẤN:**
-- Hotline gấp: 0986.646.845...
-- Hỏi "An Cung": Tư vấn ngay **An Cung Samsung (780k)**.
-- Gửi ảnh: Chỉ gửi khi khách ĐÒI.
+- Hỏi "An Cung" -> Tư vấn **Samsung (780k)**.
+- Hỏi chung chung -> Liệt kê các dòng SP.
+- Gửi ảnh: Chỉ gửi khi khách ĐÒI (từ khóa: 'ảnh', 'hình', 'xem mẫu').
+
+**NGỮ CẢNH THỜI GIAN:**
+${timeContext}
 
 ${productKnowledge}
 
-**Lịch sử chat:**
+**Lịch sử chat (HÃY ĐỌC KỸ ĐỂ TÌM SĐT/ĐỊA CHỈ):**
 ${historyString || "(Chưa có)"}
 
 **Khách nhắn:** "${userMessage}"
@@ -410,5 +383,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v3.0 (Smart Time Logic) chạy tại port ${PORT}`);
+  console.log(`Bot v3.1 (Fix Xin Lai Dia Chi + Ra Soat Lich Su) chạy tại port ${PORT}`);
 });
