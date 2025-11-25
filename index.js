@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "SINGLE PERSONA v4.0" - Stealth Mode: Dung dau cham de tat Bot)
+// File: index.js (Phiên bản "SINGLE PERSONA v4.1" - Them Dau Nong & Dau Lanh)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -70,7 +70,7 @@ app.get('/webhook', (req, res) => {
 });
 
 // -------------------------------------------------------------------
-// Endpoint 2: Nhận tin nhắn (LOGIC ĐIỀU KHIỂN MỚI)
+// Endpoint 2: Nhận tin nhắn (XỬ LÝ LỆNH ADMIN)
 // -------------------------------------------------------------------
 app.post('/webhook', (req, res) => {
   let body = req.body;
@@ -90,32 +90,26 @@ app.post('/webhook', (req, res) => {
         if (webhook_event.message && webhook_event.message.is_echo) {
             const metadata = webhook_event.message.metadata;
             if (metadata === "FROM_BOT_AUTO") {
-                return; // Bot tự nói -> Bỏ qua
+                return; 
             } else {
                 // ADMIN CHAT TAY
                 const adminText = webhook_event.message.text;
-                const recipientID = webhook_event.recipient.id; // ID Khách hàng
+                const recipientID = webhook_event.recipient.id; 
 
                 if (adminText && recipientID) {
                     const lowerText = adminText.trim().toLowerCase();
                     
-                    // --- QUY TẮC TẮT/BẬT MỚI (TỰ NHIÊN HƠN) ---
-                    
-                    // 1. TẮT BOT: Nếu câu bắt đầu bằng dấu chấm "." hoặc là chữ "stop"
+                    // --- QUY TẮC TẮT/BẬT ---
                     if (lowerText.startsWith('.') || lowerText === 'stop') {
                         await setBotStatus(pageId, recipientID, true); // True = Pause
-                        console.log(`[ADMIN] Đã TẮT bot với khách ${recipientID} (Lệnh: ${adminText})`);
-                        // Vẫn lưu tin nhắn vào lịch sử để Bot hiểu ngữ cảnh sau này
+                        console.log(`[ADMIN] Đã TẮT bot với khách ${recipientID}`);
                     }
-                    
-                    // 2. BẬT BOT: Nếu là chữ "auto" hoặc "start" hoặc ".auto"
                     else if (lowerText === 'auto' || lowerText === 'start' || lowerText === '.auto') {
                         await setBotStatus(pageId, recipientID, false); // False = Active
                         console.log(`[ADMIN] Đã BẬT bot với khách ${recipientID}`);
-                        // Không cần lưu chữ "auto" vào lịch sử
                         return; 
                     }
-                    // -------------------------------------------
+                    // -----------------------
 
                     console.log(`[ADMIN CHAT TAY]: "${adminText}" -> Lưu.`);
                     await saveAdminReply(pageId, recipientID, adminText);
@@ -130,11 +124,11 @@ app.post('/webhook', (req, res) => {
         if (webhook_event.message) {
             if (webhook_event.message.sticker_id) return; // Bỏ qua Sticker
 
-            // KIỂM TRA TRẠNG THÁI BOT
+            // Check trạng thái Bot
             const userState = await loadState(`${pageId}_${sender_psid}`);
             if (userState.is_paused) {
                 console.log(`[PAUSED] Bot đang tắt với ${sender_psid}. Bỏ qua.`);
-                return; // Im lặng tuyệt đối
+                return; 
             }
 
             // Xử lý gọi nhỡ (Code cứng)
@@ -268,13 +262,13 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // -------------------------------------------------------------------
-// BỘ NÃO (THẢO KOREA)
+// BỘ NÃO (THẢO KOREA) - [ĐÃ CẬP NHẬT DẦU NÓNG & DẦU LẠNH]
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
     knowledgeString += "- GIỜ LÀM VIỆC: 8h00 - 17h00 hàng ngày.\n";
     knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
-    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng Dầu Lạnh (có thể đổi sang Cao Dán).\n\n";
+    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng 1 Dầu Lạnh (hoặc Cao Dán).\n\n";
     
     knowledgeString += "**QUY ĐỊNH SHIP:**\n";
     knowledgeString += "- Đơn < 500k: +30k Ship.\n";
@@ -311,11 +305,21 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "8. AN CUNG ROYAL FAMILY 32 VIÊN (690.000đ)\n";
     knowledgeString += "Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_-600x449.jpg\"\n";
     
+    // --- SẢN PHẨM MỚI ---
+    knowledgeString += "9. DẦU NÓNG XOA BÓP ANTIPHLAMINE HÀN QUỐC 100ML (89.000đ)\n";
+    knowledgeString += "Image_URL: \"https://wowmart.vn/wp-content/uploads/2017/03/dau-nong-xoa-diu-cac-co-xuong-khop-antiphlamine-han-quoc-221024-ka.jpg\"\n";
+    knowledgeString += "Đặc điểm: Có thanh massage. Giảm đau xương khớp, bong gân nhanh. (89k + 30k ship = 119k).\n";
+
+    knowledgeString += "10. DẦU LẠNH GLUCOSAMINE HÀN QUỐC 150ML (Sản phẩm Quà Tặng)\n";
+    knowledgeString += "Image_URL: \"https://glucosamin.com.vn/storage/uploads/noidung/dau-lanh-han-quoc-glucosamine-150ml-175.jpg\"\n";
+    knowledgeString += "LƯU Ý QUAN TRỌNG: Đây là QUÀ TẶNG mặc định khi mua An Cung. Nếu khách hỏi mua lẻ: Báo giá 39.000đ/tuýp NHƯNG chỉ bán khi mua từ 10 tuýp trở lên.\n";
+    // --------------------
+    
     return knowledgeString;
 }
 
 // -------------------------------------------------------------------
-// HÀM LƯU TRỮ (CÓ LẤY TRẠNG THÁI PAUSED)
+// HÀM LƯU TRỮ
 // -------------------------------------------------------------------
 async function loadState(uniqueStorageId) { 
   if (!db) return { history: [], is_paused: false }; 
@@ -325,7 +329,7 @@ async function loadState(uniqueStorageId) {
           const data = doc.data();
           return { 
               history: data.history ? data.history.slice(-20) : [],
-              is_paused: data.is_paused || false // Trạng thái bật/tắt
+              is_paused: data.is_paused || false 
           };
       }
       return { history: [], is_paused: false };
@@ -386,8 +390,8 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 **LUẬT CẤM:**
 1. CẤM dùng từ 'Admin', 'Bot'.
 2. CẤM gửi link trong text.
-3. CẤM bịa quà (Chỉ tặng Dầu Lạnh/Cao Dán). CẤM giảm giá.
-4. CẤM nói lặp "Shop đã nhận thông tin".
+3. CẤM bịa quà. CẤM giảm giá.
+4. CẤM nói lặp "Shop đã nhận thông tin" nếu lịch sử đã có.
 
 **LUẬT SHIP:**
 - Đơn < 500k: +30k Ship.
@@ -477,5 +481,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v4.0 (Stealth Mode) chạy tại port ${PORT}`);
+  console.log(`Bot v4.1 (Add Dau Nong + Dau Lanh) chạy tại port ${PORT}`);
 });
