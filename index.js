@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "SINGLE PERSONA v4.1" - Them Dau Nong & Dau Lanh)
+// File: index.js (Phiên bản "SINGLE PERSONA v4.3" - Luon Xac Nhan Lai Dia Chi & SDT)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -70,7 +70,7 @@ app.get('/webhook', (req, res) => {
 });
 
 // -------------------------------------------------------------------
-// Endpoint 2: Nhận tin nhắn (XỬ LÝ LỆNH ADMIN)
+// Endpoint 2: Nhận tin nhắn (XỬ LÝ LỆNH ADMIN & CALL)
 // -------------------------------------------------------------------
 app.post('/webhook', (req, res) => {
   let body = req.body;
@@ -90,7 +90,7 @@ app.post('/webhook', (req, res) => {
         if (webhook_event.message && webhook_event.message.is_echo) {
             const metadata = webhook_event.message.metadata;
             if (metadata === "FROM_BOT_AUTO") {
-                return; 
+                return; // Bot tự nói -> Bỏ qua
             } else {
                 // ADMIN CHAT TAY
                 const adminText = webhook_event.message.text;
@@ -109,9 +109,7 @@ app.post('/webhook', (req, res) => {
                         console.log(`[ADMIN] Đã BẬT bot với khách ${recipientID}`);
                         return; 
                     }
-                    // -----------------------
-
-                    console.log(`[ADMIN CHAT TAY]: "${adminText}" -> Lưu.`);
+                    
                     await saveAdminReply(pageId, recipientID, adminText);
                 }
                 return;
@@ -126,10 +124,7 @@ app.post('/webhook', (req, res) => {
 
             // Check trạng thái Bot
             const userState = await loadState(`${pageId}_${sender_psid}`);
-            if (userState.is_paused) {
-                console.log(`[PAUSED] Bot đang tắt với ${sender_psid}. Bỏ qua.`);
-                return; 
-            }
+            if (userState.is_paused) return; 
 
             // Xử lý gọi nhỡ (Code cứng)
             const textLower = webhook_event.message.text ? webhook_event.message.text.toLowerCase() : "";
@@ -262,13 +257,13 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // -------------------------------------------------------------------
-// BỘ NÃO (THẢO KOREA) - [ĐÃ CẬP NHẬT DẦU NÓNG & DẦU LẠNH]
+// BỘ NÃO (THẢO KOREA)
 // -------------------------------------------------------------------
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
     knowledgeString += "- GIỜ LÀM VIỆC: 8h00 - 17h00 hàng ngày.\n";
     knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
-    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng 1 Dầu Lạnh (hoặc Cao Dán).\n\n";
+    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng Dầu Lạnh (có thể đổi sang Cao Dán).\n\n";
     
     knowledgeString += "**QUY ĐỊNH SHIP:**\n";
     knowledgeString += "- Đơn < 500k: +30k Ship.\n";
@@ -305,7 +300,6 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "8. AN CUNG ROYAL FAMILY 32 VIÊN (690.000đ)\n";
     knowledgeString += "Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_-600x449.jpg\"\n";
     
-    // --- SẢN PHẨM MỚI ---
     knowledgeString += "9. DẦU NÓNG XOA BÓP ANTIPHLAMINE HÀN QUỐC 100ML (89.000đ)\n";
     knowledgeString += "Image_URL: \"https://wowmart.vn/wp-content/uploads/2017/03/dau-nong-xoa-diu-cac-co-xuong-khop-antiphlamine-han-quoc-221024-ka.jpg\"\n";
     knowledgeString += "Đặc điểm: Có thanh massage. Giảm đau xương khớp, bong gân nhanh. (89k + 30k ship = 119k).\n";
@@ -313,7 +307,6 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "10. DẦU LẠNH GLUCOSAMINE HÀN QUỐC 150ML (Sản phẩm Quà Tặng)\n";
     knowledgeString += "Image_URL: \"https://glucosamin.com.vn/storage/uploads/noidung/dau-lanh-han-quoc-glucosamine-150ml-175.jpg\"\n";
     knowledgeString += "LƯU Ý QUAN TRỌNG: Đây là QUÀ TẶNG mặc định khi mua An Cung. Nếu khách hỏi mua lẻ: Báo giá 39.000đ/tuýp NHƯNG chỉ bán khi mua từ 10 tuýp trở lên.\n";
-    // --------------------
     
     return knowledgeString;
 }
@@ -393,12 +386,12 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 3. CẤM bịa quà. CẤM giảm giá.
 4. CẤM nói lặp "Shop đã nhận thông tin" nếu lịch sử đã có.
 
-**LUẬT SHIP:**
-- Đơn < 500k: +30k Ship.
-- Đơn >= 500k: Freeship.
+**LUẬT XÁC NHẬN ĐƠN HÀNG (QUAN TRỌNG):**
+- Khi khách hàng đưa thông tin (SĐT, Địa chỉ, Tên), bạn **PHẢI** trích xuất và nhắc lại nguyên văn để khách kiểm tra.
+- **Mẫu câu:** "Dạ Shop xác nhận lại thông tin nhận hàng của Bác là: SĐT [SĐT khách] - Địa chỉ [Địa chỉ khách]. Bác kiểm tra xem đúng chưa ạ?"
 
 **LUẬT RÀ SOÁT THÔNG TIN:**
-- Trước khi xin SĐT/Địa chỉ, **PHẢI** đọc kỹ "Lịch sử chat". Nếu có rồi thì KHÔNG xin lại.
+- Trước khi xin SĐT/Địa chỉ, **PHẢI** đọc kỹ "Lịch sử chat". Nếu khách đã gửi rồi thì **KHÔNG** xin lại mà chuyển sang bước Xác Nhận (Luật trên).
 
 **LUẬT TƯ VẤN:**
 - Hỏi "An Cung" -> Tư vấn **Samsung (780k)**.
@@ -481,5 +474,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v4.1 (Add Dau Nong + Dau Lanh) chạy tại port ${PORT}`);
+  console.log(`Bot v4.3 (Luon Xac Nhan Thong Tin) chạy tại port ${PORT}`);
 });
