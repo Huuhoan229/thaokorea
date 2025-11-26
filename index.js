@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v5.4" - Fix Loi Bia Qua Tang + Chat Che Hon)
+// File: index.js (Phiên bản "MULTI-BOT v5.5" - Update Hac Sam Hanjeong 500g)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -282,18 +282,13 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // =================================================================
-// BỘ NÃO 1: THẢO KOREA (BÁN LẺ) - [CẬP NHẬT CHẶT CHẼ HƠN]
+// BỘ NÃO 1: THẢO KOREA (BÁN LẺ) - [UPDATE CAO HẮC SÂM 500G]
 // =================================================================
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
     knowledgeString += "- Shop CHỈ BÁN ONLINE. Kho Hà Đông, VP Long Biên.\n";
     knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
-    
-    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG (THIẾT QUÂN LUẬT):**\n";
-    knowledgeString += "- Chỉ tặng duy nhất: **Dầu Lạnh** (Mặc định) hoặc **Cao Dán** (Nếu khách chọn).\n";
-    knowledgeString += "- **TUYỆT ĐỐI CẤM:** Không bao giờ được nói tặng Kẹo sâm, Trà sâm, Nước sâm hay bất cứ thứ gì khác.\n";
-    knowledgeString += "- Riêng 'Cao Hắc Sâm Trầm Hương (690k)' -> KHÔNG CÓ QUÀ.\n\n";
-    
+    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng 1 Dầu Lạnh (hoặc Cao Dán). Riêng 'Hắc Sâm' KHÔNG QUÀ.\n";
     knowledgeString += "**QUY ĐỊNH SHIP:** Đơn < 500k: +30k Ship. Đơn >= 500k: Freeship.\n\n";
 
     knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO]---\n";
@@ -301,7 +296,7 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
     knowledgeString += "-----------------\n\n";
     
-    // ... (Các sản phẩm khác giữ nguyên như cũ) ...
+    knowledgeString += "---[SẢN PHẨM KHÁC]---\n";
     knowledgeString += "2. HỘP CAO HỒNG SÂM 365 HÀN QUỐC (Mỗi lọ 240g)\n";
     knowledgeString += "   - Hộp 2 Lọ: 450.000đ (Chưa Ship).\n";
     knowledgeString += "   - Hộp 4 Lọ: 850.000đ (Freeship).\n";
@@ -332,9 +327,10 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "Image_URL: \"https://glucosamin.com.vn/storage/uploads/noidung/dau-lanh-han-quoc-glucosamine-150ml-175.jpg\"\n";
     knowledgeString += "LƯU Ý: Đây là QUÀ TẶNG mặc định. Nếu khách mua lẻ: 39k/tuýp (Chỉ bán > 10 tuýp).\n";
 
-    knowledgeString += "11. CAO HẮC SÂM TRẦM HƯƠNG HANJEONG (690.000đ)\n";
+    // --- SẢN PHẨM MỚI UPDATE ---
+    knowledgeString += "11. CAO HẮC SÂM TRẦM HƯƠNG HANJEONG (690.000đ/hũ 500g)\n";
     knowledgeString += "Image_URL: \"https://huyenviet.com.vn/storage/products/July2025/36bECKNzZcANZO0ba11G.jpg\"\n";
-    knowledgeString += "Đặc điểm: Hũ sứ sang trọng. Bồi bổ, an thần. (Giá 690k -> FREESHIP). **LƯU Ý: SẢN PHẨM NÀY KHÔNG CÓ QUÀ TẶNG**.\n";
+    knowledgeString += "Đặc điểm: Hũ sứ sang trọng 500g. Bồi bổ, an thần. (Giá 690k -> FREESHIP). **LƯU Ý: SẢN PHẨM NÀY KHÔNG CÓ QUÀ TẶNG**.\n";
     
     return knowledgeString;
 }
@@ -362,9 +358,10 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' và gọi khách là '${greetingName}'.
     
 **LUẬT CẤM (TUÂN THỦ TUYỆT ĐỐI):**
-1. CẤM BỊA QUÀ: Chỉ được phép tặng Dầu Lạnh (hoặc Cao Dán). Nếu khách đòi kẹo sâm, trà sâm -> Hãy từ chối: "Dạ bên Shop hiện chỉ có chương trình tặng Dầu Lạnh/Cao Dán thôi ạ, Bác thông cảm giúp Shop nha".
+1. CẤM dùng từ 'Admin', 'Bot'.
 2. CẤM gửi link trong text.
-3. CẤM nói lặp "Shop đã nhận thông tin".
+3. CẤM bịa quà. CẤM giảm giá.
+4. CẤM nói lặp "Shop đã nhận thông tin" nếu trong lịch sử đã nói rồi.
 
 **LUẬT XÁC NHẬN ĐƠN HÀNG:**
 - Khi khách đưa thông tin (SĐT, Địa chỉ), bạn **PHẢI** trích xuất, sửa lỗi chính tả địa danh và nhắc lại để khách kiểm tra.
@@ -372,6 +369,7 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 
 **LUẬT TƯ VẤN:**
 - Hỏi "An Cung" -> Tư vấn **Samsung (780k)**.
+- Hỏi "Hũ sứ", "Quà biếu" -> Tư vấn **Cao Hắc Sâm Trầm Hương (690k)**.
 - Gửi ảnh: Chỉ gửi khi khách ĐÒI.
 
 **NGỮ CẢNH THỜI GIAN HIỆN TẠI:**
@@ -379,6 +377,7 @@ ${timeContext}
 
 **LUẬT XỬ LÝ NGOÀI GIỜ:**
 - Nếu là Ngoài giờ: Chỉ nói câu "Shop đã nhận thông tin" KHI VÀ CHỈ KHI khách đã **Chốt đơn** hoặc **Gửi SĐT**.
+- Nếu khách chỉ hỏi vu vơ: Trả lời bình thường + "Bác để lại SĐT mai con gọi".
 
 ${productKnowledge}
 
@@ -521,5 +520,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v5.4 (Fixed Bia Qua Tang) chạy tại port ${PORT}`);
+  console.log(`Bot v5.5 (Updated Hac Sam 500g) chạy tại port ${PORT}`);
 });
