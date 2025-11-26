@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v5.2" - Cao Hac Sam Khong Qua)
+// File: index.js (Phiên bản "MULTI-BOT v5.3" - Fix Loi Nhan Dien Nut Like/Sticker)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -98,13 +98,11 @@ app.post('/webhook', (req, res) => {
             const metadata = webhook_event.message.metadata;
             if (metadata === "FROM_BOT_AUTO") return; 
             
-            // Admin chat tay
             const adminText = webhook_event.message.text;
             const recipientID = webhook_event.recipient.id; 
 
             if (adminText && recipientID) {
                 const lowerText = adminText.trim().toLowerCase();
-                // Lệnh Tắt/Bật
                 if (lowerText.startsWith('.') || lowerText === 'stop' || lowerText === '!tatbot') {
                     await setBotStatus(pageId, recipientID, true); 
                     console.log(`[ADMIN] TẮT Bot ${recipientID}`);
@@ -122,7 +120,22 @@ app.post('/webhook', (req, res) => {
         // === 2. XỬ LÝ TIN KHÁCH HÀNG ===
         if (webhook_event.message) {
             const sender_psid = webhook_event.sender.id;
-            if (webhook_event.message.sticker_id) return; 
+
+            // === [FIX MỚI] LỌC STICKER TRIỆT ĐỂ ===
+            // Cách 1: Sticker ID ở tầng ngoài
+            if (webhook_event.message.sticker_id) {
+                console.log(`[STICKER] Bỏ qua sticker từ ${sender_psid}`);
+                return; 
+            }
+            // Cách 2: Sticker ID giấu trong attachments (Nút Like thường nằm ở đây)
+            if (webhook_event.message.attachments && webhook_event.message.attachments.length > 0) {
+                const att = webhook_event.message.attachments[0];
+                if (att.payload && att.payload.sticker_id) {
+                    console.log(`[STICKER LIKE] Bỏ qua nút Like/Sticker từ ${sender_psid}`);
+                    return;
+                }
+            }
+            // =======================================
 
             // Check trạng thái Bot
             const userState = await loadState(`${pageId}_${sender_psid}`);
@@ -184,7 +197,7 @@ async function setBotStatus(pageId, customerId, isPaused) {
 }
 
 // -------------------------------------------------------------------
-// HÀM XỬ LÝ GỌI NHỠ (TÙY PAGE)
+// HÀM XỬ LÝ GỌI NHỠ
 // -------------------------------------------------------------------
 async function handleMissedCall(pageId, sender_psid) {
     const FB_PAGE_TOKEN = pageTokenMap.get(pageId);
@@ -278,39 +291,33 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // =================================================================
-// BỘ NÃO 1: THẢO KOREA (BÁN LẺ) - [UPDATE: CAO HẮC SÂM KHÔNG QUÀ]
+// BỘ NÃO 1: THẢO KOREA (BÁN LẺ)
 // =================================================================
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
     knowledgeString += "- Shop CHỈ BÁN ONLINE. Kho Hà Đông, VP Long Biên.\n";
     knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
-    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng 1 Dầu Lạnh (hoặc Cao Dán).\n";
-    knowledgeString += "-> **LƯU Ý:** Riêng 'Cao Hắc Sâm Trầm Hương (690k)' KHÔNG ĐƯỢC TẶNG QUÀ.\n\n";
+    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng 1 Dầu Lạnh (hoặc Cao Dán). Riêng 'Hắc Sâm' KHÔNG QUÀ.\n\n";
     
     knowledgeString += "**QUY ĐỊNH SHIP:** Đơn < 500k: +30k Ship. Đơn >= 500k: Freeship.\n\n";
 
     knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN (780.000đ)\n";
     knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
-    knowledgeString += "Đặc điểm: Hộp gỗ màu nâu. 1% trầm hương. Loại phổ biến nhất.\n";
     knowledgeString += "-----------------\n\n";
     
     knowledgeString += "---[SẢN PHẨM KHÁC]---\n";
-    knowledgeString += "2. HỘP CAO HỒNG SÂM 365 HÀN QUỐC (Mỗi lọ 240g)\n";
-    knowledgeString += "   - Hộp 2 Lọ: 450.000đ (Chưa Ship).\n";
-    knowledgeString += "   - Hộp 4 Lọ: 850.000đ (Freeship).\n";
-    knowledgeString += "   - Image_URL (2 Lọ): \"https://ghshop.vn/images/upload/images/Cao-H%E1%BB%93ng-S%C3%A2m-365-H%C3%A0n-Qu%E1%BB%91c-Lo%E1%BA%A1i-2-L%E1%BB%8D.png\"\n";
-    knowledgeString += "   - Image_URL (4 Lọ): \"https://thuoc365.vn/wp-content/uploads/2017/12/cao-hong-sam-4.jpg\"\n";
+    knowledgeString += "2. HỘP CAO HỒNG SÂM 365 (2 Lọ: 450k+30k ship / 4 Lọ: 850k Freeship)\n";
+    knowledgeString += "Image_URL (2 Lọ): \"https://ghshop.vn/images/upload/images/Cao-H%E1%BB%93ng-S%C3%A2m-365-H%C3%A0n-Qu%E1%BB%91c-Lo%E1%BA%A1i-2-L%E1%BB%8D.png\"\n";
+    knowledgeString += "Image_URL (4 Lọ): \"https://thuoc365.vn/wp-content/uploads/2017/12/cao-hong-sam-4.jpg\"\n";
 
-    knowledgeString += "3. HỘP TINH DẦU THÔNG ĐỎ KWANGDONG (1.150.000đ - 120 viên)\n";
+    knowledgeString += "3. HỘP TINH DẦU THÔNG ĐỎ KWANGDONG (1.150.000đ)\n";
     knowledgeString += "Image_URL: \"https://product.hstatic.net/1000260265/product/tinh_dau_thong_do_tai_da_nang_5b875a5a4c114cb09455e328aee71b97_master.jpg\"\n";
 
-    knowledgeString += "4. NƯỚC HỒNG SÂM NHUNG HƯƠU 30 GÓI (420.000đ - Chưa Ship)\n";
+    knowledgeString += "4. NƯỚC HỒNG SÂM NHUNG HƯƠU 30 GÓI (420.000đ + 30k ship)\n";
     knowledgeString += "Image_URL: \"https://samyenthinhphat.com/uploads/Images/sam-nuoc/tinh-chat-hong-sam-nhung-huou-hop-30-goi-006.jpg\"\n";
 
-    knowledgeString += "5. NƯỚC HỒNG SÂM NHUNG HƯƠU 20 GÓI (HẾT HÀNG)\n";
-    
-    knowledgeString += "6. NƯỚC MÁT GAN ĐÔNG TRÙNG NGHỆ SAMSUNG (390.000đ - Chưa Ship)\n";
+    knowledgeString += "6. NƯỚC MÁT GAN SAMSUNG (390.000đ + 30k ship)\n";
     knowledgeString += "Image_URL: \"https://hueminhkorea.com/wp-content/uploads/2025/02/mat-gan-nghe-dong-trung-tw-han-quoc-2.jpg\"\n";
 
     knowledgeString += "7. AN CUNG TRẦM HƯƠNG KWANGDONG 60 VIÊN (1.290.000đ)\n";
@@ -319,17 +326,15 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "8. AN CUNG ROYAL FAMILY 32 VIÊN (690.000đ)\n";
     knowledgeString += "Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_-600x449.jpg\"\n";
     
-    knowledgeString += "9. DẦU NÓNG XOA BÓP ANTIPHLAMINE HÀN QUỐC 100ML (89.000đ)\n";
+    knowledgeString += "9. DẦU NÓNG ANTIPHLAMINE (89.000đ + 30k ship)\n";
     knowledgeString += "Image_URL: \"https://wowmart.vn/wp-content/uploads/2017/03/dau-nong-xoa-diu-cac-co-xuong-khop-antiphlamine-han-quoc-221024-ka.jpg\"\n";
 
-    knowledgeString += "10. DẦU LẠNH GLUCOSAMINE HÀN QUỐC 150ML (Sản phẩm Quà Tặng)\n";
+    knowledgeString += "10. DẦU LẠNH GLUCOSAMINE (39k - Chỉ bán >10 tuýp)\n";
     knowledgeString += "Image_URL: \"https://glucosamin.com.vn/storage/uploads/noidung/dau-lanh-han-quoc-glucosamine-150ml-175.jpg\"\n";
-    knowledgeString += "LƯU Ý: Đây là QUÀ TẶNG mặc định. Nếu khách mua lẻ: 39k/tuýp (Chỉ bán > 10 tuýp).\n";
 
-    // --- SẢN PHẨM MỚI ---
     knowledgeString += "11. CAO HẮC SÂM TRẦM HƯƠNG HANJEONG (690.000đ)\n";
     knowledgeString += "Image_URL: \"https://huyenviet.com.vn/storage/products/July2025/36bECKNzZcANZO0ba11G.jpg\"\n";
-    knowledgeString += "Đặc điểm: Hũ sứ sang trọng. Bồi bổ, an thần. (Giá 690k -> FREESHIP). **LƯU Ý: SẢN PHẨM NÀY KHÔNG CÓ QUÀ TẶNG**.\n";
+    knowledgeString += "Đặc điểm: Hũ sứ. KHÔNG QUÀ TẶNG.\n";
     
     return knowledgeString;
 }
@@ -356,27 +361,29 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 
     let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' và gọi khách là '${greetingName}'.
     
-**LUẬT CẤM (TUÂN THỦ TUYỆT ĐỐI):**
+**LUẬT XỬ LÝ HÌNH ẢNH (QUAN TRỌNG):**
+- Nếu tin nhắn là "[Khách gửi hình ảnh]":
+  -> Hãy nói: "Dạ Shop đã nhận được ảnh Bác gửi ạ. Bác cần Shop tư vấn gì về sản phẩm trong ảnh không ạ?" (Giọng nhẹ nhàng, không chê ảnh mờ).
+
+**LUẬT CẤM:**
 1. CẤM dùng từ 'Admin', 'Bot'.
 2. CẤM gửi link trong text.
 3. CẤM bịa quà. CẤM giảm giá.
-4. CẤM nói lặp "Shop đã nhận thông tin" nếu trong lịch sử đã nói rồi.
+4. CẤM nói lặp "Shop đã nhận thông tin" nếu lịch sử đã có.
 
 **LUẬT XÁC NHẬN ĐƠN HÀNG:**
 - Khi khách đưa thông tin (SĐT, Địa chỉ), bạn **PHẢI** trích xuất, sửa lỗi chính tả địa danh và nhắc lại để khách kiểm tra.
-- "Dạ Shop xác nhận lại thông tin: SĐT [Số] - Địa chỉ [Địa chỉ chuẩn]. Bác kiểm tra đúng chưa ạ?"
 
 **LUẬT TƯ VẤN:**
 - Hỏi "An Cung" -> Tư vấn **Samsung (780k)**.
 - Hỏi "Hũ sứ", "Quà biếu" -> Tư vấn **Cao Hắc Sâm Trầm Hương (690k)**.
 - Gửi ảnh: Chỉ gửi khi khách ĐÒI.
 
-**NGỮ CẢNH THỜI GIAN HIỆN TẠI:**
+**NGỮ CẢNH THỜI GIAN:**
 ${timeContext}
 
 **LUẬT XỬ LÝ NGOÀI GIỜ:**
 - Nếu là Ngoài giờ: Chỉ nói câu "Shop đã nhận thông tin" KHI VÀ CHỈ KHI khách đã **Chốt đơn** hoặc **Gửi SĐT**.
-- Nếu khách chỉ hỏi vu vơ: Trả lời bình thường + "Bác để lại SĐT mai con gọi".
 
 ${productKnowledge}
 
@@ -519,5 +526,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v5.2 (Updated Cao Hac Sam - No Gift) chạy tại port ${PORT}`);
+  console.log(`Bot v5.3 (Fixed Nút Like + Sticker) chạy tại port ${PORT}`);
 });
