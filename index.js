@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v6.3" - Fix Phan Biet Cao Sam vs Nuoc Sam)
+// File: index.js (Phiên bản "MULTI-BOT v6.4" - Update Ship Dong Gia 20k)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -282,7 +282,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // =================================================================
-// BỘ NÃO 1: THẢO KOREA (BÁN LẺ) - [CỰC KỲ QUAN TRỌNG: PHÂN BIỆT CAO vs NƯỚC]
+// BỘ NÃO 1: THẢO KOREA (BÁN LẺ) - [UPDATE SHIP 20K]
 // =================================================================
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
@@ -291,16 +291,17 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng 1 Dầu Lạnh (hoặc Cao Dán).\n";
     knowledgeString += "-> LƯU Ý: 'Cao Hắc Sâm 690k' tặng 1 Cao Dán. 'Đạm Sâm Kana', 'Nghệ Nano', 'Sâm Nước 100 gói' -> KHÔNG CÓ QUÀ.\n\n";
     
-    knowledgeString += "**QUY ĐỊNH SHIP:** Đơn < 500k: +30k Ship. Đơn >= 500k: Freeship.\n\n";
+    knowledgeString += "**QUY ĐỊNH SHIP MỚI:** Đơn < 500k: +20k Ship (Đồng giá). Đơn >= 500k: Freeship.\n\n";
 
     knowledgeString += "---[SẢN PHẨM CHỦ ĐẠO]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HÀN QUỐC HỘP GỖ 60 VIÊN (780.000đ)\n";
     knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
+    knowledgeString += "Đặc điểm: Hộp gỗ màu nâu. 1% trầm hương. Loại phổ biến nhất.\n";
     knowledgeString += "-----------------\n\n";
     
     knowledgeString += "---[PHÂN BIỆT CAO SÂM (SỆT) VÀ NƯỚC SÂM (LỎNG)]---\n";
     knowledgeString += "2. HỘP CAO HỒNG SÂM 365 - DẠNG CAO SỆT (ĐÓNG LỌ)\n";
-    knowledgeString += "   - Hộp 2 Lọ (240g/lọ): 450.000đ (+30k ship).\n";
+    knowledgeString += "   - Hộp 2 Lọ (240g/lọ): 450.000đ (+20k ship = 470k).\n";
     knowledgeString += "   - Hộp 4 Lọ (240g/lọ): 850.000đ (Freeship).\n";
     knowledgeString += "   - Image_URL (2 Lọ): \"https://ghshop.vn/images/upload/images/Cao-H%E1%BB%93ng-S%C3%A2m-365-H%C3%A0n-Qu%E1%BB%91c-Lo%E1%BA%A1i-2-L%E1%BB%8D.png\"\n";
     knowledgeString += "   - Image_URL (4 Lọ): \"https://thuoc365.vn/wp-content/uploads/2017/12/cao-hong-sam-4.jpg\"\n";
@@ -313,27 +314,27 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "-----------------\n\n";
 
     knowledgeString += "---[SẢN PHẨM KHÁC]---\n";
-    knowledgeString += "11. NGHỆ NANO CURCUMIN 365 CARE (990.000đ/hộp)\n";
+    knowledgeString += "11. NGHỆ NANO CURCUMIN 365 CARE (990.000đ/hộp - Freeship)\n";
     knowledgeString += "Image_URL: \"https://scontent.fhan15-2.fna.fbcdn.net/v/t39.30808-6/589158835_122096348745142019_9083802807600819254_n.jpg\"\n";
 
-    knowledgeString += "12. VIÊN ĐẠM SÂM KANA (460.000đ + 30k ship)\n";
+    knowledgeString += "12. VIÊN ĐẠM SÂM KANA (460.000đ + 20k ship = 480k)\n";
     knowledgeString += "Image_URL: \"https://shopsunflower.vn/wp-content/uploads/2025/07/Dam-Sam-Kana-Hong-Sam-Nhung-Huou-Linh-Chi-Han-Quoc.webp\"\n";
 
-    knowledgeString += "14. VIÊN CANXI SMS BIO PHARM (360.000đ + 30k ship)\n";
+    knowledgeString += "14. VIÊN CANXI SMS BIO PHARM (360.000đ + 20k ship = 380k)\n";
     knowledgeString += "Image_URL: \"https://hanquocgiare.com/wp-content/uploads/2025/09/vien-uong-bo-sung-canxi-sms-bio-pharm-signatune-power-cacium-gold.jpg\"\n";
 
-    knowledgeString += "15. VIÊN BỔ MẮT SAMSUNG (360.000đ + 30k ship)\n";
+    knowledgeString += "15. VIÊN BỔ MẮT SAMSUNG (360.000đ + 20k ship = 380k)\n";
     knowledgeString += "Image_URL: \"https://hanquocgiare.com/wp-content/uploads/2022/12/vien-uong-bo-mat-han-quoc-samsung-bio-pharm-120-vien-4.jpg\"\n";
     
     knowledgeString += "16. CAO HẮC SÂM TRẦM HƯƠNG HANJEONG (690.000đ - Tặng 1 Gói Cao Dán)\n";
     knowledgeString += "Image_URL: \"https://huyenviet.com.vn/storage/products/July2025/36bECKNzZcANZO0ba11G.jpg\"\n";
 
     knowledgeString += "3. HỘP TINH DẦU THÔNG ĐỎ KWANGDONG (1.150.000đ)\n";
-    knowledgeString += "4. NƯỚC HỒNG SÂM NHUNG HƯƠU 30 GÓI (420.000đ + ship)\n";
-    knowledgeString += "6. NƯỚC MÁT GAN SAMSUNG (390.000đ + ship)\n";
+    knowledgeString += "4. NƯỚC HỒNG SÂM NHUNG HƯƠU 30 GÓI (420.000đ + 20k ship = 440k)\n";
+    knowledgeString += "6. NƯỚC MÁT GAN SAMSUNG (390.000đ + 20k ship = 410k)\n";
     knowledgeString += "7. AN CUNG KWANGDONG 60 VIÊN (1.290.000đ)\n";
     knowledgeString += "8. AN CUNG ROYAL 32 VIÊN (690.000đ)\n";
-    knowledgeString += "9. DẦU NÓNG ANTIPHLAMINE (89.000đ)\n";
+    knowledgeString += "9. DẦU NÓNG ANTIPHLAMINE (89.000đ + 20k ship = 109k)\n";
     knowledgeString += "10. DẦU LẠNH GLUCOSAMINE (39k - Chỉ bán >10 tuýp)\n";
 
     return knowledgeString;
@@ -355,7 +356,11 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 1. CẤM dùng từ 'Admin', 'Bot'.
 2. CẤM gửi link trong text.
 3. CẤM bịa quà. CẤM giảm giá.
-4. CẤM nói lặp "Shop đã nhận thông tin".
+4. CẤM nói lặp "Shop đã nhận thông tin" nếu trong lịch sử đã nói rồi.
+
+**LUẬT TÍNH SHIP MỚI:**
+- Đơn < 500k: +20k Ship (Đồng giá).
+- Đơn >= 500k: Freeship.
 
 **LUẬT PHÂN BIỆT SẢN PHẨM (QUAN TRỌNG):**
 - Khách hỏi **"Cao", "Hũ", "Lọ", "Sệt"** -> Tư vấn **CAO HỒNG SÂM 365 (2 lọ/4 lọ)**.
@@ -367,7 +372,6 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 
 **LUẬT TƯ VẤN:**
 - Hỏi "An Cung" -> Tư vấn **Samsung (780k)**.
-- Hỏi "Hũ sứ", "Quà biếu" -> Tư vấn **Cao Hắc Sâm Trầm Hương (690k)**.
 - Gửi ảnh: Chỉ gửi khi khách ĐÒI.
 
 **NGỮ CẢNH THỜI GIAN HIỆN TẠI:**
@@ -517,5 +521,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v6.3 (Fix Phan Biet Cao vs Nuoc Sam) chạy tại port ${PORT}`);
+  console.log(`Bot v6.4 (Update Ship Dong Gia 20k) chạy tại port ${PORT}`);
 });
