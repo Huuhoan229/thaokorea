@@ -323,7 +323,9 @@ function getProductKnowledge_ThaoKorea() {
 
     knowledgeString += "---[SẢN PHẨM CŨ]---\n";
     knowledgeString += "3. HỘP TINH DẦU THÔNG ĐỎ KWANGDONG (1.150.000đ)\n";
+    knowledgeString += "Image_URL: \"https://www.hangngoainhap.com.vn/images/202310/goods_img/3443-p2-1696650050.jpg\"\n";
     knowledgeString += "4. NƯỚC HỒNG SÂM NHUNG HƯƠU 30 GÓI (420.000đ + 20k ship = 440k)\n";
+    knowledgeString += "Image_URL: \"https://hanquocstyle.com/wp-content/uploads/2020/09/nuoc-hong-sam-nhung-huou1495251187.jpg\"\n";
     
     // --- [UPDATE HẾT HÀNG] ---
     knowledgeString += "5. NƯỚC HỒNG SÂM NHUNG HƯƠU 20 GÓI (TẠM HẾT HÀNG)\n";
@@ -332,11 +334,15 @@ function getProductKnowledge_ThaoKorea() {
     // -------------------------
     
     knowledgeString += "6. NƯỚC MÁT GAN SAMSUNG (390.000đ + 20k ship = 410k)\n";
+    knowledgeString += "Image_URL: \"https://hueminhkorea.com/wp-content/uploads/2025/02/mat-gan-nghe-dong-trung-tw-han-quoc-3-1.jpg\"\n";
     knowledgeString += "7. AN CUNG KWANGDONG 60 VIÊN (1.290.000đ)\n";
+    knowledgeString += "Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
     knowledgeString += "8. AN CUNG ROYAL 32 VIÊN (690.000đ)\n";
+    knowledgeString += "Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_.jpg\"\n";
     knowledgeString += "9. DẦU NÓNG ANTIPHLAMINE (89.000đ + 20k ship = 109k)\n";
+    knowledgeString += "Image_URL: \"https://bizweb.dktcdn.net/thumb/1024x1024/100/217/291/products/1e-be8ca9e3-c222-4fa0-a24e-8cad4d300073.jpg?v=1634294354737\"\n";
     knowledgeString += "10. DẦU LẠNH GLUCOSAMINE (39k - Chỉ bán >10 tuýp)\n";
-    
+    knowledgeString += "Image_URL: \"https://product.hstatic.net/1000391653/product/94d022ecf540c1c72e620a1281ac1abb.jpg_720x720q80_373824ab3e8e442aa32f079248360bfe_master.jpg\"\n";
     return knowledgeString;
 }
 
