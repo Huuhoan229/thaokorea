@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v6.9" - Fix Loi Tu Y Gui STK)
+// File: index.js (Phiên bản "MULTI-BOT v7.0" - Update Dung Tich 10ml vs 70ml)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -282,7 +282,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // =================================================================
-// BỘ NÃO 1: THẢO KOREA (BÁN LẺ)
+// BỘ NÃO 1: THẢO KOREA (BÁN LẺ) - [UPDATE DUNG TÍCH 10ml vs 70ml]
 // =================================================================
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
@@ -303,8 +303,10 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "   - Image_URL (4 Lọ): \"https://thuoc365.vn/wp-content/uploads/2017/12/cao-hong-sam-4.jpg\"\n";
 
     knowledgeString += "---[SẢN PHẨM MỚI]---\n";
-    knowledgeString += "13. TINH CHẤT HỒNG SÂM 365 - DẠNG NƯỚC UỐNG LIỀN (690.000đ/hộp 100 gói)\n";
+    // UPDATE DUNG TÍCH
+    knowledgeString += "13. TINH CHẤT HỒNG SÂM 365 - DẠNG NƯỚC (690.000đ/hộp 100 gói x 10ml)\n";
     knowledgeString += "Image_URL: \"https://nhungnheng.com/uploads/shops/2024_04/555439700_24765749976387672_8906127611892730086_n.jpg\"\n";
+    knowledgeString += "Đặc điểm: Dạng gói nhỏ 10ml tiện lợi. Hộp lớn 100 gói. (Freeship - KHÔNG QUÀ).\n\n";
 
     knowledgeString += "11. NGHỆ NANO CURCUMIN 365 CARE (990.000đ/hộp)\n";
     knowledgeString += "Image_URL: \"https://scontent.fhan15-2.fna.fbcdn.net/v/t39.30808-6/589158835_122096348745142019_9083802807600819254_n.jpg\"\n";
@@ -325,24 +327,30 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "3. HỘP TINH DẦU THÔNG ĐỎ KWANGDONG (1.150.000đ)\n";
     knowledgeString += "Image_URL: \"https://product.hstatic.net/1000260265/product/tinh_dau_thong_do_tai_da_nang_5b875a5a4c114cb09455e328aee71b97_master.jpg\"\n";
 
-    knowledgeString += "4. NƯỚC HỒNG SÂM NHUNG HƯƠU 30 GÓI (420.000đ + 20k ship = 440k)\n";
+    // UPDATE DUNG TÍCH
+    knowledgeString += "4. NƯỚC HỒNG SÂM NHUNG HƯƠU 30 GÓI (420.000đ + 20k ship)\n";
     knowledgeString += "Image_URL: \"https://samyenthinhphat.com/uploads/Images/sam-nuoc/tinh-chat-hong-sam-nhung-huou-hop-30-goi-006.jpg\"\n";
+    knowledgeString += "Đặc điểm: Gói lớn 70ml. Hộp 30 gói.\n\n";
     
     // --- [UPDATE HẾT HÀNG] ---
     knowledgeString += "5. NƯỚC HỒNG SÂM NHUNG HƯƠU 20 GÓI (TẠM HẾT HÀNG)\n";
     knowledgeString += "Image_URL: \"https://product.hstatic.net/200000830217/product/nuoc-hong-sam-nhung-huou-sms-bio-pharm-7_7a5ee2afe6bb4bea90e318231d2e2113_large.jpg\"\n";
+    knowledgeString += "Lưu ý: Nếu khách hỏi loại này, hãy tư vấn sang loại 30 gói (420k) vì đang sẵn hàng.\n";
     // -------------------------
     
-    knowledgeString += "6. NƯỚC MÁT GAN SAMSUNG (390.000đ + 20k ship = 410k)\n";
+    // UPDATE DUNG TÍCH
+    knowledgeString += "6. NƯỚC MÁT GAN SAMSUNG (390.000đ + 20k ship)\n";
     knowledgeString += "Image_URL: \"https://hueminhkorea.com/wp-content/uploads/2025/02/mat-gan-nghe-dong-trung-tw-han-quoc-3-1.jpg\"\n";
+    knowledgeString += "Đặc điểm: Gói lớn 70ml. Hộp 30 gói.\n\n";
+    
     knowledgeString += "7. AN CUNG KWANGDONG 60 VIÊN (1.290.000đ)\n";
-    knowledgeString += "Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
     knowledgeString += "8. AN CUNG ROYAL 32 VIÊN (690.000đ)\n";
-    knowledgeString += "Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_.jpg\"\n";
     knowledgeString += "9. DẦU NÓNG ANTIPHLAMINE (89.000đ + 20k ship = 109k)\n";
-    knowledgeString += "Image_URL: \"https://wowmart.vn/wp-content/uploads/2017/03/dau-nong-xoa-diu-cac-co-xuong-khop-antiphlamine-han-quoc-221024-ka.jpg\"\n";
     knowledgeString += "10. DẦU LẠNH GLUCOSAMINE (39k - Chỉ bán >10 tuýp)\n";
-    knowledgeString += "Image_URL: \"https://glucosamin.com.vn/storage/uploads/noidung/dau-lanh-han-quoc-glucosamine-150ml-175.jpg\"\n";
+    
+    // --- ẢNH QUÀ TẶNG ---
+    knowledgeString += "99. QUÀ TẶNG: CAO DÁN HỒNG SÂM (20 miếng)\n";
+    knowledgeString += "Image_URL: \"https://samyenthinhphat.com/uploads/Images/cao-dan-hong-sam-han-quoc-20-mieng-02.jpg\"\n";
     
     return knowledgeString;
 }
@@ -363,16 +371,17 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 1. CẤM dùng từ 'Admin', 'Bot'.
 2. CẤM gửi link trong text.
 3. CẤM bịa quà. CẤM giảm giá.
-4. CẤM nói lặp "Shop đã nhận thông tin".
+4. CẤM nói lặp "Shop đã nhận thông tin" nếu trong lịch sử đã nói rồi.
 
 **LUẬT THANH TOÁN (QUAN TRỌNG):**
 - Shop ưu tiên gửi COD (Nhận hàng kiểm tra rồi thanh toán).
-- **TUYỆT ĐỐI KHÔNG** tự ý gửi Số Tài Khoản Ngân Hàng trong tin nhắn.
-- Nếu khách đòi chuyển khoản -> Trả lời: "Dạ để lát nữa nhân viên Shop kiểm tra đơn rồi sẽ nhắn tin gửi Số tài khoản riêng cho Bác sau nhé ạ!".
+- **TUYỆT ĐỐI KHÔNG** tự ý gửi Số Tài Khoản Ngân Hàng.
 
 **LUẬT PHÂN BIỆT SẢN PHẨM:**
-- Khách hỏi **"Cao", "Hũ", "Lọ", "Sệt"** -> Tư vấn **CAO HỒNG SÂM 365 (2 lọ/4 lọ)**.
-- Khách hỏi **"Nước", "Gói", "Tinh chất"** -> Tư vấn **TINH CHẤT HỒNG SÂM 365 (100 gói)**.
+- Khách hỏi **"Cao", "Hũ", "Lọ"** -> Tư vấn **CAO HỒNG SÂM 365**.
+- Khách hỏi **"Nước", "Gói"** ->
+    - Nếu hỏi "100 gói" -> **TINH CHẤT HỒNG SÂM 365 (10ml/gói)**.
+    - Nếu hỏi "30 gói" -> **NƯỚC SÂM NHUNG HƯƠU** hoặc **MÁT GAN** (70ml/gói).
 
 **LUẬT GỬI ẢNH:**
 - Khách hỏi "Tinh dầu thông" -> Gửi ảnh SP số 3.
@@ -522,5 +531,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v6.9 (Fix Loi STK) chạy tại port ${PORT}`);
+  console.log(`Bot v7.0 (Update Dung Tich 10ml vs 70ml) chạy tại port ${PORT}`);
 });
