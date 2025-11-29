@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v6.7" - Update Nhung Huou 20 Goi Het Hang)
+// File: index.js (Phiên bản "MULTI-BOT v6.9" - Fix Loi Tu Y Gui STK)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -282,7 +282,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // =================================================================
-// BỘ NÃO 1: THẢO KOREA (BÁN LẺ) - [UPDATE NHUNG HƯƠU 20 GÓI HẾT HÀNG]
+// BỘ NÃO 1: THẢO KOREA (BÁN LẺ)
 // =================================================================
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
@@ -323,14 +323,14 @@ function getProductKnowledge_ThaoKorea() {
 
     knowledgeString += "---[SẢN PHẨM CŨ]---\n";
     knowledgeString += "3. HỘP TINH DẦU THÔNG ĐỎ KWANGDONG (1.150.000đ)\n";
-    knowledgeString += "Image_URL: \"https://www.hangngoainhap.com.vn/images/202310/goods_img/3443-p2-1696650050.jpg\"\n";
+    knowledgeString += "Image_URL: \"https://product.hstatic.net/1000260265/product/tinh_dau_thong_do_tai_da_nang_5b875a5a4c114cb09455e328aee71b97_master.jpg\"\n";
+
     knowledgeString += "4. NƯỚC HỒNG SÂM NHUNG HƯƠU 30 GÓI (420.000đ + 20k ship = 440k)\n";
-    knowledgeString += "Image_URL: \"https://hanquocstyle.com/wp-content/uploads/2020/09/nuoc-hong-sam-nhung-huou1495251187.jpg\"\n";
+    knowledgeString += "Image_URL: \"https://samyenthinhphat.com/uploads/Images/sam-nuoc/tinh-chat-hong-sam-nhung-huou-hop-30-goi-006.jpg\"\n";
     
     // --- [UPDATE HẾT HÀNG] ---
     knowledgeString += "5. NƯỚC HỒNG SÂM NHUNG HƯƠU 20 GÓI (TẠM HẾT HÀNG)\n";
     knowledgeString += "Image_URL: \"https://product.hstatic.net/200000830217/product/nuoc-hong-sam-nhung-huou-sms-bio-pharm-7_7a5ee2afe6bb4bea90e318231d2e2113_large.jpg\"\n";
-    knowledgeString += "Lưu ý: Nếu khách hỏi loại này, hãy tư vấn sang loại 30 gói (420k) vì đang sẵn hàng.\n";
     // -------------------------
     
     knowledgeString += "6. NƯỚC MÁT GAN SAMSUNG (390.000đ + 20k ship = 410k)\n";
@@ -340,9 +340,10 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "8. AN CUNG ROYAL 32 VIÊN (690.000đ)\n";
     knowledgeString += "Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_.jpg\"\n";
     knowledgeString += "9. DẦU NÓNG ANTIPHLAMINE (89.000đ + 20k ship = 109k)\n";
-    knowledgeString += "Image_URL: \"https://bizweb.dktcdn.net/thumb/1024x1024/100/217/291/products/1e-be8ca9e3-c222-4fa0-a24e-8cad4d300073.jpg?v=1634294354737\"\n";
+    knowledgeString += "Image_URL: \"https://wowmart.vn/wp-content/uploads/2017/03/dau-nong-xoa-diu-cac-co-xuong-khop-antiphlamine-han-quoc-221024-ka.jpg\"\n";
     knowledgeString += "10. DẦU LẠNH GLUCOSAMINE (39k - Chỉ bán >10 tuýp)\n";
-    knowledgeString += "Image_URL: \"https://product.hstatic.net/1000391653/product/94d022ecf540c1c72e620a1281ac1abb.jpg_720x720q80_373824ab3e8e442aa32f079248360bfe_master.jpg\"\n";
+    knowledgeString += "Image_URL: \"https://glucosamin.com.vn/storage/uploads/noidung/dau-lanh-han-quoc-glucosamine-150ml-175.jpg\"\n";
+    
     return knowledgeString;
 }
 
@@ -362,31 +363,26 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 1. CẤM dùng từ 'Admin', 'Bot'.
 2. CẤM gửi link trong text.
 3. CẤM bịa quà. CẤM giảm giá.
-4. CẤM nói lặp "Shop đã nhận thông tin" nếu trong lịch sử đã nói rồi.
+4. CẤM nói lặp "Shop đã nhận thông tin".
 
-**LUẬT TÍNH SHIP MỚI:**
-- Đơn < 500k: +20k Ship (Đồng giá).
-- Đơn >= 500k: Freeship.
+**LUẬT THANH TOÁN (QUAN TRỌNG):**
+- Shop ưu tiên gửi COD (Nhận hàng kiểm tra rồi thanh toán).
+- **TUYỆT ĐỐI KHÔNG** tự ý gửi Số Tài Khoản Ngân Hàng trong tin nhắn.
+- Nếu khách đòi chuyển khoản -> Trả lời: "Dạ để lát nữa nhân viên Shop kiểm tra đơn rồi sẽ nhắn tin gửi Số tài khoản riêng cho Bác sau nhé ạ!".
 
-**LUẬT PHÂN BIỆT SẢN PHẨM (QUAN TRỌNG):**
+**LUẬT PHÂN BIỆT SẢN PHẨM:**
 - Khách hỏi **"Cao", "Hũ", "Lọ", "Sệt"** -> Tư vấn **CAO HỒNG SÂM 365 (2 lọ/4 lọ)**.
 - Khách hỏi **"Nước", "Gói", "Tinh chất"** -> Tư vấn **TINH CHẤT HỒNG SÂM 365 (100 gói)**.
-- TUYỆT ĐỐI KHÔNG NHẦM LẪN GIỮA 2 LOẠI NÀY.
+
+**LUẬT GỬI ẢNH:**
+- Khách hỏi "Tinh dầu thông" -> Gửi ảnh SP số 3.
+- Khách hỏi "Quà tặng/Cao dán" -> Gửi ảnh SP số 99.
+- Khách nói "Xem mẫu" -> Tự suy luận từ câu trước đó.
 
 **LUẬT XÁC NHẬN ĐƠN HÀNG:**
-- Khi khách đưa thông tin (SĐT, Địa chỉ), bạn **PHẢI** trích xuất, sửa lỗi chính tả địa danh và nhắc lại để khách kiểm tra.
-
-**LUẬT TƯ VẤN:**
-- Hỏi "An Cung" -> Tư vấn **Samsung (780k)**.
-- Hỏi "Nghệ" -> Tư vấn **Nghệ Nano (990k)**.
-- Hỏi "Mắt", "Canxi", "Đạm sâm" -> Tư vấn theo danh sách.
-- Hỏi "Sâm 20 gói" -> Báo hết hàng, mời sang loại 30 gói.
-- Gửi ảnh: Chỉ gửi khi khách ĐÒI.
+- Khi khách đưa thông tin (SĐT, Địa chỉ), bạn **PHẢI** trích xuất và nhắc lại để khách kiểm tra.
 
 **NGỮ CẢNH THỜI GIAN HIỆN TẠI:** ${timeContext}
-
-**LUẬT XỬ LÝ NGOÀI GIỜ:**
-- Nếu là Ngoài giờ: Chỉ nói câu "Shop đã nhận thông tin" KHI VÀ CHỈ KHI khách đã **Chốt đơn** hoặc **Gửi SĐT**.
 
 ${productKnowledge}
 
@@ -419,7 +415,7 @@ function getProductKnowledge_TuyenSiNghe() {
     knowledgeString += "**VAI TRÒ:** Trợ lý Tuyển sỉ Tổng Kho Nghệ Nano.\n";
     knowledgeString += "**MỤC TIÊU:** Xin SĐT để kết bạn Zalo báo giá.\n";
     knowledgeString += "**XƯNG HÔ:** 'Chúng tôi' hoặc 'Kho' - gọi khách là 'Bạn' hoặc 'Anh/Chị'.\n\n";
-    knowledgeString += "**CHIẾN THUẬT:** **KHÔNG BÁO GIÁ SỈ TRÊN CHAT**. Luôn hướng về Zalo.\n";
+    knowledgeString += "**CHIẾN THUẬT:** KHÔNG BÁO GIÁ SỈ TRÊN CHAT.\n";
     return knowledgeString;
 }
 
@@ -526,5 +522,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v6.7 (Update Nhung Huou 20 Goi Het Hang) chạy tại port ${PORT}`);
+  console.log(`Bot v6.9 (Fix Loi STK) chạy tại port ${PORT}`);
 });
