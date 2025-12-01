@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v7.4" - Tu Van Check Hang Kheo Leo)
+// File: index.js (Phiên bản "MULTI-BOT v7.5" - Tu Van Check Hang "Khon Kheo" Hon)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -282,27 +282,25 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // =================================================================
-// BỘ NÃO 1: THẢO KOREA (BÁN LẺ) - [UPDATE TƯ VẤN KHÉO LÉO]
+// BỘ NÃO 1: THẢO KOREA (BÁN LẺ) - [UPDATE CHECK HÀNG KHÔN KHÉO]
 // =================================================================
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
     knowledgeString += "- Shop CHỈ BÁN ONLINE. Kho Hà Đông, VP Long Biên.\n";
     knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
     
-    // --- CHỈNH SỬA LẠI CÁCH NÓI VỀ CHECK HÀNG ---
-    knowledgeString += "**CAM KẾT CHẤT LƯỢNG (TƯ VẤN KHÉO):**\n";
-    knowledgeString += "- Tất cả là Hàng Nhập Khẩu Chính Ngạch, có Tem Phụ Tiếng Việt đầy đủ.\n";
-    knowledgeString += "- Có hỗ trợ xuất hóa đơn đỏ (VAT) chứng minh nguồn gốc.\n";
-    knowledgeString += "- Riêng **An Cung Samsung** có mã QR để quét.\n";
-    knowledgeString += "- Các SP khác: Khách kiểm tra **Tem Phụ** và **Hạn sử dụng** in trên bao bì (Đừng nói 'không check được', hãy nói 'Hàng chính ngạch kiểm tra bằng tem phụ').\n\n";
-    // ---------------------------------------------
+    // --- CÁCH NÓI VỀ CHECK HÀNG ---
+    knowledgeString += "**CAM KẾT CHẤT LƯỢNG:**\n";
+    knowledgeString += "- Hàng nhập khẩu chính ngạch, có **Tem Phụ Tiếng Việt** và hỗ trợ xuất **Hóa Đơn Đỏ (VAT)**.\n";
+    knowledgeString += "- **Cách nói:** 'Dạ hàng bên em là hàng nhập khẩu chính ngạch nên Bác yên tâm tuyệt đối ạ. Trên hộp có dán Tem phụ Tiếng Việt đầy đủ thông tin nhập khẩu để Bác kiểm tra ạ'.\n";
+    knowledgeString += "- **LƯU Ý:** KHÔNG ĐƯỢC NÓI 'không check được mã vạch' (nghe tiêu cực). Hãy hướng khách kiểm tra Tem Phụ.\n\n";
+    // ------------------------------
 
     knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng 1 Dầu Lạnh (hoặc Cao Dán). Riêng 'Hắc Sâm' Tặng Cao Dán. 'Đạm Sâm Kana', 'Nghệ Nano', 'Sâm Nước 100 gói', 'Canxi', 'Bổ Mắt' -> KHÔNG CÓ QUÀ.\n\n";
-    
-    knowledgeString += "**QUY ĐỊNH SHIP:** Đơn < 500k: +20k Ship. Đơn >= 500k: Freeship.\n\n";
+    knowledgeString += "**QUY ĐỊNH SHIP:** Đơn < 500k: +20k Ship (Đồng giá). Đơn >= 500k: Freeship.\n\n";
 
     knowledgeString += "---[DANH SÁCH SẢN PHẨM]---\n";
-    knowledgeString += "1. AN CUNG SAMSUNG HỘP GỖ 60 VIÊN (780k)\n";
+    knowledgeString += "1. AN CUNG SAMSUNG HỘP GỖ 60 VIÊN (780k) - Có mã QR check.\n";
     knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
     
     knowledgeString += "2. HỘP CAO HỒNG SÂM 365 (DẠNG CAO SỆT)\n";
@@ -374,29 +372,22 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 3. CẤM bịa quà. CẤM giảm giá.
 4. CẤM nói lặp "Shop đã nhận thông tin".
 
-**LUẬT THANH TOÁN (QUAN TRỌNG):**
-- Shop ưu tiên gửi COD (Nhận hàng kiểm tra rồi thanh toán).
-- **TUYỆT ĐỐI KHÔNG** tự ý gửi Số Tài Khoản Ngân Hàng trong tin nhắn.
-- Nếu khách đòi chuyển khoản -> Trả lời: "Dạ để lát nữa nhân viên Shop kiểm tra đơn rồi sẽ nhắn tin gửi Số tài khoản riêng cho Bác sau nhé ạ!".
+**LUẬT CHECK HÀNG (KHÔN KHÉO):**
+- Nếu khách hỏi: "Check được mã vạch không?", "Hàng chuẩn không?".
+- **Trả lời:** "Dạ Bác yên tâm, hàng bên em là hàng nhập khẩu chính ngạch, có **Tem Phụ Tiếng Việt** đầy đủ và hỗ trợ **Xuất Hóa Đơn Đỏ (VAT)** để chứng minh nguồn gốc ạ. Bác nhận hàng cứ kiểm tra Tem phụ và Hạn sử dụng giúp em nhé!".
+- (Không được nói 'không check được', nghe rất tiêu cực).
 
-**LUẬT TƯ VẤN CHECK HÀNG (KHÉO LÉO):**
-- An Cung Samsung: Check QR được.
-- SP khác (không phải Samsung): **TUYỆT ĐỐI KHÔNG** nói "không check được".
-- Hãy nói: "Dạ đây là hàng nhập khẩu chính ngạch, có đầy đủ **Tem Phụ Tiếng Việt** và hỗ trợ **Xuất Hóa Đơn Đỏ (VAT)** chứng minh nguồn gốc nên Bác yên tâm tuyệt đối ạ. Bác nhận hàng kiểm tra Tem phụ và Hạn sử dụng giúp Shop nhé!".
+**LUẬT THANH TOÁN:**
+- Ưu tiên COD. KHÔNG gửi STK lung tung.
 
 **LUẬT PHÂN BIỆT SẢN PHẨM:**
-- Khách hỏi **"Cao", "Hũ", "Lọ", "Sệt"** -> Tư vấn **CAO HỒNG SÂM 365 (2 lọ/4 lọ)**.
-- Khách hỏi **"Nước", "Gói", "Tinh chất"** -> Tư vấn **TINH CHẤT HỒNG SÂM 365 (100 gói)**.
-
-**LUẬT GỬI ẢNH:**
-- Khách hỏi "Tinh dầu thông" -> Gửi ảnh SP số 3.
-- Khách hỏi "Quà tặng/Cao dán" -> Gửi ảnh SP số 99.
-- Khách nói "Xem mẫu" -> Tự suy luận từ câu trước đó.
+- "Cao", "Hũ", "Lọ" -> Cao Hồng Sâm 365.
+- "Nước", "Gói" -> Tinh Chất Hồng Sâm 365.
 
 **LUẬT XÁC NHẬN ĐƠN HÀNG:**
-- Khi khách đưa thông tin (SĐT, Địa chỉ), bạn **PHẢI** trích xuất và nhắc lại để khách kiểm tra.
+- Khi khách đưa thông tin, PHẢI trích xuất và nhắc lại để xác nhận.
 
-**NGỮ CẢNH THỜI GIAN HIỆN TẠI:** ${timeContext}
+**NGỮ CẢNH:** ${timeContext}
 
 ${productKnowledge}
 
@@ -536,5 +527,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v7.4 (Update Check Hang Kheo Leo) chạy tại port ${PORT}`);
+  console.log(`Bot v7.5 (Smart Check Goods) chạy tại port ${PORT}`);
 });
