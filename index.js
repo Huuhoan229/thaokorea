@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v8.6" - Update Date San Pham 2027-2028)
+// File: index.js (Phiên bản "MULTI-BOT v8.8" - Fix Ten Xung Ho Cho 2 Page Ban Le)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -36,22 +36,24 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 // ----- BỘ MAP TOKEN -----
 const pageTokenMap = new Map();
 
-// 1. Page Thảo Korea
+// 1. Page Thảo Korea (Bán lẻ 1)
 if (process.env.PAGE_ID_THAO_KOREA && process.env.FB_PAGE_TOKEN_THAO_KOREA) {
     pageTokenMap.set(process.env.PAGE_ID_THAO_KOREA, process.env.FB_PAGE_TOKEN_THAO_KOREA);
 }
+
+// 2. Page Hanjeong Korea - Trang Mới (Bán lẻ 2 - Dùng chung não với Thảo Korea)
 if (process.env.PAGE_ID_TRANG_MOI && process.env.FB_PAGE_TOKEN_TRANG_MOI) {
     pageTokenMap.set(process.env.PAGE_ID_TRANG_MOI, process.env.FB_PAGE_TOKEN_TRANG_MOI);
 }
 
-// 2. Page Tuyển Sỉ
+// 3. Page Tuyển Sỉ (Bán buôn)
 const PAGE_ID_TUYEN_SI = "833294496542063";
 const TOKEN_TUYEN_SI = "EAAP9uXbATjwBQG27LFeffPcNh2cZCjRebBML7ZAHcMGEvu5ZBws5Xq5BdP6F2qVauF5O1UZAKjch5KVHIb4YsDXQiC7hEeJpsn0btLApL58ohSU8iBmcwXUgEprH55hikpj8sw16QAgKbUzYQxny0vZAWb0lM9SvwQ5SH0k6sTpCHD6J7dbtihUJMsZAEWG0NoHzlyzNDAsROHr8xxycL0g5O4DwZDZD";
 pageTokenMap.set(PAGE_ID_TUYEN_SI, TOKEN_TUYEN_SI);
 
 console.log(`Bot đã được khởi tạo cho ${pageTokenMap.size} Fanpage.`);
 
-// 4. Khởi tạo Gemini (2.0 Flash)
+// 4. Khởi tạo Gemini (Model 2.0 Flash)
 let model;
 try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -229,12 +231,22 @@ async function processMessage(pageId, sender_psid, userMessage) {
       let productKnowledge;
       let geminiResult;
 
-      // === [ROUTER] ===
-      if (pageId === process.env.PAGE_ID_THAO_KOREA || pageId === process.env.PAGE_ID_TRANG_MOI) {
-          productKnowledge = getProductKnowledge_ThaoKorea();
-          geminiResult = await callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge);
-      } 
+      // === [ROUTER] PHÂN LUỒNG THEO PAGE ID ===
+      
+      if (pageId === process.env.PAGE_ID_THAO_KOREA) {
+          // 1. Thảo Korea
+          productKnowledge = getProductKnowledge_ThaoKorea(); // Lấy dữ liệu bán lẻ
+          // Gọi hàm với tên Shop là "Thảo Korea"
+          geminiResult = await callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge, "Shop Thảo Korea");
+      }
+      else if (pageId === process.env.PAGE_ID_TRANG_MOI) {
+          // 2. Hanjeong Korea (Trang Mới)
+          productKnowledge = getProductKnowledge_ThaoKorea(); // Vẫn dùng dữ liệu bán lẻ y hệt
+          // Nhưng gọi hàm với tên Shop là "Hanjeong Korea"
+          geminiResult = await callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge, "Shop Hanjeong Korea");
+      }
       else if (pageId === PAGE_ID_TUYEN_SI) {
+          // 3. Tuyển Sỉ Nghệ
           productKnowledge = getProductKnowledge_TuyenSiNghe();
           geminiResult = await callGemini_TuyenSiNghe(userMessage, userName, userState, productKnowledge);
       }
@@ -242,6 +254,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
           processingUserSet.delete(uniqueStorageId);
           return;
       }
+      // =========================================
 
       console.log(`[Gemini]: ${geminiResult.response_message}`);
 
@@ -282,15 +295,16 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // =================================================================
-// BỘ NÃO 1: THẢO KOREA (BÁN LẺ) - [UPDATE DATE MỚI]
+// BỘ NÃO 1: BÁN LẺ (Dùng chung cho Thảo Korea & Hanjeong)
 // =================================================================
 function getProductKnowledge_ThaoKorea() {
-    let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
+    let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (BÁN LẺ):**\n\n";
     knowledgeString += "- Shop CHỈ BÁN ONLINE. Kho Hà Đông, VP Long Biên.\n";
     knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
-    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:** Mua 1 hộp tặng 1 Dầu Lạnh (hoặc Cao Dán). Riêng 'Hắc Sâm' Tặng Cao Dán. 'Đạm Sâm Kana', 'Nghệ Nano', 'Sâm Nước 100 gói', 'Canxi', 'Bổ Mắt' -> KHÔNG CÓ QUÀ.\n\n";
     
-    knowledgeString += "**QUY ĐỊNH SHIP:** Đơn < 500k: +20k Ship (Đồng giá). Đơn >= 500k: Freeship.\n\n";
+    knowledgeString += "**CAM KẾT:** Hàng Chính Ngạch, Tem Phụ Tiếng Việt, Xuất VAT (An Cung Samsung có QR).\n";
+    knowledgeString += "**QUÀ TẶNG:** Mua 1 hộp tặng 1 Dầu Lạnh (hoặc Cao Dán). Riêng 'Hắc Sâm' Tặng Cao Dán. 'Đạm Sâm Kana', 'Nghệ Nano', 'Sâm Nước 100 gói', 'Canxi', 'Bổ Mắt' -> KHÔNG CÓ QUÀ.\n\n";
+    knowledgeString += "**SHIP:** Đơn < 500k: +20k Ship (Đồng giá). Đơn >= 500k: Freeship.\n\n";
 
     knowledgeString += "---[DANH SÁCH SẢN PHẨM]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HỘP GỖ 60 VIÊN (780k) - Tặng Dầu Lạnh\n";
@@ -323,7 +337,7 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "15. VIÊN BỔ MẮT SAMSUNG (360k + ship - KHÔNG QUÀ)\n";
     knowledgeString += "Image_URL: \"https://hanquocgiare.com/wp-content/uploads/2022/12/vien-uong-bo-mat-han-quoc-samsung-bio-pharm-120-vien-4.jpg\"\n";
     
-    knowledgeString += "16. CAO HẮC SÂM HANJEONG (690k - Tặng Cao Dán)\n";
+    knowledgeString += "16. CAO HẮC SÂM HANJEONG (690k - Tặng 1 Gói Cao Dán)\n";
     knowledgeString += "Image_URL: \"https://huyenviet.com.vn/storage/products/July2025/36bECKNzZcANZO0ba11G.jpg\"\n";
     knowledgeString += "Date: Cuối năm 2027.\n";
 
@@ -347,10 +361,13 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "10. DẦU LẠNH GLUCOSAMINE (39k - Chỉ bán >10 tuýp)\n";
     knowledgeString += "Image_URL: \"https://glucosamin.com.vn/storage/uploads/noidung/dau-lanh-han-quoc-glucosamine-150ml-175.jpg\"\n";
     
+    knowledgeString += "99. QUÀ TẶNG CAO DÁN HỒNG SÂM: \"https://samyenthinhphat.com/uploads/Images/cao-dan-hong-sam-han-quoc-20-mieng-02.jpg\"\n";
+    
     return knowledgeString;
 }
 
-async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
+// === [UPDATE] THÊM THAM SỐ 'shopName' ĐỂ BOT BIẾT XƯNG HÔ ===
+async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge, shopName) {
   if (!model) return { response_message: "..." };
   try {
     const historyString = userState.history.map(h => `${h.role === 'user' ? 'Khách' : 'Shop'}: ${h.content}`).join('\n');
@@ -360,25 +377,24 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
     const hour = now.getHours();
     let timeContext = (hour >= 8 && hour < 17) ? "GIỜ HÀNH CHÍNH" : "NGOÀI GIỜ";
 
-    let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của Shop Thảo Korea. Xưng hô 'Shop' và gọi khách là '${greetingName}'.
+    let prompt = `**Nhiệm vụ:** Bạn là chuyên viên tư vấn của **${shopName}**. Xưng hô '**Shop**' và gọi khách là '${greetingName}'.
     
 **LUẬT CẤM (TUÂN THỦ TUYỆT ĐỐI):**
 1. CẤM dùng từ 'Admin', 'Bot'. CẤM gửi link text.
 2. CẤM bịa quà. CẤM giảm giá. CẤM nói lặp.
 3. CẤM dùng ký tự đặc biệt như dấu * để bôi đậm.
+4. **CẤM TỰ TRẢ LỜI HẠN SỬ DỤNG (DATE).**
 
-**LUẬT TƯ VẤN AN CUNG SAMSUNG (QUAN TRỌNG):**
-- Khi khách hỏi An Cung Samsung, phải nói rõ: "**Dạ loại này có hàm lượng Trầm Hương rất nhỏ (khoảng 1%)**, chủ yếu giúp hoạt huyết, dưỡng não và phòng ngừa tai biến nhẹ thôi ạ." (Để tránh khách hiểu lầm là loại cao cấp nhiều trầm).
-
-**LUẬT ẢNH QUÀ TẶNG:**
-- KHÔNG gửi ảnh Quà tặng (Dầu Lạnh/Cao Dán) để tránh nhầm lẫn với hàng bán.
+**LUẬT TRẢ LỜI HẠN SỬ DỤNG:**
+- Nếu khách hỏi "date", "hạn sử dụng" -> "Dạ về hạn sử dụng chính xác của lô hàng mới nhất, Bác vui lòng chờ Shop một lát để Shop kiểm tra lại kho và báo lại cho Bác ngay ạ!". (Sau đó im lặng).
 
 **LUẬT TỰ ĐỘNG CHUẨN HÓA ĐỊA CHỈ:**
-- Khi khách đưa địa chỉ, bạn PHẢI tự động sửa lại cho ĐẦY ĐỦ và CHÍNH XÁC.
-- **Câu xác nhận:** "Dạ Shop xác nhận thông tin nhận hàng của Bác là: SĐT [Số] - Địa chỉ [Địa chỉ đã chuẩn hóa]. Bác kiểm tra xem đúng chưa ạ?".
+- Khi khách đưa địa chỉ, bạn PHẢI tự động sửa lại cho ĐẦY ĐỦ và CHÍNH XÁC (Thêm Phường/Xã, Quận/Huyện...).
+- Xác nhận: "Dạ Shop xác nhận thông tin nhận hàng của Bác là: SĐT [Số] - Địa chỉ [Địa chỉ đã chuẩn hóa]. Bác kiểm tra xem đúng chưa ạ?".
 
-**LUẬT GỬI ẢNH:**
-- Tự suy luận ngữ cảnh để gửi đúng ảnh.
+**LUẬT TƯ VẤN:**
+- Hỏi "An Cung" -> Tư vấn **Samsung (780k)** (Nói rõ 1% Trầm, hỗ trợ nhẹ).
+- Gửi ảnh: Chỉ gửi khi khách ĐÒI.
 
 **NGỮ CẢNH:** ${timeContext}
 
@@ -404,7 +420,9 @@ ${historyString}
   } catch (e) { return { response_message: "Dạ mạng lag, Bác chờ xíu ạ.", image_url_to_send: "" }; }
 }
 
-// ... (Phần còn lại giữ nguyên: callGemini_TuyenSiNghe, Helper functions...)
+// =================================================================
+// BỘ NÃO 2: TUYỂN SỈ NGHỆ (BÁN BUÔN)
+// =================================================================
 function getProductKnowledge_TuyenSiNghe() {
     return "**KHỐI KIẾN THỨC (TUYỂN SỈ NGHỆ NANO):**\n\n**MỤC TIÊU:** Xin SĐT để kết bạn Zalo báo giá. KHÔNG báo giá sỉ trên chat.";
 }
@@ -504,5 +522,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v8.6 (Update Date San Pham) chạy tại port ${PORT}`);
+  console.log(`Bot v8.8 (Fix Ten Xung Ho Page) chạy tại port ${PORT}`);
 });
