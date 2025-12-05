@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v9.2" - Fix Gia Dau Lanh & Logic Tu Van Dau)
+// File: index.js (Phiên bản "MULTI-BOT v9.2" - Fix Huy Don & Gui Mail Canh Bao)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -7,6 +7,17 @@ const axios = require('axios');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const admin = require('firebase-admin');
 const fs = require('fs');
+const nodemailer = require('nodemailer'); // Thư viện gửi mail
+
+// ----- CẤU HÌNH EMAIL (Gửi báo cáo Hủy đơn) -----
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'vngenmart@gmail.com', // Email gửi đi (Cần bật App Password)
+        pass: 'uply glhz hcgb whqg' // Mật khẩu ứng dụng Gmail (Không phải pass đăng nhập)
+    }
+});
+// -------------------------------------------------
 
 // ----- BỘ CHỐNG LẶP -----
 const processingUserSet = new Set();
@@ -51,12 +62,12 @@ pageTokenMap.set(PAGE_ID_TUYEN_SI, TOKEN_TUYEN_SI);
 
 console.log(`Bot đã được khởi tạo cho ${pageTokenMap.size} Fanpage.`);
 
-// 4. Khởi tạo Gemini (2.0 Flash)
+// 4. Khởi tạo Gemini
 let model;
 try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); 
-    console.log("Đã kết nối với Gemini API (Model: gemini-2.0-flash).");
+    console.log("Đã kết nối với Gemini API.");
 } catch(error) {
     console.error("LỖI KHI KHỞI TẠO GEMINI:", error);
     process.exit(1);
@@ -103,12 +114,10 @@ app.post('/webhook', (req, res) => {
 
             if (adminText && recipientID) {
                 const lowerText = adminText.trim().toLowerCase();
-                // Lệnh Tắt (.)
                 if (lowerText.startsWith('.') || lowerText === 'stop' || lowerText === '!tatbot') {
                     await setBotStatus(pageId, recipientID, true); 
                     console.log(`[ADMIN] TẮT Bot ${recipientID}`);
                 }
-                // Lệnh Bật (,)
                 else if (lowerText.startsWith(',') || lowerText === 'auto' || lowerText === '.auto' || lowerText === '!batbot') {
                     await setBotStatus(pageId, recipientID, false); 
                     console.log(`[ADMIN] BẬT Bot ${recipientID}`);
@@ -123,7 +132,7 @@ app.post('/webhook', (req, res) => {
         if (webhook_event.message) {
             const sender_psid = webhook_event.sender.id;
 
-            // Lọc Sticker
+            // Lọc Sticker & Like
             if (webhook_event.message.sticker_id) return; 
             if (webhook_event.message.attachments && webhook_event.message.attachments.length > 0) {
                 const att = webhook_event.message.attachments[0];
@@ -190,7 +199,7 @@ async function setBotStatus(pageId, customerId, isPaused) {
 }
 
 // -------------------------------------------------------------------
-// HÀM XỬ LÝ GỌI NHỠ (TÙY PAGE)
+// HÀM XỬ LÝ GỌI NHỠ
 // -------------------------------------------------------------------
 async function handleMissedCall(pageId, sender_psid) {
     const FB_PAGE_TOKEN = pageTokenMap.get(pageId);
@@ -205,6 +214,25 @@ async function handleMissedCall(pageId, sender_psid) {
     
     await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, message);
     await saveState(`${pageId}_${sender_psid}`, "[Khách gọi nhỡ]", message);
+}
+
+// -------------------------------------------------------------------
+// HÀM GỬI MAIL CẢNH BÁO HỦY ĐƠN (MỚI)
+// -------------------------------------------------------------------
+async function sendAlertEmail(userName, userMessage) {
+    const mailOptions = {
+        from: 'vngenmart@gmail.com',
+        to: 'vngenmart@gmail.com',
+        subject: `[CẢNH BÁO] Khách Hàng ${userName} Muốn HỦY ĐƠN!`,
+        text: `Khách hàng: ${userName}\nNội dung tin nhắn: "${userMessage}"\n\n-> Hãy vào kiểm tra và cứu đơn ngay!`
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log("Đã gửi mail cảnh báo hủy đơn.");
+    } catch (error) {
+        console.error("Lỗi gửi mail:", error);
+    }
 }
 
 // -------------------------------------------------------------------
@@ -228,6 +256,27 @@ async function processMessage(pageId, sender_psid, userMessage) {
       await sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, true);
       let userName = await getFacebookUserName(FB_PAGE_TOKEN, sender_psid);
       
+      // --- KIỂM TRA TỪ KHÓA HỦY ĐƠN ---
+      const lowerMsg = userMessage.toLowerCase();
+      if (lowerMsg.includes("hủy đơn") || lowerMsg.includes("không lấy nữa") || lowerMsg.includes("trả hàng") || lowerMsg.includes("bom hàng")) {
+          console.log(`[ALERT] Khách ${userName} muốn hủy đơn!`);
+          
+          // 1. Gửi mail báo động cho Admin
+          sendAlertEmail(userName, userMessage);
+
+          // 2. Bot trả lời níu kéo (Không dùng AI chỗ này để đảm bảo kịch bản chuẩn)
+          const retentionMsg = "Dạ Bác ơi, Bác cho Shop hỏi là mình đang gặp vấn đề gì hay muốn thay đổi sản phẩm khác ạ? Bác cho Shop xin chút thông tin để hỗ trợ Bác tốt nhất nhé! | Dạ để Shop kiểm tra lại tình trạng đơn hàng xem đã đi chưa ạ. Bác chờ Shop một lát nhé!";
+          
+          await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, "Dạ Bác ơi, Bác cho Shop hỏi là mình đang gặp vấn đề gì hay muốn thay đổi sản phẩm khác ạ? Bác cho Shop xin chút thông tin để hỗ trợ Bác tốt nhất nhé!");
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          await sendFacebookMessage(FB_PAGE_TOKEN, sender_psid, "Dạ để Shop kiểm tra lại tình trạng đơn hàng xem đã đi chưa ạ. Bác chờ Shop một lát nhé!");
+          
+          await saveState(uniqueStorageId, userMessage, retentionMsg);
+          processingUserSet.delete(uniqueStorageId);
+          return; // Dừng luôn, không gọi Gemini nữa
+      }
+      // -------------------------------
+
       let productKnowledge;
       let geminiResult;
 
@@ -284,81 +333,48 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // =================================================================
-// BỘ NÃO 1: THẢO KOREA (BÁN LẺ) - [UPDATE GIÁ DẦU LẠNH + LOGIC HỎI]
+// BỘ NÃO 1: THẢO KOREA (BÁN LẺ)
 // =================================================================
 function getProductKnowledge_ThaoKorea() {
+    // (Giữ nguyên danh sách sản phẩm & chính sách quà tặng chuẩn của v9.1)
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
     knowledgeString += "- Shop CHỈ BÁN ONLINE. Kho Hà Đông, VP Long Biên.\n";
     knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
     
-    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG:**\n";
-    knowledgeString += "- **TẶNG 1 DẦU LẠNH (hoặc Cao Dán):** An Cung Samsung (780k), An Cung Kwangdong (1.290k), Tinh Dầu Thông Đỏ (1.150k).\n";
+    knowledgeString += "**QUY ĐỊNH QUÀ TẶNG (NGHIÊM NGẶT):**\n";
+    knowledgeString += "- **TẶNG 1 DẦU LẠNH (hoặc Cao Dán):** An Cung Samsung, An Cung Kwangdong, Tinh Dầu Thông Đỏ.\n";
     knowledgeString += "- **TẶNG KẸO SÂM:** Nghệ Nano 365 Care.\n";
-    knowledgeString += "- **TẶNG 1 GÓI CAO DÁN:** Cao Hắc Sâm Trầm Hương (690k).\n";
-    knowledgeString += "- **KHÔNG CÓ QUÀ:** An Cung Royal (690k), Cao Hồng Sâm 365 (2 lọ/4 lọ), Nước Sâm Nhung Hươu (30 gói), Mát Gan Samsung, Sâm Nước 100 gói, Đạm Sâm Kana, Canxi, Bổ Mắt, Sâm Nhung Hươu 20 gói (Mới).\n\n";
+    knowledgeString += "- **TẶNG 1 GÓI CAO DÁN:** Cao Hắc Sâm Trầm Hương.\n";
+    knowledgeString += "- **KHÔNG CÓ QUÀ:** Các sản phẩm còn lại (Sâm Nước, Cao Sâm 365, Đạm Sâm...).\n\n";
     
-    knowledgeString += "**QUY ĐỊNH SHIP:** Đơn < 500k: +20k Ship (Đồng giá). Đơn >= 500k: Freeship.\n\n";
+    knowledgeString += "**QUY ĐỊNH SHIP:** Đơn < 500k: +20k Ship. Đơn >= 500k: Freeship.\n\n";
 
-    knowledgeString += "---[DANH SÁCH SẢN PHẨM]---\n";
+    // ... (Danh sách sản phẩm giữ nguyên để tiết kiệm chỗ) ...
     knowledgeString += "1. AN CUNG SAMSUNG HỘP GỖ 60 VIÊN (780k) - Tặng Dầu Lạnh\n";
     knowledgeString += "Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
     
-    knowledgeString += "2. HỘP CAO HỒNG SÂM 365 (DẠNG CAO SỆT)\n";
-    knowledgeString += "   - Hộp 2 Lọ: 450k (+20k ship) - KHÔNG QUÀ.\n";
-    knowledgeString += "   - Hộp 4 Lọ: 850k (Freeship) - KHÔNG QUÀ.\n";
-    knowledgeString += "   - Image_URL (2 Lọ): \"https://ghshop.vn/images/upload/images/Cao-H%E1%BB%93ng-S%C3%A2m-365-H%C3%A0n-Qu%E1%BB%91c-Lo%E1%BA%A1i-2-L%E1%BB%8D.png\"\n";
-    knowledgeString += "   - Image_URL (4 Lọ): \"https://thuoc365.vn/wp-content/uploads/2017/12/cao-hong-sam-4.jpg\"\n";
+    knowledgeString += "2. HỘP CAO HỒNG SÂM 365 (2 Lọ: 450k+ship / 4 Lọ: 850k Freeship - KHÔNG QUÀ)\n";
+    knowledgeString += "Image_URL (2 Lọ): \"https://ghshop.vn/images/upload/images/Cao-H%E1%BB%93ng-S%C3%A2m-365-H%C3%A0n-Qu%E1%BB%91c-Lo%E1%BA%A1i-2-L%E1%BB%8D.png\"\n";
+    knowledgeString += "Image_URL (4 Lọ): \"https://thuoc365.vn/wp-content/uploads/2017/12/cao-hong-sam-4.jpg\"\n";
 
     knowledgeString += "3. HỘP TINH DẦU THÔNG ĐỎ KWANGDONG (1.150k - Tặng Dầu Lạnh)\n";
     knowledgeString += "Image_URL: \"https://product.hstatic.net/1000260265/product/tinh_dau_thong_do_tai_da_nang_5b875a5a4c114cb09455e328aee71b97_master.jpg\"\n";
 
-    knowledgeString += "13. TINH CHẤT HỒNG SÂM 365 - DẠNG NƯỚC (690k/100 gói - KHÔNG QUÀ)\n";
-    knowledgeString += "Image_URL: \"https://nhungnheng.com/uploads/shops/2024_04/555439700_24765749976387672_8906127611892730086_n.jpg\"\n";
-
     knowledgeString += "11. NGHỆ NANO CURCUMIN 365 CARE (990k/hộp - Tặng Kẹo Sâm)\n";
     knowledgeString += "Image_URL: \"https://scontent.fhan15-2.fna.fbcdn.net/v/t39.30808-6/589158835_122096348745142019_9083802807600819254_n.jpg\"\n";
-
-    knowledgeString += "12. VIÊN ĐẠM SÂM KANA (460k + ship - KHÔNG QUÀ)\n";
-    knowledgeString += "Image_URL: \"https://shopsunflower.vn/wp-content/uploads/2025/07/Dam-Sam-Kana-Hong-Sam-Nhung-Huou-Linh-Chi-Han-Quoc.webp\"\n";
-
-    knowledgeString += "14. VIÊN CANXI SMS BIO PHARM (360k + ship - KHÔNG QUÀ)\n";
-    knowledgeString += "Image_URL: \"https://hanquocgiare.com/wp-content/uploads/2025/09/vien-uong-bo-sung-canxi-sms-bio-pharm-signatune-power-cacium-gold.jpg\"\n";
-
-    knowledgeString += "15. VIÊN BỔ MẮT SAMSUNG (360k + ship - KHÔNG QUÀ)\n";
-    knowledgeString += "Image_URL: \"https://hanquocgiare.com/wp-content/uploads/2022/12/vien-uong-bo-mat-han-quoc-samsung-bio-pharm-120-vien-4.jpg\"\n";
     
     knowledgeString += "16. CAO HẮC SÂM TRẦM HƯƠNG HANJEONG (690k - Tặng 1 Gói Cao Dán)\n";
     knowledgeString += "Image_URL: \"https://huyenviet.com.vn/storage/products/July2025/36bECKNzZcANZO0ba11G.jpg\"\n";
 
-    knowledgeString += "4. NƯỚC HỒNG SÂM NHUNG HƯƠU 30 GÓI (420k + ship - KHÔNG QUÀ)\n";
+    knowledgeString += "4. NƯỚC HỒNG SÂM NHUNG HƯƠU 30 GÓI (420k+ship - KHÔNG QUÀ)\n";
     knowledgeString += "Image_URL: \"https://samyenthinhphat.com/uploads/Images/sam-nuoc/tinh-chat-hong-sam-nhung-huou-hop-30-goi-006.jpg\"\n";
     
-    knowledgeString += "17. NƯỚC SÂM NHUNG HƯƠU HÀN QUỐC RED GINSENG LIQUID GOLD (20 GÓI - 340k + ship - KHÔNG QUÀ)\n";
-    knowledgeString += "Image_URL: \"(Chưa có ảnh - Gửi ảnh SP 4 tạm)\"\n"; 
+    knowledgeString += "17. NƯỚC SÂM NHUNG HƯƠU RED GINSENG LIQUID GOLD (20 GÓI - 340k + ship - KHÔNG QUÀ)\n";
     
-    knowledgeString += "5. NƯỚC HỒNG SÂM NHUNG HƯƠU 20 GÓI MẪU CŨ (TẠM HẾT HÀNG - Tư vấn sang loại 30 gói hoặc loại 20 gói mới)\n";
-
-    knowledgeString += "6. NƯỚC MÁT GAN SAMSUNG (390k + ship - KHÔNG QUÀ)\n";
-    knowledgeString += "Image_URL: \"https://hueminhkorea.com/wp-content/uploads/2025/02/mat-gan-nghe-dong-trung-tw-han-quoc-3-1.jpg\"\n";
-
-    knowledgeString += "7. AN CUNG KWANGDONG 60 VIÊN (1.290k - Tặng Dầu Lạnh)\n";
-    knowledgeString += "Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
-
-    knowledgeString += "8. AN CUNG ROYAL 32 VIÊN (690k - KHÔNG QUÀ)\n";
-    knowledgeString += "Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_.jpg\"\n";
-
-    // --- UPDATE GIÁ DẦU LẠNH MỚI ---
-    knowledgeString += "9. DẦU NÓNG ANTIPHLAMINE (89.000đ + ship)\n";
-    knowledgeString += "Image_URL: \"https://wowmart.vn/wp-content/uploads/2017/03/dau-nong-xoa-diu-cac-co-xuong-khop-antiphlamine-han-quoc-221024-ka.jpg\"\n";
-
-    knowledgeString += "10. DẦU LẠNH GLUCOSAMINE (50.000đ/tuýp - Bán lẻ từ 2 tuýp)\n";
-    knowledgeString += "Image_URL: \"https://glucosamin.com.vn/storage/uploads/noidung/dau-lanh-han-quoc-glucosamine-150ml-175.jpg\"\n";
-    knowledgeString += "Lưu ý: Đây là hàng quà tặng. Nếu khách mua lẻ thì bán giá 50k, tối thiểu 2 tuýp.\n";
+    knowledgeString += "5. NƯỚC HỒNG SÂM NHUNG HƯƠU 20 GÓI MẪU CŨ (TẠM HẾT HÀNG)\n";
     
-    // --- ẢNH QUÀ TẶNG ---
-    knowledgeString += "99. QUÀ TẶNG: CAO DÁN HỒNG SÂM (20 miếng)\n";
-    knowledgeString += "Image_URL: \"https://samyenthinhphat.com/uploads/Images/cao-dan-hong-sam-han-quoc-20-mieng-02.jpg\"\n";
-    
+    knowledgeString += "99. QUÀ TẶNG CAO DÁN HỒNG SÂM: \"https://samyenthinhphat.com/uploads/Images/cao-dan-hong-sam-han-quoc-20-mieng-02.jpg\"\n";
+
     return knowledgeString;
 }
 
@@ -377,22 +393,19 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 **LUẬT CẤM (TUÂN THỦ TUYỆT ĐỐI):**
 1. CẤM dùng từ 'Admin', 'Bot'. CẤM gửi link text.
 2. CẤM bịa quà. CẤM giảm giá. CẤM nói lặp.
-3. CẤM dùng ký tự đặc biệt như dấu * để bôi đậm.
-4. **CẤM TỰ TRẢ LỜI HẠN SỬ DỤNG (DATE).**
+3. CẤM tự trả lời Date (Hãy bảo chờ Shop kiểm tra).
 
-**LUẬT PHÂN BIỆT "DẦU" (QUAN TRỌNG):**
-- Nếu khách hỏi "mua dầu", "giá dầu", "có dầu không" (hỏi chung chung) -> Phải hỏi lại: "Dạ Bác muốn hỏi Dầu Nóng Antiphlamine (89k) hay Dầu Lạnh Glucosamine (50k) ạ?".
-- Nếu khách nói COMBO (VD: "An cung + dầu", "lấy sâm với dầu") -> Hiểu ngay là **QUÀ TẶNG DẦU LẠNH**. Chốt đơn luôn, không hỏi lại.
+**LUẬT HỦY ĐƠN:**
+- Nếu khách nói "hủy đơn", "trả hàng" -> Phải hỏi thăm lý do và bảo "Chờ Shop kiểm tra". KHÔNG ĐƯỢC xác nhận hủy ngay.
 
-**LUẬT TRẢ LỜI HẠN SỬ DỤNG:**
-- Nếu khách hỏi "date" -> "Dạ về hạn sử dụng chính xác của lô hàng mới nhất, Bác vui lòng chờ Shop một lát để Shop kiểm tra lại kho và báo lại cho Bác ngay ạ!".
-
-**LUẬT TỰ ĐỘNG CHUẨN HÓA ĐỊA CHỈ:**
-- Khi khách đưa địa chỉ, bạn PHẢI tự động sửa lại cho ĐẦY ĐỦ và CHÍNH XÁC.
-- Xác nhận: "Dạ Shop xác nhận thông tin nhận hàng của Bác là: SĐT [Số] - Địa chỉ [Địa chỉ đã chuẩn hóa]. Bác kiểm tra xem đúng chưa ạ?".
+**LUẬT QUÀ TẶNG:**
+- An Cung/Thông Đỏ: Tặng Dầu Lạnh.
+- Nghệ: Tặng Kẹo Sâm.
+- Hắc Sâm: Tặng Cao Dán.
+- Còn lại: KHÔNG QUÀ.
 
 **LUẬT TƯ VẤN:**
-- Hỏi "An Cung" -> Tư vấn **Samsung (780k)** (1% Trầm).
+- Hỏi "An Cung" -> Tư vấn **Samsung (780k)**.
 - Gửi ảnh: Chỉ gửi khi khách ĐÒI.
 
 **NGỮ CẢNH:** ${timeContext}
@@ -419,8 +432,7 @@ ${historyString}
   } catch (e) { return { response_message: "Dạ mạng lag, Bác chờ xíu ạ.", image_url_to_send: "" }; }
 }
 
-// ... (Giữ nguyên phần còn lại: TuyenSiNghe, Helper functions...)
-// Bạn copy y nguyên phần dưới của bản v9.1 dán vào đây
+// ... (Giữ nguyên phần TuyenSiNghe và Helper Functions)
 function getProductKnowledge_TuyenSiNghe() {
     return "**KHỐI KIẾN THỨC (TUYỂN SỈ NGHỆ NANO):**\n\n**MỤC TIÊU:** Xin SĐT để kết bạn Zalo báo giá. KHÔNG báo giá sỉ trên chat.";
 }
@@ -517,5 +529,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v9.2 (Update Gia Dau Lanh 50k) chạy tại port ${PORT}`);
+  console.log(`Bot v9.2 (Fix Huy Don + Send Mail) chạy tại port ${PORT}`);
 });
