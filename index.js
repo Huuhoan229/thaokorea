@@ -346,7 +346,7 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "Image_URL: \"https://scontent.fhan15-2.fna.fbcdn.net/v/t39.30808-6/589158835_122096348745142019_9083802807600819254_n.jpg\"\n";
 
     knowledgeString += "12. VIÊN ĐẠM SÂM KANA (460k + ship - KHÔNG QUÀ)\n";
-    knowledgeString += "Image_URL: \"https://shopsunflower.vn/wp-content/uploads/2025/07/Dam-Sam-Kana-Hong-Sam-Nhung-Huou-Linh-Chi-Han-Quoc.webp\"\n";
+    knowledgeString += "Image_URL: \"https://samyenlienhoanggia.com/upload/elfinder/KGC/Nhung%20huou/Vien%20dam%20hong%20sam%20nhung%20huou%20linh%20chi/dam%20hong%20sam%20linh%20chi%20nhung%20huou.jpg\"\n";
 
     knowledgeString += "14. VIÊN CANXI SMS BIO PHARM (360k + ship - KHÔNG QUÀ)\n";
     knowledgeString += "Image_URL: \"https://hanquocgiare.com/wp-content/uploads/2025/09/vien-uong-bo-sung-canxi-sms-bio-pharm-signatune-power-cacium-gold.jpg\"\n";
