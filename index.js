@@ -315,7 +315,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
 }
 
 // =================================================================
-// BỘ NÃO 1: THẢO KOREA (BÁN LẺ) - [UPDATE DUNG TÍCH & LOGIC]
+// BỘ NÃO 1: THẢO KOREA (BÁN LẺ) - [UPDATE FIX SHIP & LOGIC GIÁ]
 // =================================================================
 function getProductKnowledge_ThaoKorea() {
     let knowledgeString = "**KHỐI KIẾN THỨC SẢN PHẨM (THẢO KOREA):**\n\n";
@@ -328,71 +328,73 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "- **TẶNG 1 GÓI CAO DÁN:** Cao Hắc Sâm Trầm Hương (690k).\n";
     knowledgeString += "- **KHÔNG CÓ QUÀ:** Các sản phẩm còn lại.\n\n";
     
-    knowledgeString += "**QUY ĐỊNH SHIP:** Đơn < 500k: +20k Ship (Đồng giá). Đơn >= 500k: Freeship.\n\n";
+    // Sửa lại đoạn này để nhấn mạnh Freeship
+    knowledgeString += "**QUY ĐỊNH SHIP:**\n";
+    knowledgeString += "- Đơn >= 500k: MẶC ĐỊNH MIỄN PHÍ SHIP (Không cần giải thích).\n";
+    knowledgeString += "- Đơn < 500k: Phí ship đồng giá 20k.\n\n";
 
     knowledgeString += "---[DANH SÁCH SẢN PHẨM]---\n";
-    knowledgeString += "1. AN CUNG SAMSUNG HỘP GỖ (780k) - 60 VIÊN\n";
+    // Mẹo: Ghi thẳng chữ (MIỄN PHÍ SHIP) vào sản phẩm giá trị cao để Bot không bị nhầm lẫn tính toán
+    knowledgeString += "1. AN CUNG SAMSUNG HỘP GỖ (780k) - [MIỄN PHÍ SHIP]\n";
     knowledgeString += "   - Quà: Tặng Dầu Lạnh. 1% Trầm Hương.\n";
     knowledgeString += "   - Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
     
     knowledgeString += "2. HỘP CAO HỒNG SÂM 365 (DẠNG CAO SỆT - 240g/LỌ)\n";
     knowledgeString += "   - Hộp 2 Lọ: 450k (Ship 20k) - KHÔNG QUÀ.\n";
-    knowledgeString += "   - Hộp 4 Lọ: 850k (Freeship) - KHÔNG QUÀ.\n";
+    knowledgeString += "   - Hộp 4 Lọ: 850k [MIỄN PHÍ SHIP] - KHÔNG QUÀ.\n";
     knowledgeString += "   - Image_URL (2 Lọ): \"https://ghshop.vn/images/upload/images/Cao-H%E1%BB%93ng-S%C3%A2m-365-H%C3%A0n-Qu%E1%BB%91c-Lo%E1%BA%A1i-2-L%E1%BB%8D.png\"\n";
     knowledgeString += "   - Image_URL (4 Lọ): \"https://thuoc365.vn/wp-content/uploads/2017/12/cao-hong-sam-4.jpg\"\n";
 
-    knowledgeString += "3. HỘP TINH DẦU THÔNG ĐỎ KWANGDONG (1.150k) - 120 VIÊN\n";
+    knowledgeString += "3. HỘP TINH DẦU THÔNG ĐỎ KWANGDONG (1.150k) - [MIỄN PHÍ SHIP]\n";
     knowledgeString += "   - Quà: Tặng Cao Dán (Mặc định) hoặc Dầu Lạnh.\n";
     knowledgeString += "   - Image_URL: \"https://product.hstatic.net/1000260265/product/tinh_dau_thong_do_tai_da_nang_5b875a5a4c114cb09455e328aee71b97_master.jpg\"\n";
 
-    knowledgeString += "13. TINH CHẤT HỒNG SÂM 365 NƯỚC (690k) - HỘP 100 GÓI (10ml/gói)\n";
-    knowledgeString += "   - Freeship - KHÔNG QUÀ.\n";
+    knowledgeString += "13. TINH CHẤT HỒNG SÂM 365 NƯỚC (690k) - [MIỄN PHÍ SHIP]\n";
+    knowledgeString += "   - KHÔNG QUÀ.\n";
     knowledgeString += "   - Image_URL: \"https://nhungnheng.com/uploads/shops/2024_04/555439700_24765749976387672_8906127611892730086_n.jpg\"\n";
 
-    knowledgeString += "11. NGHỆ NANO CURCUMIN 365 CARE (990k/hộp) - 32 TÉP (3g/tép)\n";
+    knowledgeString += "11. NGHỆ NANO CURCUMIN 365 CARE (990k/hộp) - [MIỄN PHÍ SHIP]\n";
     knowledgeString += "   - Quà: Tặng Kẹo Sâm.\n";
     knowledgeString += "   - Image_URL: \"https://scontent.fhan15-2.fna.fbcdn.net/v/t39.30808-6/589158835_122096348745142019_9083802807600819254_n.jpg\"\n";
 
-    knowledgeString += "12. VIÊN ĐẠM SÂM KANA (460k + ship) - 120 VIÊN\n";
+    knowledgeString += "12. VIÊN ĐẠM SÂM KANA (460k) - [Phí ship 20k]\n";
     knowledgeString += "   - KHÔNG QUÀ.\n";
     knowledgeString += "   - Image_URL: \"https://shopsunflower.vn/wp-content/uploads/2025/07/Dam-Sam-Kana-Hong-Sam-Nhung-Huou-Linh-Chi-Han-Quoc.webp\"\n";
 
-    knowledgeString += "14. VIÊN CANXI SMS BIO PHARM (360k + ship) - 120 VIÊN\n";
+    knowledgeString += "14. VIÊN CANXI SMS BIO PHARM (360k) - [Phí ship 20k]\n";
     knowledgeString += "   - KHÔNG QUÀ.\n";
     knowledgeString += "   - Image_URL: \"https://hanquocgiare.com/wp-content/uploads/2025/09/vien-uong-bo-sung-canxi-sms-bio-pharm-signatune-power-cacium-gold.jpg\"\n";
 
-    knowledgeString += "15. VIÊN BỔ MẮT SAMSUNG (360k + ship) - 120 VIÊN\n";
+    knowledgeString += "15. VIÊN BỔ MẮT SAMSUNG (360k) - [Phí ship 20k]\n";
     knowledgeString += "   - KHÔNG QUÀ.\n";
     knowledgeString += "   - Image_URL: \"https://hanquocgiare.com/wp-content/uploads/2022/12/vien-uong-bo-mat-han-quoc-samsung-bio-pharm-120-vien-4.jpg\"\n";
     
-    knowledgeString += "16. CAO HẮC SÂM TRẦM HƯƠNG HANJEONG (690k) - HŨ 500g\n";
+    knowledgeString += "16. CAO HẮC SÂM TRẦM HƯƠNG HANJEONG (690k) - [MIỄN PHÍ SHIP]\n";
     knowledgeString += "   - Quà: Tặng 1 Gói Cao Dán.\n";
     knowledgeString += "   - Image_URL: \"https://huyenviet.com.vn/storage/products/July2025/36bECKNzZcANZO0ba11G.jpg\"\n";
 
-    knowledgeString += "4. NƯỚC HỒNG SÂM NHUNG HƯƠU 30 GÓI (420k + ship) - 70ml/gói\n";
+    knowledgeString += "4. NƯỚC HỒNG SÂM NHUNG HƯƠU 30 GÓI (420k) - [Phí ship 20k]\n";
     knowledgeString += "   - KHÔNG QUÀ.\n";
     knowledgeString += "   - Image_URL: \"https://samyenthinhphat.com/uploads/Images/sam-nuoc/tinh-chat-hong-sam-nhung-huou-hop-30-goi-006.jpg\"\n";
     
-    knowledgeString += "17. NƯỚC SÂM NHUNG HƯƠU 20 GÓI MỚI (340k + ship) - 70ml/gói\n";
+    knowledgeString += "17. NƯỚC SÂM NHUNG HƯƠU 20 GÓI MỚI (340k) - [Phí ship 20k]\n";
     knowledgeString += "   - KHÔNG QUÀ.\n";
     knowledgeString += "   - Image_URL: \"(Gửi ảnh SP 4 tạm)\"\n"; 
     
-    knowledgeString += "5. NƯỚC HỒNG SÂM NHUNG HƯƠU 20 GÓI MẪU CŨ (TẠM HẾT HÀNG)\n";
-    
-    knowledgeString += "6. NƯỚC MÁT GAN SAMSUNG (390k + ship) - 30 gói x 70ml\n";
+    knowledgeString += "6. NƯỚC MÁT GAN SAMSUNG (390k) - [Phí ship 20k]\n";
     knowledgeString += "   - KHÔNG QUÀ.\n";
     knowledgeString += "   - Image_URL: \"https://hueminhkorea.com/wp-content/uploads/2025/02/mat-gan-nghe-dong-trung-tw-han-quoc-3-1.jpg\"\n";
     
-    knowledgeString += "7. AN CUNG KWANGDONG 60 VIÊN (1.290k) - Tặng Dầu Lạnh\n";
+    knowledgeString += "7. AN CUNG KWANGDONG 60 VIÊN (1.290k) - [MIỄN PHÍ SHIP]\n";
     knowledgeString += "   - Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
     
-    knowledgeString += "8. AN CUNG ROYAL 32 VIÊN (690k) - KHÔNG QUÀ\n";
+    knowledgeString += "8. AN CUNG ROYAL 32 VIÊN (690k) - [MIỄN PHÍ SHIP]\n";
     knowledgeString += "   - Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_.jpg\"\n";
     
-    knowledgeString += "9. DẦU NÓNG ANTIPHLAMINE (89k + ship)\n";
+    knowledgeString += "9. DẦU NÓNG ANTIPHLAMINE (89k) - [Phí ship 20k]\n";
     knowledgeString += "   - Image_URL: \"https://wowmart.vn/wp-content/uploads/2017/03/dau-nong-xoa-diu-cac-co-xuong-khop-antiphlamine-han-quoc-221024-ka.jpg\"\n";
     
-    knowledgeString += "10. DẦU LẠNH GLUCOSAMINE (50k/tuýp - Bán từ 2 tuýp)\n";
+    knowledgeString += "10. DẦU LẠNH GLUCOSAMINE (50k/tuýp - Bán từ 2 tuýp) - [Phí ship 20k]\n";
     knowledgeString += "   - Image_URL: \"https://glucosamin.com.vn/storage/uploads/noidung/dau-lanh-han-quoc-glucosamine-150ml-175.jpg\"\n";
     
     // --- ẢNH QUÀ TẶNG ---
@@ -420,9 +422,15 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 3. CẤM dùng ký tự đặc biệt như dấu * để bôi đậm.
 4. **CẤM TỰ TRẢ LỜI HẠN SỬ DỤNG (DATE).**
 
-**LUẬT SHIP (CỰC KỲ QUAN TRỌNG):**
-- Đơn >= 500k: **CHỈ NÓI** "Dạ đơn này Bác được **Miễn phí ship** ạ". (CẤM giải thích lôi thôi).
-- Đơn < 500k: Báo phí ship 20k.
+**LUẬT SHIP (CỰC KỲ QUAN TRỌNG - ƯU TIÊN SỐ 1):**
+- **ĐƠN >= 500k (Hoặc SP có ghi MIỄN PHÍ SHIP):**
+  + TRẢ LỜI: "Dạ đơn này bên Shop Miễn Phí Ship về tận nhà cho Bác ạ."
+  + CẤM tính tiền ship.
+  + CẤM giải thích lý do (Không nói "vì đơn trên 500k...").
+  + TUYỆT ĐỐI KHÔNG NHẦM LẪN SỐ HỌC (Ví dụ: 780k, 690k, 1290k... ĐỀU LỚN HƠN 500k -> PHẢI FREESHIP).
+  
+- **ĐƠN < 500k (Dưới 500 ngàn):**
+  + TRẢ LỜI: Báo phí ship là 20k.
 
 **LUẬT PHÂN BIỆT SẢN PHẨM:**
 - Khách hỏi "Thông đỏ": Tư vấn **Tinh Dầu Thông Đỏ Kwangdong (120 viên)**.
