@@ -359,7 +359,7 @@ function getProductKnowledge_ThaoKorea() {
 
     knowledgeString += "12. VIÊN ĐẠM SÂM KANA (460k) - [Phí ship 20k]\n";
     knowledgeString += "   - KHÔNG QUÀ.\n";
-    knowledgeString += "   - Image_URL: \"https://shopsunflower.vn/wp-content/uploads/2025/07/Dam-Sam-Kana-Hong-Sam-Nhung-Huou-Linh-Chi-Han-Quoc.webp\"\n";
+    knowledgeString += "   - Image_URL: \"https://hdpshop.vn/wp-content/uploads/2019/08/vien-dam-sam-nhung-huou-linh-chi-do.jpg\"\n";
 
     knowledgeString += "14. VIÊN CANXI SMS BIO PHARM (360k) - [Phí ship 20k]\n";
     knowledgeString += "   - KHÔNG QUÀ.\n";
