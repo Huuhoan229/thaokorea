@@ -385,7 +385,10 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "   - KHÔNG QUÀ.\n";
     knowledgeString += "   - Image_URL: \"https://hueminhkorea.com/wp-content/uploads/2025/02/mat-gan-nghe-dong-trung-tw-han-quoc-3-1.jpg\"\n";
     
-    knowledgeString += "7. AN CUNG KWANGDONG 60 VIÊN (1.290k) - [MIỄN PHÍ SHIP]\n";
+    // --- [ĐÃ SỬA MỤC SỐ 7 TẠI ĐÂY] ---
+    knowledgeString += "7. AN CUNG TRẦM HƯƠNG KWANGDONG 60 VIÊN (1.290k) - [MIỄN PHÍ SHIP]\n";
+    knowledgeString += "   - Đặc điểm: Chứa 15% TRẦM HƯƠNG (Hàm lượng cực cao).\n";
+    knowledgeString += "   - Quà: Tặng Dầu Lạnh (hoặc Cao Dán).\n";
     knowledgeString += "   - Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
     
     knowledgeString += "8. AN CUNG ROYAL 32 VIÊN (690k) - [MIỄN PHÍ SHIP]\n";
