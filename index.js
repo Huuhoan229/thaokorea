@@ -355,7 +355,7 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "   - Image_URL: \"https://scontent.fhan15-2.fna.fbcdn.net/v/t39.30808-6/589158835_122096348745142019_9083802807600819254_n.jpg\"\n";
 
     knowledgeString += "12. VIÊN ĐẠM SÂM KANA 120 VIÊN (480k) - (Giá cũ 460k + 20k ship -> Báo 480k Freeship)\n";
-    knowledgeString += "   - Image_URL: \"https://shopsunflower.vn/wp-content/uploads/2025/07/Dam-Sam-Kana-Hong-Sam-Nhung-Huou-Linh-Chi-Han-Quoc.webp\"\n";
+    knowledgeString += "   - Image_URL: \"https://product.hstatic.net/200000585297/product/vien-hong-sam-nhung-huou-linh-chi-goryeo-hop-do-han-quoc-ngoai_a0bb4652cb1d42f889bc103657ccddb7.jpg\"\n";
 
     knowledgeString += "14. VIÊN CANXI SMS BIO PHARM 120 VIÊN (380k) - (Giá cũ 360k + 20k ship -> Báo 380k Freeship)\n";
     knowledgeString += "   - Image_URL: \"https://hanquocgiare.com/wp-content/uploads/2025/09/vien-uong-bo-sung-canxi-sms-bio-pharm-signatune-power-cacium-gold-4.jpg\"\n";
