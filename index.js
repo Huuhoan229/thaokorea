@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v9.9" - Logic Dau Lanh Mua Kem & Thiet Quan Luat)
+// File: index.js (Phiên bản "MULTI-BOT v10.0" - Quy Trinh Xin SDT & Hen Goi Lai)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -318,12 +318,12 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "- Shop CHỈ BÁN ONLINE. Kho Hà Đông, VP Long Biên.\n";
     knowledgeString += "- Hotline gấp: 0986.646.845 - 0948.686.946 - 0946.686.474\n";
     
-    knowledgeString += "**CHÍNH SÁCH QUÀ TẶNG (NGHIÊM NGẶT - CẤM TẶNG THÊM):**\n";
+    knowledgeString += "**CHÍNH SÁCH QUÀ TẶNG (CẤM TẶNG THÊM):**\n";
     knowledgeString += "- **An Cung Samsung/Kwangdong:** Tặng 1 Dầu Lạnh (hoặc Cao Dán).\n";
     knowledgeString += "- **Tinh Dầu Thông Đỏ:** Tặng 1 Cao Dán (hoặc Dầu Lạnh).\n";
     knowledgeString += "- **Cao Hắc Sâm:** Tặng 1 Gói Cao Dán.\n";
     knowledgeString += "- **Nghệ Nano:** Tặng 1 Gói Kẹo Sâm.\n";
-    knowledgeString += "- **KHÔNG QUÀ:** Các sản phẩm còn lại. (Dù khách xin cũng từ chối).\n\n";
+    knowledgeString += "- **KHÔNG QUÀ:** Cao Sâm 365, Sâm Nước, Mát Gan, Đạm Sâm, Canxi, Bổ Mắt, Royal.\n\n";
     
     knowledgeString += "**QUY ĐỊNH SHIP:** Tất cả sản phẩm chính đều FREESHIP (vì giá đã bao gồm ship). Trừ Dầu Nóng & Dầu Lạnh vẫn tính ship.\n\n";
 
@@ -409,22 +409,23 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 3. CẤM dùng ký tự đặc biệt như dấu * để bôi đậm.
 4. **CẤM TỰ TRẢ LỜI HẠN SỬ DỤNG (DATE).**
 
-**LUẬT CHỐNG XIN QUÀ (THIẾT QUÂN LUẬT):**
-- **Nguyên tắc:** 1 Sản phẩm có quà = 1 Quà. Mua 2 tặng 2.
-- **Tuyệt đối KHÔNG TẶNG THÊM:** Nếu khách xin thêm, phải từ chối khéo léo nhưng kiên quyết: "Dạ quy định của Công ty là mỗi hộp chỉ kèm đúng 1 phần quà thôi ạ. Shop bán giá ưu đãi sát gốc rồi nên không tặng thêm được, Bác thông cảm giúp Shop nha!".
+**QUY TRÌNH CHỐT ĐƠN (QUAN TRỌNG):**
+- **Mục tiêu:** Xin Số Điện Thoại (SĐT) của khách.
+- **Khi có SĐT:**
+  + Nếu là **GIỜ HÀNH CHÍNH (8h-17h)**: "Dạ Shop đã nhận SĐT ạ. Nhân viên tư vấn sẽ gọi lại cho Bác ngay bây giờ để chốt đơn ạ. Bác để ý điện thoại giúp Shop nhé!".
+  + Nếu là **NGOÀI GIỜ**: "Dạ Shop đã nhận SĐT ạ. Nhân viên sẽ gọi lại hỗ trợ Bác trong thời gian ngắn nhất (hoặc sáng mai) để lên đơn cho Bác ạ. Bác để ý điện thoại giúp Shop nha!".
 
-**LUẬT DẦU LẠNH (50k):**
-- Khách mua lẻ 1 mình Dầu Lạnh: Phải mua từ **2 tuýp** trở lên.
-- Khách mua kèm SP khác (VD: 1 Sâm + 1 Dầu): Được bán **1 tuýp**.
+**LUẬT CHỐNG XIN QUÀ (THIẾT QUÂN LUẬT):**
+- **Nguyên tắc:** 1 SP có quà = 1 Quà. Mua 2 tặng 2.
+- **TUYỆT ĐỐI KHÔNG TẶNG THÊM.** Từ chối khéo: "Dạ quy định Công ty mỗi hộp chỉ kèm 1 quà, Shop bán sát gốc rồi nên không tặng thêm được ạ".
 
 **LUẬT SHIP:**
-- **Tất cả sản phẩm chính:** Đều **FREESHIP** (Báo giá xong chốt câu: "Dạ đơn này bên con Freeship cho Bác ạ").
-- **Ngoại lệ:** Dầu Nóng và Dầu Lạnh (mua lẻ) -> Thu 20k ship.
+- Các sản phẩm chính: FREESHIP (Đã bao gồm trong giá).
+- Dầu Nóng/Lạnh mua lẻ: Ship 20k.
 
-**LUẬT TƯ VẤN:**
-- **Thành phần/Công dụng:** Tự tư vấn chi tiết.
-- **Date:** "Dạ để Shop kiểm tra kho báo lại Bác sau ạ".
-- **Gửi ảnh:** Chỉ gửi khi khách ĐÒI.
+**LUẬT DẦU LẠNH (50k):**
+- Mua lẻ: Từ 2 tuýp.
+- Mua kèm: Được mua 1 tuýp.
 
 **NGỮ CẢNH:** ${timeContext}
 
@@ -547,5 +548,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v9.9 (Luat Sat Tang Qua & Freeship All) chạy tại port ${PORT}`);
+  console.log(`Bot v10.0 (Quy Trinh Xin SDT & Hen Goi Lai) chạy tại port ${PORT}`);
 });
