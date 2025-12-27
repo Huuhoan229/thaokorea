@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v10.0" - Quy Trinh Xin SDT & Hen Goi Lai)
+// File: index.js (Phiên bản "MULTI-BOT v10.1" - Fix Loi 'Cam Den Chay Truoc O To' - Kiem Tra SDT Truoc Khi Chot)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -325,7 +325,7 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "- **Nghệ Nano:** Tặng 1 Gói Kẹo Sâm.\n";
     knowledgeString += "- **KHÔNG QUÀ:** Cao Sâm 365, Sâm Nước, Mát Gan, Đạm Sâm, Canxi, Bổ Mắt, Royal.\n\n";
     
-    knowledgeString += "**QUY ĐỊNH SHIP:** Tất cả sản phẩm chính đều FREESHIP (vì giá đã bao gồm ship). Trừ Dầu Nóng & Dầu Lạnh vẫn tính ship.\n\n";
+    knowledgeString += "**QUY ĐỊNH SHIP:** Tất cả sản phẩm chính đều FREESHIP. Trừ Dầu Nóng & Dầu Lạnh vẫn tính ship.\n\n";
 
     knowledgeString += "---[DANH SÁCH SẢN PHẨM]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HỘP GỖ 60 VIÊN (780k) - Freeship - Tặng 1 Dầu/Cao\n";
@@ -378,10 +378,7 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "9. DẦU NÓNG ANTIPHLAMINE (89k) - VẪN TÍNH SHIP 20k\n";
     knowledgeString += "   - Image_URL: \"https://wowmart.vn/wp-content/uploads/2017/03/dau-nong-xoa-diu-cac-co-xuong-khop-antiphlamine-han-quoc-221024-ka.jpg\"\n";
     
-    // --- LOGIC DẦU LẠNH MỚI ---
-    knowledgeString += "10. DẦU LẠNH GLUCOSAMINE (50k/tuýp)\n";
-    knowledgeString += "   - Mua lẻ 1 mình dầu lạnh: Phải mua từ 2 tuýp (+Ship 20k).\n";
-    knowledgeString += "   - Mua kèm sản phẩm khác (VD: Sâm + Dầu): Được phép mua 1 tuýp (Freeship theo đơn chính).\n";
+    knowledgeString += "10. DẦU LẠNH GLUCOSAMINE (50k/tuýp) - Mua lẻ từ 2 tuýp (+20k ship). Mua kèm SP khác thì 1 tuýp (Free).\n";
     knowledgeString += "   - Image_URL: \"https://glucosamin.com.vn/storage/uploads/images/dau-lanh-glucosamine.jpg\"\n";
     
     // --- ẢNH QUÀ TẶNG ---
@@ -409,23 +406,24 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 3. CẤM dùng ký tự đặc biệt như dấu * để bôi đậm.
 4. **CẤM TỰ TRẢ LỜI HẠN SỬ DỤNG (DATE).**
 
-**QUY TRÌNH CHỐT ĐƠN (QUAN TRỌNG):**
-- **Mục tiêu:** Xin Số Điện Thoại (SĐT) của khách.
-- **Khi có SĐT:**
-  + Nếu là **GIỜ HÀNH CHÍNH (8h-17h)**: "Dạ Shop đã nhận SĐT ạ. Nhân viên tư vấn sẽ gọi lại cho Bác ngay bây giờ để chốt đơn ạ. Bác để ý điện thoại giúp Shop nhé!".
-  + Nếu là **NGOÀI GIỜ**: "Dạ Shop đã nhận SĐT ạ. Nhân viên sẽ gọi lại hỗ trợ Bác trong thời gian ngắn nhất (hoặc sáng mai) để lên đơn cho Bác ạ. Bác để ý điện thoại giúp Shop nha!".
+**QUY TRÌNH CHỐT ĐƠN & XIN SỐ ĐIỆN THOẠI (LOGIC 3 BƯỚC):**
+- **Bước 1 (Kiểm tra):** Xem trong tin nhắn khách vừa gửi có chứa dãy số (Số điện thoại) nào không.
+- **Bước 2 (Nếu CHƯA CÓ SĐT):** Hãy hỏi xin: "Dạ để tiện cho nhân viên gọi điện tư vấn kỹ hơn và chốt đơn Freeship cho Bác, Bác vui lòng để lại **Số Điện Thoại** giúp Shop nha!". (TUYỆT ĐỐI KHÔNG NÓI 'ĐÃ NHẬN SĐT' NẾU KHÁCH CHƯA GỬI).
+- **Bước 3 (Nếu ĐÃ CÓ SĐT):** + Giờ HC (8h-17h): "Dạ Shop đã nhận được SĐT ạ. Nhân viên sẽ gọi lại cho Bác ngay bây giờ để xác nhận đơn hàng ạ. Bác để ý điện thoại giúp Shop nhé!".
+  + Ngoài giờ: "Dạ Shop đã nhận được SĐT ạ. Nhân viên sẽ gọi lại hỗ trợ Bác sớm nhất (hoặc sáng mai) để lên đơn ạ. Bác để ý điện thoại giúp Shop nha!".
 
 **LUẬT CHỐNG XIN QUÀ (THIẾT QUÂN LUẬT):**
 - **Nguyên tắc:** 1 SP có quà = 1 Quà. Mua 2 tặng 2.
 - **TUYỆT ĐỐI KHÔNG TẶNG THÊM.** Từ chối khéo: "Dạ quy định Công ty mỗi hộp chỉ kèm 1 quà, Shop bán sát gốc rồi nên không tặng thêm được ạ".
 
 **LUẬT SHIP:**
-- Các sản phẩm chính: FREESHIP (Đã bao gồm trong giá).
-- Dầu Nóng/Lạnh mua lẻ: Ship 20k.
+- **Tất cả sản phẩm chính:** Đều **FREESHIP** (Báo giá xong chốt câu: "Dạ đơn này bên con Freeship cho Bác ạ").
+- **Ngoại lệ:** Dầu Nóng và Dầu Lạnh (mua lẻ) -> Thu 20k ship.
 
-**LUẬT DẦU LẠNH (50k):**
-- Mua lẻ: Từ 2 tuýp.
-- Mua kèm: Được mua 1 tuýp.
+**LUẬT TƯ VẤN:**
+- **Thành phần/Công dụng:** Tự tư vấn chi tiết.
+- **Date:** "Dạ để Shop kiểm tra kho báo lại Bác sau ạ".
+- **Gửi ảnh:** Chỉ gửi khi khách ĐÒI.
 
 **NGỮ CẢNH:** ${timeContext}
 
@@ -451,7 +449,9 @@ ${historyString}
   } catch (e) { return { response_message: "Dạ mạng lag, Bác chờ xíu ạ.", image_url_to_send: "" }; }
 }
 
-// ... (Giữ nguyên phần còn lại)
+// ... (Giữ nguyên phần còn lại: TuyenSiNghe, Helper functions...)
+// Bác nhớ copy nốt phần đuôi từ hàm getProductKnowledge_TuyenSiNghe trở xuống của bản cũ vào đây nhé.
+// (Em đã gửi phần đuôi này ở các bản trước rồi, nó không thay đổi gì cả).
 function getProductKnowledge_TuyenSiNghe() {
     return "**KHỐI KIẾN THỨC (TUYỂN SỈ NGHỆ NANO):**\n\n**MỤC TIÊU:** Xin SĐT để kết bạn Zalo báo giá. KHÔNG báo giá sỉ trên chat.";
 }
@@ -548,5 +548,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v10.0 (Quy Trinh Xin SDT & Hen Goi Lai) chạy tại port ${PORT}`);
+  console.log(`Bot v10.1 (Fix Loi Logic Xin SDT) chạy tại port ${PORT}`);
 });
