@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v14.1" - Xử Lý Mặc Cả & Chốt Giá An Cung)
+// File: index.js (Phiên bản "MULTI-BOT v14.2" - Fix Lỗi Tự Động Giảm Giá)
 
 // =================================================================
 // 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH
@@ -44,7 +44,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v14-bargain', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v14-fix-price', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 // =================================================================
 // PHẦN A: WEB ADMIN ROUTES
@@ -233,7 +233,6 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
             sendAlertEmail(userName, userMessage);
         }
 
-        // CHECK SĐT BẰNG REGEX (0xxxxxxxxx)
         const phoneRegex = /0\d{9}/; 
         const cleanMsg = userMessage.replace(/\s+/g, '').replace(/\./g, '').replace(/-/g, '');
         const hasPhone = phoneRegex.test(cleanMsg);
@@ -279,7 +278,7 @@ async function buildKnowledgeBaseFromDB() {
     return rules + "\n" + productText;
 }
 
-// --- HÀM GỌI GEMINI (XỬ LÝ MẶC CẢ + AN CUNG) ---
+// --- HÀM GỌI GEMINI (FIX LOGIC MẶC CẢ) ---
 async function callGeminiRetail(userMessage, userName, history, knowledgeBase, imageUrl = null, hasPhone = false) {
     const model = await getGeminiModel();
     if (!model) return { response_message: "Dạ Bác chờ Shop xíu nha." };
@@ -290,19 +289,21 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
         const timeContext = (now.getHours() >= 8 && now.getHours() < 17) ? "GIỜ HÀNH CHÍNH" : "NGOÀI GIỜ";
 
-        // PROMPT ĐƯỢC DẠY CHIÊU MẶC CẢ
+        // PROMPT ĐÃ ĐƯỢC KHOÁ MÕM VẤN ĐỀ GIẢM GIÁ
         let prompt = `**VAI TRÒ:** Bạn là chuyên viên tư vấn Shop Thảo Korea. Khách hàng: '${greetingName}'.
 
 **DỮ LIỆU SHOP:**
 ${knowledgeBase}
 
-**QUY TẮC XỬ LÝ MẶC CẢ (QUAN TRỌNG):**
-1. Nếu khách xin giảm giá/mặc cả: Hãy trả lời khéo léo rằng "Dạ giá này là giá niêm yết của Tổng công ty nên Shop không tự điều chỉnh được ạ".
-2. **NGOẠI LỆ ĐẶC BIỆT:** Riêng với sản phẩm **AN CUNG SAMSUNG (Loại 780k)**, nếu khách chê đắt hoặc đồng ý **không lấy quà tặng**, thì Shop đồng ý bán giá **750k** (cắt quà).
+**QUY TẮC BÁO GIÁ & MẶC CẢ (BẮT BUỘC TUÂN THỦ):**
+1. **KHI KHÁCH HỎI GIÁ/SẢN PHẨM:** Chỉ báo đúng giá niêm yết trong danh sách + Quà tặng đi kèm. TUYỆT ĐỐI KHÔNG tự động nói về việc giảm giá hay cắt quà.
+2. **KHI KHÁCH THAN ĐẮT / XIN BỚT:**
+   - Bước 1: Trả lời "Dạ giá này là giá niêm yết của Tổng công ty nên Shop không tự điều chỉnh được ạ".
+   - Bước 2: **CHỈ ÁP DỤNG VỚI AN CUNG SAMSUNG (780k):** Nếu khách vẫn than đắt hoặc nói không cần quà, lúc này mới được phép nói: "Dạ nếu Bác không lấy quà tặng thì Shop xin phép để giá hỗ trợ là 750k ạ".
 
 **THÔNG TIN HỆ THỐNG:**
 - Thời gian: ${timeContext}
-- SĐT Khách: ${hasPhone ? "ĐÃ CÓ SĐT (KHÔNG HỎI LẠI)" : "CHƯA CÓ (CẦN XIN SĐT + ĐỊA CHỈ)"}
+- SĐT Khách: ${hasPhone ? "ĐÃ CÓ (KHÔNG HỎI LẠI)" : "CHƯA CÓ (CẦN XIN SĐT + ĐỊA CHỈ)"}
 
 **QUY ĐỊNH OUTPUT:**
 - Text only. KHÔNG chứa link.
@@ -345,4 +346,4 @@ async function sendMessage(token, id, text) { try { await axios.post(`https://gr
 async function sendImage(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "image", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v14.1 (Mặc cả & An Cung) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v14.2 (Fix Price) chạy tại port ${PORT}`));
