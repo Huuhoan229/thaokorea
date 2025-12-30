@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v10.1" - Fix Loi 'Cam Den Chay Truoc O To' - Kiem Tra SDT Truoc Khi Chot)
+// File: index.js (Phiên bản "MULTI-BOT v10.3" - Update Date Samsung 2027 & Ham Luong Tram Huong)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -323,13 +323,16 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "- **Tinh Dầu Thông Đỏ:** Tặng 1 Cao Dán (hoặc Dầu Lạnh).\n";
     knowledgeString += "- **Cao Hắc Sâm:** Tặng 1 Gói Cao Dán.\n";
     knowledgeString += "- **Nghệ Nano:** Tặng 1 Gói Kẹo Sâm.\n";
-    knowledgeString += "- **KHÔNG QUÀ:** Cao Sâm 365, Sâm Nước, Mát Gan, Đạm Sâm, Canxi, Bổ Mắt, Royal.\n\n";
+    knowledgeString += "- **KHÔNG QUÀ (Dù khách xin cũng từ chối):** Cao Sâm 365, Sâm Nước, Mát Gan, Đạm Sâm, Canxi, Bổ Mắt, Royal.\n\n";
     
     knowledgeString += "**QUY ĐỊNH SHIP:** Tất cả sản phẩm chính đều FREESHIP. Trừ Dầu Nóng & Dầu Lạnh vẫn tính ship.\n\n";
 
     knowledgeString += "---[DANH SÁCH SẢN PHẨM]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HỘP GỖ 60 VIÊN (780k) - Freeship - Tặng 1 Dầu/Cao\n";
-    knowledgeString += "   - Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
+    knowledgeString += "   - Thành phần: Có Trầm Hương (hàm lượng ít), chủ yếu là Ngưu Hoàng.\n";
+    knowledgeString += "   - Date: Tháng 10/2027 (Hàng mới nhất).\n";
+    knowledgeString += "   - Ảnh Date (Gửi khi khách hỏi Date): \"https://i.ibb.co/yFwbzwGS/z7379237606061-c93c7bafd60a14c6641d71244bc05b4a.jpg\"\n";
+    knowledgeString += "   - Image_URL (Ảnh hộp): \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
     
     knowledgeString += "2. HỘP CAO HỒNG SÂM 365 (DẠNG CAO SỆT - 240g/LỌ)\n";
     knowledgeString += "   - Hộp 2 Lọ: 470k (Freeship) - KHÔNG QUÀ.\n";
@@ -340,6 +343,15 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "3. HỘP TINH DẦU THÔNG ĐỎ KWANGDONG 120 VIÊN (1.150k) - Freeship - Tặng 1 Cao/Dầu\n";
     knowledgeString += "   - Image_URL: \"https://product.hstatic.net/1000260265/product/tinh_dau_thong_do_tai_da_nang_5b875a5a4c114cb09455e328aee71b97_master.jpg\"\n";
 
+    knowledgeString += "7. AN CUNG KWANGDONG 60 VIÊN (1.290k) - Freeship - Tặng 1 Dầu/Cao\n";
+    knowledgeString += "   - Thành phần: 15% Trầm Hương (Cao cấp, hỗ trợ tim mạch mạnh).\n";
+    knowledgeString += "   - Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
+    
+    knowledgeString += "8. AN CUNG ROYAL 32 VIÊN (690k) - Freeship - KHÔNG QUÀ\n";
+    knowledgeString += "   - Thành phần: 5% Trầm Hương.\n";
+    knowledgeString += "   - Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_.jpg\"\n";
+
+    // ... (Giữ nguyên các sản phẩm khác: Sâm nước, Nghệ, Đạm sâm, Canxi, Bổ mắt, Hắc sâm...)
     knowledgeString += "13. TINH CHẤT HỒNG SÂM 365 NƯỚC (690k) - HỘP 100 GÓI - Freeship - KHÔNG QUÀ\n";
     knowledgeString += "   - Image_URL: \"https://nhungnheng.com/uploads/shops/2024_04/555439700_24765749976387672_8906127611892730086_n.jpg\"\n";
 
@@ -369,19 +381,12 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "6. NƯỚC MÁT GAN SAMSUNG (410k) - Freeship - KHÔNG QUÀ\n";
     knowledgeString += "   - Image_URL: \"https://hueminhkorea.com/wp-content/uploads/2025/02/mat-gan-nghe-dong-trung-tw-han-quoc-3-1.jpg\"\n";
     
-    knowledgeString += "7. AN CUNG KWANGDONG 60 VIÊN (1.290k) - Freeship - Tặng 1 Dầu/Cao\n";
-    knowledgeString += "   - Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
-    
-    knowledgeString += "8. AN CUNG ROYAL 32 VIÊN (690k) - Freeship - KHÔNG QUÀ\n";
-    knowledgeString += "   - Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_.jpg\"\n";
-    
     knowledgeString += "9. DẦU NÓNG ANTIPHLAMINE (89k) - VẪN TÍNH SHIP 20k\n";
     knowledgeString += "   - Image_URL: \"https://wowmart.vn/wp-content/uploads/2017/03/dau-nong-xoa-diu-cac-co-xuong-khop-antiphlamine-han-quoc-221024-ka.jpg\"\n";
     
     knowledgeString += "10. DẦU LẠNH GLUCOSAMINE (50k/tuýp) - Mua lẻ từ 2 tuýp (+20k ship). Mua kèm SP khác thì 1 tuýp (Free).\n";
     knowledgeString += "   - Image_URL: \"https://glucosamin.com.vn/storage/uploads/images/dau-lanh-glucosamine.jpg\"\n";
     
-    // --- ẢNH QUÀ TẶNG ---
     knowledgeString += "99. QUÀ TẶNG: CAO DÁN HỒNG SÂM (20 miếng)\n";
     knowledgeString += "Image_URL: \"https://samyenthinhphat.com/uploads/Images/cao-dan-hong-sam-han-quoc-20-mieng-02.jpg\"\n";
     
@@ -404,26 +409,19 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 1. CẤM dùng từ 'Admin', 'Bot'. CẤM gửi link text.
 2. CẤM bịa quà. CẤM giảm giá. CẤM nói lặp.
 3. CẤM dùng ký tự đặc biệt như dấu * để bôi đậm.
-4. **CẤM TỰ TRẢ LỜI HẠN SỬ DỤNG (DATE).**
 
-**QUY TRÌNH CHỐT ĐƠN & XIN SỐ ĐIỆN THOẠI (LOGIC 3 BƯỚC):**
-- **Bước 1 (Kiểm tra):** Xem trong tin nhắn khách vừa gửi có chứa dãy số (Số điện thoại) nào không.
-- **Bước 2 (Nếu CHƯA CÓ SĐT):** Hãy hỏi xin: "Dạ để tiện cho nhân viên gọi điện tư vấn kỹ hơn và chốt đơn Freeship cho Bác, Bác vui lòng để lại **Số Điện Thoại** giúp Shop nha!". (TUYỆT ĐỐI KHÔNG NÓI 'ĐÃ NHẬN SĐT' NẾU KHÁCH CHƯA GỬI).
-- **Bước 3 (Nếu ĐÃ CÓ SĐT):** + Giờ HC (8h-17h): "Dạ Shop đã nhận được SĐT ạ. Nhân viên sẽ gọi lại cho Bác ngay bây giờ để xác nhận đơn hàng ạ. Bác để ý điện thoại giúp Shop nhé!".
-  + Ngoài giờ: "Dạ Shop đã nhận được SĐT ạ. Nhân viên sẽ gọi lại hỗ trợ Bác sớm nhất (hoặc sáng mai) để lên đơn ạ. Bác để ý điện thoại giúp Shop nha!".
+**LUẬT TRẢ LỜI DATE (THÔNG MINH):**
+- **Riêng AN CUNG SAMSUNG (60v):** Trả lời ngay "Date 10/2027" và GỬI KÈM ẢNH DATE (có trong link Image_Date).
+- **Các SP khác:** Vẫn dùng câu "Dạ để Shop kiểm tra kho báo lại Bác sau ạ" (Tránh nói bừa).
 
-**LUẬT CHỐNG XIN QUÀ (THIẾT QUÂN LUẬT):**
-- **Nguyên tắc:** 1 SP có quà = 1 Quà. Mua 2 tặng 2.
-- **TUYỆT ĐỐI KHÔNG TẶNG THÊM.** Từ chối khéo: "Dạ quy định Công ty mỗi hộp chỉ kèm 1 quà, Shop bán sát gốc rồi nên không tặng thêm được ạ".
+**QUY TRÌNH CHỐT ĐƠN (CHECK SĐT):**
+- Bước 1: Soi tin nhắn khách.
+- Bước 2: **Chưa có SĐT:** "Dạ vâng, Bác ưng mã này rồi thì cho Shop xin **Số Điện Thoại** và **Địa Chỉ** để nhân viên lên đơn Freeship cho Bác nhé ạ!".
+- Bước 3: **Đã có SĐT:** Xác nhận đã nhận số và báo nhân viên gọi lại (Theo giờ HC/Ngoài giờ).
 
 **LUẬT SHIP:**
-- **Tất cả sản phẩm chính:** Đều **FREESHIP** (Báo giá xong chốt câu: "Dạ đơn này bên con Freeship cho Bác ạ").
-- **Ngoại lệ:** Dầu Nóng và Dầu Lạnh (mua lẻ) -> Thu 20k ship.
-
-**LUẬT TƯ VẤN:**
-- **Thành phần/Công dụng:** Tự tư vấn chi tiết.
-- **Date:** "Dạ để Shop kiểm tra kho báo lại Bác sau ạ".
-- **Gửi ảnh:** Chỉ gửi khi khách ĐÒI.
+- SP Chính: Freeship.
+- Dầu Nóng/Lạnh mua lẻ: Ship 20k.
 
 **NGỮ CẢNH:** ${timeContext}
 
@@ -449,9 +447,7 @@ ${historyString}
   } catch (e) { return { response_message: "Dạ mạng lag, Bác chờ xíu ạ.", image_url_to_send: "" }; }
 }
 
-// ... (Giữ nguyên phần còn lại: TuyenSiNghe, Helper functions...)
-// Bác nhớ copy nốt phần đuôi từ hàm getProductKnowledge_TuyenSiNghe trở xuống của bản cũ vào đây nhé.
-// (Em đã gửi phần đuôi này ở các bản trước rồi, nó không thay đổi gì cả).
+// ... (Giữ nguyên phần Tuyển Sỉ và Helper Functions)
 function getProductKnowledge_TuyenSiNghe() {
     return "**KHỐI KIẾN THỨC (TUYỂN SỈ NGHỆ NANO):**\n\n**MỤC TIÊU:** Xin SĐT để kết bạn Zalo báo giá. KHÔNG báo giá sỉ trên chat.";
 }
@@ -548,5 +544,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v10.1 (Fix Loi Logic Xin SDT) chạy tại port ${PORT}`);
+  console.log(`Bot v10.3 (Update Date Samsung & Tram Huong) chạy tại port ${PORT}`);
 });
