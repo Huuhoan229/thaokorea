@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v14.2" - Fix Lỗi Tự Động Giảm Giá)
+// File: index.js (Phiên bản "MULTI-BOT v14.3" - Fix Lỗi Liệt Kê & Tối Ưu Hiển Thị)
 
 // =================================================================
 // 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH
@@ -17,7 +17,6 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 const PORT = process.env.PORT || 3000;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
-// Cấu hình Email
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: { user: 'vngenmart@gmail.com', pass: 'mat_khau_ung_dung_cua_ban' }
@@ -44,7 +43,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v14-fix-price', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v14-smart-list', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 // =================================================================
 // PHẦN A: WEB ADMIN ROUTES
@@ -126,11 +125,9 @@ app.post('/admin/delete-product', checkAuth, async (req, res) => {
 // PHẦN B: BOT ENGINE
 // =================================================================
 
-// Lấy Token Page
 async function getPageToken(pageId) {
     let pageSnap = await db.collection('pages').where('pageId', '==', pageId).get();
     if (!pageSnap.empty) return pageSnap.docs[0].data().token;
-
     const map = new Map();
     if (process.env.PAGE_ID_THAO_KOREA) map.set(process.env.PAGE_ID_THAO_KOREA, process.env.FB_PAGE_TOKEN_THAO_KOREA);
     if (process.env.PAGE_ID_TRANG_MOI) map.set(process.env.PAGE_ID_TRANG_MOI, process.env.FB_PAGE_TOKEN_TRANG_MOI);
@@ -138,7 +135,6 @@ async function getPageToken(pageId) {
     return map.get(pageId);
 }
 
-// Lấy Model AI
 async function getGeminiModel() {
     let apiKey = process.env.GEMINI_API_KEY;
     let modelName = "gemini-2.0-flash";
@@ -172,8 +168,6 @@ app.post('/webhook', (req, res) => {
 
             if (entry.messaging && entry.messaging.length > 0) {
                 const webhook_event = entry.messaging[0];
-                
-                // ADMIN COMMANDS
                 if (webhook_event.message && webhook_event.message.is_echo) {
                     if (webhook_event.message.metadata === "FROM_BOT_AUTO") return;
                     const adminText = webhook_event.message.text;
@@ -187,7 +181,6 @@ app.post('/webhook', (req, res) => {
                     return;
                 }
 
-                // USER MESSAGE
                 if (webhook_event.message) {
                     const senderId = webhook_event.sender.id;
                     const uid = `${pageId}_${senderId}`;
@@ -266,19 +259,39 @@ async function buildKnowledgeBaseFromDB() {
     let rulesDoc = await db.collection('settings').doc('generalRules').get();
     let rules = rulesDoc.exists ? rulesDoc.data().content : getDefaultRules();
     let productsSnap = await db.collection('products').get();
-    let productText = "\n=== 🛒 DANH SÁCH SẢN PHẨM & QUÀ TẶNG ===\n";
+    
+    // TẠO 2 PHIÊN BẢN DATA:
+    // 1. Bản chi tiết (Để AI hiểu)
+    let productFull = "";
+    // 2. Bản tóm tắt (Để nhắc AI khi cần liệt kê)
+    let productSummary = "DANH SÁCH TÓM TẮT (Dùng để liệt kê):\n";
+
     if (productsSnap.empty) {
-        getDefaultProducts().forEach(p => productText += `- ${p.name} | Giá: ${p.price} | Quà: ${p.gift} | Info: ${p.desc}\n`);
+        getDefaultProducts().forEach(p => {
+            productFull += `- Tên: ${p.name}\n  + Giá: ${p.price}\n  + Quà: ${p.gift}\n  + Info: ${p.desc}\n  + Ảnh: "${p.image}"\n`;
+            productSummary += `- ${p.name}: ${p.price}\n`;
+        });
     } else {
         productsSnap.forEach(doc => {
             let p = doc.data();
-            productText += `- Tên: ${p.name}\n  + Giá: ${p.price}\n  + Quà Tặng: ${p.gift}\n  + Thông tin: ${p.desc}\n  + Ảnh (URL): "${p.image}"\n`;
+            productFull += `- Tên: ${p.name}\n  + Giá: ${p.price}\n  + Quà Tặng: ${p.gift}\n  + Thông tin: ${p.desc}\n  + Ảnh (URL): "${p.image}"\n`;
+            productSummary += `- ${p.name}: ${p.price}\n`;
         });
     }
-    return rules + "\n" + productText;
+    
+    // Ghép vào prompt
+    return `
+=== LUẬT CHUNG ===
+${rules}
+
+=== DATA SẢN PHẨM CHI TIẾT (ĐỂ TRA CỨU) ===
+${productFull}
+
+=== DATA SẢN PHẨM TÓM TẮT (ĐỂ LIỆT KÊ) ===
+${productSummary}
+`;
 }
 
-// --- HÀM GỌI GEMINI (FIX LOGIC MẶC CẢ) ---
 async function callGeminiRetail(userMessage, userName, history, knowledgeBase, imageUrl = null, hasPhone = false) {
     const model = await getGeminiModel();
     if (!model) return { response_message: "Dạ Bác chờ Shop xíu nha." };
@@ -289,31 +302,36 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
         const timeContext = (now.getHours() >= 8 && now.getHours() < 17) ? "GIỜ HÀNH CHÍNH" : "NGOÀI GIỜ";
 
-        // PROMPT ĐÃ ĐƯỢC KHOÁ MÕM VẤN ĐỀ GIẢM GIÁ
-        let prompt = `**VAI TRÒ:** Bạn là chuyên viên tư vấn Shop Thảo Korea. Khách hàng: '${greetingName}'.
+        // PROMPT ĐƯỢC DẠY CÁCH LIỆT KÊ KHÔN NGOAN
+        let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea. Khách: '${greetingName}'.
 
 **DỮ LIỆU SHOP:**
 ${knowledgeBase}
 
-**QUY TẮC BÁO GIÁ & MẶC CẢ (BẮT BUỘC TUÂN THỦ):**
-1. **KHI KHÁCH HỎI GIÁ/SẢN PHẨM:** Chỉ báo đúng giá niêm yết trong danh sách + Quà tặng đi kèm. TUYỆT ĐỐI KHÔNG tự động nói về việc giảm giá hay cắt quà.
-2. **KHI KHÁCH THAN ĐẮT / XIN BỚT:**
-   - Bước 1: Trả lời "Dạ giá này là giá niêm yết của Tổng công ty nên Shop không tự điều chỉnh được ạ".
-   - Bước 2: **CHỈ ÁP DỤNG VỚI AN CUNG SAMSUNG (780k):** Nếu khách vẫn than đắt hoặc nói không cần quà, lúc này mới được phép nói: "Dạ nếu Bác không lấy quà tặng thì Shop xin phép để giá hỗ trợ là 750k ạ".
+**QUY TẮC HIỂN THỊ (QUAN TRỌNG):**
+1. **KHI KHÁCH HỎI "DANH SÁCH SẢN PHẨM" HOẶC "CÓ NHỮNG GÌ":**
+   - Chỉ được dùng phần "DATA SẢN PHẨM TÓM TẮT" để trả lời.
+   - Liệt kê ngắn gọn: Tên sản phẩm + Giá tiền.
+   - **CẤM** copy nguyên văn phần mô tả/quà tặng dài dòng (trừ khi khách hỏi chi tiết vào từng món).
+   - Ví dụ chuẩn:
+     "Dạ bên Shop đang có các dòng này ạ:
+      1. An Cung Samsung - 780k
+      2. Tinh Dầu Thông Đỏ - 1.150k
+      ..."
+2. **KHI KHÁCH HỎI CHI TIẾT 1 MÓN:** Lúc này mới lấy thông tin từ "DATA CHI TIẾT" để tư vấn đầy đủ (Công dụng, Quà tặng, Date...).
 
-**THÔNG TIN HỆ THỐNG:**
-- Thời gian: ${timeContext}
-- SĐT Khách: ${hasPhone ? "ĐÃ CÓ (KHÔNG HỎI LẠI)" : "CHƯA CÓ (CẦN XIN SĐT + ĐỊA CHỈ)"}
-
-**QUY ĐỊNH OUTPUT:**
-- Text only. KHÔNG chứa link.
-- JSON: { "response_message": "...", "image_url_to_send": "" }
+**CÁC QUY TẮC KHÁC:**
+- Không gửi Link trong Text.
+- Chỉ giảm giá An Cung Samsung (750k) khi khách chê đắt.
+- SĐT Khách: ${hasPhone ? "ĐÃ CÓ" : "CHƯA CÓ"}.
 
 **LỊCH SỬ:**
 ${historyText}
 
 **INPUT:** "${userMessage}"
-${imageUrl ? "[Khách gửi ảnh]" : ""}`;
+${imageUrl ? "[Khách gửi ảnh]" : ""}
+
+**JSON:** { "response_message": "...", "image_url_to_send": "" }`;
 
         let parts = [{ text: prompt }];
         if (imageUrl) {
@@ -330,20 +348,18 @@ ${imageUrl ? "[Khách gửi ảnh]" : ""}`;
     }
 }
 
-// --- HELPER FUNCTIONS ---
+// ... Helper functions giữ nguyên ...
 function getDefaultRules() { return `**LUẬT CẤM:** CẤM bịa giá.\n**SHIP:** SP Chính Freeship. Dầu lẻ 20k.`; }
 function getDefaultProducts() { return [{ name: "An Cung Samsung", price: "780k", gift: "Tặng 1 Dầu", image: "", desc: "Freeship" }]; }
-
 async function setBotStatus(uid, status) { try { await db.collection('users').doc(uid).set({ is_paused: status }, { merge: true }); } catch(e){} }
 async function loadState(uid) { try { let d = await db.collection('users').doc(uid).get(); return d.exists ? d.data() : { history: [], is_paused: false }; } catch(e){ return { history: [], is_paused: false }; } }
 async function saveHistory(uid, role, content) { try { await db.collection('users').doc(uid).set({ history: admin.firestore.FieldValue.arrayUnion({ role, content }), last_updated: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); } catch(e){} }
 function isMissedCall(event) { return (event.message.text && event.message.text.toLowerCase().includes("bỏ lỡ cuộc gọi")) || (event.message.attachments && event.message.attachments[0].type === 'fallback'); }
 async function handleMissedCall(pageId, senderId) { const token = await getPageToken(pageId); if(token) await sendMessage(token, senderId, "Dạ Shop thấy Bác gọi nhỡ. Bác cần gấp vui lòng gọi Hotline 0986.646.845 ạ!"); }
 async function sendAlertEmail(name, msg) { try { await transporter.sendMail({ from: 'vngenmart@gmail.com', to: 'vngenmart@gmail.com', subject: `KHÁCH ${name} HỦY ĐƠN`, text: msg }); } catch(e){} }
-
 async function sendTyping(token, id, status) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, sender_action: status ? "typing_on" : "typing_off" }); } catch(e){} }
 async function sendMessage(token, id, text) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { text, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function sendImage(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "image", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v14.2 (Fix Price) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v14.3 (Smart List) chạy tại port ${PORT}`));
