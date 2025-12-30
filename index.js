@@ -1,7 +1,7 @@
-// File: index.js (Phiên bản "MULTI-BOT v14.0" - AI Customization: Chon Model & API Key Tren Web)
+// File: index.js (Phiên bản "MULTI-BOT v13.2" - Fix Loi SDT Dinh Chu)
 
 // =================================================================
-// 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH CỐ ĐỊNH
+// 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH
 // =================================================================
 require('dotenv').config();
 const express = require('express');
@@ -15,10 +15,9 @@ const path = require('path');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 const PORT = process.env.PORT || 3000;
-const DEFAULT_GEMINI_KEY = process.env.GEMINI_API_KEY; // Key mặc định từ ENV
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
-// Cấu hình Email
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: { user: 'vngenmart@gmail.com', pass: 'mat_khau_ung_dung_cua_ban' }
@@ -27,7 +26,7 @@ const transporter = nodemailer.createTransport({
 const processingUserSet = new Set();
 
 // =================================================================
-// 2. KẾT NỐI DATABASE
+// 2. KẾT NỐI DATABASE & AI
 // =================================================================
 let db;
 try {
@@ -45,7 +44,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v14-ai-custom', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v13-secure', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 // =================================================================
 // PHẦN A: WEB ADMIN ROUTES (QUẢN TRỊ)
@@ -60,27 +59,22 @@ app.post('/login', (req, res) => {
 });
 app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
 
-// --- DASHBOARD CHÍNH ---
+// DASHBOARD CHÍNH
 app.get('/admin', checkAuth, async (req, res) => {
     try {
-        // 1. Cấu hình AI (MỚI)
         let aiDoc = await db.collection('settings').doc('aiConfig').get();
         let aiConfig = aiDoc.exists ? aiDoc.data() : { apiKey: '', modelName: 'gemini-2.0-flash' };
 
-        // 2. Trạng thái Bot
         let configDoc = await db.collection('settings').doc('systemConfig').get();
         let systemStatus = configDoc.exists ? configDoc.data().isActive : true;
 
-        // 3. Luật Chung
         let rulesDoc = await db.collection('settings').doc('generalRules').get();
         let generalRules = rulesDoc.exists ? rulesDoc.data().content : getDefaultRules();
 
-        // 4. Danh sách Page
         let pagesSnap = await db.collection('pages').get();
         let pages = [];
         pagesSnap.forEach(doc => pages.push({ id: doc.id, ...doc.data() }));
 
-        // 5. Sản Phẩm
         let productsSnap = await db.collection('products').get();
         let products = [];
         if (productsSnap.empty) {
@@ -96,18 +90,14 @@ app.get('/admin', checkAuth, async (req, res) => {
     } catch (e) { res.send("Lỗi: " + e.message); }
 });
 
-// --- LƯU CẤU HÌNH AI (MỚI) ---
+// CÁC CHỨC NĂNG LƯU DỮ LIỆU
 app.post('/admin/save-ai', checkAuth, async (req, res) => {
-    await db.collection('settings').doc('aiConfig').set({
-        apiKey: req.body.apiKey.trim(),
-        modelName: req.body.modelName
-    }, { merge: true });
+    await db.collection('settings').doc('aiConfig').set({ apiKey: req.body.apiKey.trim(), modelName: req.body.modelName }, { merge: true });
     res.redirect('/admin');
 });
-
-// --- CÁC CHỨC NĂNG KHÁC ---
 app.post('/admin/toggle-system', checkAuth, async (req, res) => {
-    await db.collection('settings').doc('systemConfig').set({ isActive: req.body.status === 'true' }, { merge: true });
+    const newStatus = req.body.status === 'true';
+    await db.collection('settings').doc('systemConfig').set({ isActive: newStatus }, { merge: true });
     res.redirect('/admin');
 });
 app.post('/admin/save-page', checkAuth, async (req, res) => {
@@ -134,15 +124,25 @@ app.post('/admin/delete-product', checkAuth, async (req, res) => {
 });
 
 // =================================================================
-// PHẦN B: BOT ENGINE (CƠ CHẾ AI ĐỘNG)
+// PHẦN B: BOT ENGINE (XỬ LÝ TIN NHẮN)
 // =================================================================
 
-// Helper: Lấy Gemini Model Động (Từ DB hoặc ENV)
-async function getGeminiModel() {
-    let apiKey = DEFAULT_GEMINI_KEY;
-    let modelName = "gemini-2.0-flash";
+// Lấy Token động
+async function getPageToken(pageId) {
+    let pageSnap = await db.collection('pages').where('pageId', '==', pageId).get();
+    if (!pageSnap.empty) return pageSnap.docs[0].data().token;
 
-    // Check DB xem có config riêng không
+    const map = new Map();
+    if (process.env.PAGE_ID_THAO_KOREA) map.set(process.env.PAGE_ID_THAO_KOREA, process.env.FB_PAGE_TOKEN_THAO_KOREA);
+    if (process.env.PAGE_ID_TRANG_MOI) map.set(process.env.PAGE_ID_TRANG_MOI, process.env.FB_PAGE_TOKEN_TRANG_MOI);
+    map.set("833294496542063", "EAAP9uXbATjwBQG27LFeffPcNh2cZCjRebBML7ZAHcMGEvu5ZBws5Xq5BdP6F2qVauF5O1UZAKjch5KVHIb4YsDXQiC7hEeJpsn0btLApL58ohSU8iBmcwXUgEprH55hikpj8sw16QAgKbUzYQxny0vZAWb0lM9SvwQ5SH0k6sTpCHD6J7dbtihUJMsZAEWG0NoHzlyzNDAsROHr8xxycL0g5O4DwZDZD");
+    return map.get(pageId);
+}
+
+// Lấy Model Gemini Động
+async function getGeminiModel() {
+    let apiKey = process.env.GEMINI_API_KEY;
+    let modelName = "gemini-2.0-flash";
     try {
         let aiDoc = await db.collection('settings').doc('aiConfig').get();
         if (aiDoc.exists) {
@@ -150,27 +150,9 @@ async function getGeminiModel() {
             if (data.apiKey && data.apiKey.length > 10) apiKey = data.apiKey;
             if (data.modelName) modelName = data.modelName;
         }
-    } catch (e) { console.error("Lỗi đọc AI Config:", e); }
-
-    try {
         const genAI = new GoogleGenerativeAI(apiKey);
         return genAI.getGenerativeModel({ model: modelName });
-    } catch (e) {
-        console.error("Lỗi Khởi tạo Gemini:", e);
-        return null;
-    }
-}
-
-// Helper: Lấy Access Token
-async function getPageToken(pageId) {
-    let pageSnap = await db.collection('pages').where('pageId', '==', pageId).get();
-    if (!pageSnap.empty) return pageSnap.docs[0].data().token;
-
-    // Fallback ENV
-    const map = new Map();
-    if (process.env.PAGE_ID_THAO_KOREA) map.set(process.env.PAGE_ID_THAO_KOREA, process.env.FB_PAGE_TOKEN_THAO_KOREA);
-    if (process.env.PAGE_ID_TRANG_MOI) map.set(process.env.PAGE_ID_TRANG_MOI, process.env.FB_PAGE_TOKEN_TRANG_MOI);
-    return map.get(pageId);
+    } catch (e) { return null; }
 }
 
 app.get('/webhook', (req, res) => {
@@ -252,8 +234,14 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
             sendAlertEmail(userName, userMessage);
         }
 
+        // --- CHECK SỐ ĐIỆN THOẠI BẰNG CODE (REGEX) ---
+        // Tìm chuỗi 10 số bắt đầu bằng 0, bất chấp ký tự xung quanh
+        const phoneRegex = /0\d{9}/; 
+        const cleanMsg = userMessage.replace(/\s+/g, '').replace(/\./g, '').replace(/-/g, ''); // Xóa dấu cách, chấm, gạch
+        const hasPhone = phoneRegex.test(cleanMsg);
+
         let knowledgeBase = await buildKnowledgeBaseFromDB();
-        let geminiResult = await callGeminiRetail(userMessage, userName, userState.history, knowledgeBase, imageUrl);
+        let geminiResult = await callGeminiRetail(userMessage, userName, userState.history, knowledgeBase, imageUrl, hasPhone);
 
         console.log(`[Bot Reply]: ${geminiResult.response_message}`);
         await saveHistory(uid, 'Khách', userMessage);
@@ -261,7 +249,9 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
 
         if (geminiResult.image_url_to_send && geminiResult.image_url_to_send.length > 5) {
             let imgs = geminiResult.image_url_to_send.split(',');
-            for (let img of imgs) if(img.trim().startsWith('http')) await sendImage(token, senderId, img.trim());
+            for (let img of imgs) {
+                if(img.trim().startsWith('http')) await sendImage(token, senderId, img.trim());
+            }
         }
 
         let msgs = geminiResult.response_message.split('|');
@@ -293,11 +283,10 @@ async function buildKnowledgeBaseFromDB() {
     return rules + "\n" + productText;
 }
 
-// --- HÀM GỌI GEMINI (DÙNG MODEL ĐỘNG) ---
-async function callGeminiRetail(userMessage, userName, history, knowledgeBase, imageUrl = null) {
-    // 1. Lấy Model mới nhất mỗi lần gọi
+// --- HÀM GỌI GEMINI (ĐÃ NÂNG CẤP CHECK SĐT) ---
+async function callGeminiRetail(userMessage, userName, history, knowledgeBase, imageUrl = null, hasPhone = false) {
     const model = await getGeminiModel();
-    if (!model) return { response_message: "Dạ hệ thống đang bảo trì một chút, Bác chờ xíu nha." };
+    if (!model) return { response_message: "Dạ Bác chờ Shop xíu nha." };
 
     try {
         const historyText = history.map(h => `${h.role}: ${h.content}`).join('\n');
@@ -305,24 +294,32 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
         const timeContext = (now.getHours() >= 8 && now.getHours() < 17) ? "GIỜ HÀNH CHÍNH" : "NGOÀI GIỜ";
 
+        // PROMPT THÔNG MINH
         let prompt = `**VAI TRÒ:** Bạn là chuyên viên tư vấn Shop Thảo Korea. Khách hàng: '${greetingName}'.
 
 **DỮ LIỆU SHOP:**
 ${knowledgeBase}
 
-**NGỮ CẢNH:**
-- Giờ: ${timeContext}
-- Nếu khách gửi ảnh lạ -> Báo chờ kiểm tra kho.
+**THÔNG TIN QUAN TRỌNG TỪ HỆ THỐNG (BẮT BUỘC ĐỌC):**
+- Thời gian: ${timeContext}
+- **TRẠNG THÁI SĐT KHÁCH HÀNG:** ${hasPhone ? "HỆ THỐNG ĐÃ TÌM THẤY SỐ ĐIỆN THOẠI CỦA KHÁCH" : "CHƯA CÓ SỐ ĐIỆN THOẠI"}
 
-**LỊCH SỬ:**
+**LUẬT ỨNG XỬ (DỰA TRÊN TRẠNG THÁI SĐT):**
+1. Nếu Hệ thống báo **"ĐÃ TÌM THẤY SỐ ĐIỆN THOẠI"**:
+   - **TUYỆT ĐỐI KHÔNG** hỏi xin số điện thoại nữa.
+   - Hãy trả lời: "Dạ Shop đã nhận được SĐT và thông tin của Bác rồi ạ. Nhân viên sẽ gọi lại chốt đơn cho Bác sớm nhất ạ!".
+2. Nếu Hệ thống báo **"CHƯA CÓ SỐ"**:
+   - Mới được phép xin Số Điện Thoại + Địa Chỉ để lên đơn.
+
+**QUY ĐỊNH OUTPUT:**
+1. **response_message:** Chỉ chứa text. **TUYỆT ĐỐI KHÔNG** chứa link (http...).
+2. **image_url_to_send:** Link ảnh (nếu cần).
+
+**LỊCH SỬ CHAT:**
 ${historyText}
 
 **INPUT:** "${userMessage}"
 ${imageUrl ? "[Khách gửi ảnh]" : ""}
-
-**QUY ĐỊNH OUTPUT (BẮT BUỘC):**
-1. **response_message:** Chỉ chứa text tư vấn. **KHÔNG** chứa link (https://...).
-2. **image_url_to_send:** Link ảnh (nếu cần).
 
 **JSON:** { "response_message": "...", "image_url_to_send": "" }`;
 
@@ -342,7 +339,7 @@ ${imageUrl ? "[Khách gửi ảnh]" : ""}
 }
 
 // --- HELPER FUNCTIONS ---
-function getDefaultRules() { return `**LUẬT CẤM:** CẤM bịa giá. CẤM tự tặng quà thêm.\n**CHỐT ĐƠN:** Xin SĐT và Địa chỉ.\n**SHIP:** SP Chính Freeship. Dầu lẻ 20k.`; }
+function getDefaultRules() { return `**LUẬT CẤM:** CẤM bịa giá. CẤM tự tặng quà thêm.\n**SHIP:** SP Chính Freeship. Dầu lẻ 20k.`; }
 function getDefaultProducts() { return [{ name: "An Cung Samsung", price: "780k", gift: "Tặng 1 Dầu", image: "", desc: "Freeship" }]; }
 
 async function setBotStatus(uid, status) { try { await db.collection('users').doc(uid).set({ is_paused: status }, { merge: true }); } catch(e){} }
@@ -357,4 +354,4 @@ async function sendMessage(token, id, text) { try { await axios.post(`https://gr
 async function sendImage(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "image", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v14.0 (AI Custom) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v13.2 (Regex SDT Fix) chạy tại port ${PORT}`));
