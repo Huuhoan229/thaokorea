@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Quản Trị Bot v13.1 (Fixed)</title>
+    <title>Quản Trị Bot v14.0</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -15,22 +15,23 @@
         .status-bar.off { border-left-color: #dc3545; }
         .status-indicator { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 16px; }
         
-        /* Form & Input */
-        textarea.rules-box { width: 100%; height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; resize: vertical; }
-        input[type="text"], input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px; }
+        /* Inputs & Form */
         label { font-weight: bold; font-size: 13px; color: #555; margin-bottom: 3px; display: block; }
+        input[type="text"], input[type="number"], input[type="password"], select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; margin-bottom: 10px; }
+        textarea.rules-box { width: 100%; height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; resize: vertical; }
+
+        /* AI Config Box */
+        .ai-config-box { background: #e3f2fd; border: 1px solid #90caf9; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
 
         /* Bảng danh sách */
         .item-row { padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #fff; }
-        .item-row:last-child { border-bottom: none; }
-        .item-row:hover { background-color: #f9f9f9; }
         
         /* Nút bấm */
         button { cursor: pointer; padding: 8px 15px; border-radius: 4px; border: none; font-weight: bold; color: white; transition: 0.2s; }
         .btn-primary { background: #007bff; } .btn-primary:hover { background: #0056b3; }
         .btn-danger { background: #dc3545; } .btn-danger:hover { background: #a71d2a; }
         .btn-success { background: #28a745; } .btn-success:hover { background: #1e7e34; }
-        .btn-warning { background: #ffc107; color: #333; } .btn-warning:hover { background: #d39e00; }
+        .btn-warning { background: #ffc107; color: #333; }
         
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .logout { color: #dc3545; text-decoration: none; font-weight: bold; }
@@ -39,49 +40,64 @@
 <body>
     <div class="container">
         <div class="header">
-            <h2 style="margin:0"><i class="fas fa-robot"></i> ADMIN BOT</h2>
+            <h2 style="margin:0"><i class="fas fa-robot"></i> ADMIN BOT v14.0</h2>
             <a href="/logout" class="logout"><i class="fas fa-sign-out-alt"></i> Thoát</a>
         </div>
 
         <div class="status-bar <%= systemStatus ? 'on' : 'off' %>">
             <div class="status-indicator">
                 <i class="fas fa-circle" style="color: <%= systemStatus ? '#28a745' : '#dc3545' %>"></i>
-                <span><%= systemStatus ? 'HỆ THỐNG ĐANG BẬT' : 'HỆ THỐNG ĐANG TẠM DỪNG' %></span>
+                <span><%= systemStatus ? 'BOT ĐANG HOẠT ĐỘNG' : 'BOT ĐANG TẠM DỪNG' %></span>
             </div>
             <form method="POST" action="/admin/toggle-system" style="margin:0">
                 <input type="hidden" name="status" value="<%= !systemStatus %>">
                 <button type="submit" class="<%= systemStatus ? 'btn-danger' : 'btn-success' %>">
-                    <%= systemStatus ? 'TẠM DỪNG BOT' : 'BẬT BOT' %>
+                    <%= systemStatus ? 'TẠM DỪNG' : 'BẬT BOT' %>
                 </button>
             </form>
         </div>
 
         <div class="card">
-            <h3>🌐 1. Danh Sách Fanpage</h3>
-            <button onclick="toggleForm('addPageForm')" class="btn-success" style="margin-bottom:15px">+ Thêm Page</button>
-            
-            <div id="addPageForm" style="display:none; background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;">
-                <form method="POST" action="/admin/save-page">
-                    <label>Tên Gợi Nhớ:</label><input type="text" name="name" required placeholder="VD: Page Chính">
-                    <label>Page ID:</label><input type="text" name="pageId" required>
-                    <label>Token:</label><input type="text" name="token" required>
-                    <div style="text-align: right;">
-                        <button type="button" onclick="toggleForm('addPageForm')" style="background:#ccc; color:#333">Hủy</button>
-                        <button type="submit" class="btn-primary">Lưu</button>
+            <h3>⚙️ 1. Cấu Hình AI & API Key</h3>
+            <div class="ai-config-box">
+                <form method="POST" action="/admin/save-ai">
+                    <div style="display:flex; gap:15px;">
+                        <div style="flex:1">
+                            <label>Chọn Model Gemini:</label>
+                            <select name="modelName">
+                                <option value="gemini-2.0-flash" <%= aiConfig.modelName == 'gemini-2.0-flash' ? 'selected' : '' %>>Gemini 2.0 Flash (Nhanh nhất - Khuyên dùng)</option>
+                                <option value="gemini-1.5-flash" <%= aiConfig.modelName == 'gemini-1.5-flash' ? 'selected' : '' %>>Gemini 1.5 Flash (Ổn định)</option>
+                                <option value="gemini-1.5-pro" <%= aiConfig.modelName == 'gemini-1.5-pro' ? 'selected' : '' %>>Gemini 1.5 Pro (Thông minh hơn - Chậm hơn)</option>
+                            </select>
+                        </div>
+                        <div style="flex:2">
+                            <label>Gemini API Key (Để trống sẽ dùng Key mặc định trong Code):</label>
+                            <input type="text" name="apiKey" value="<%= aiConfig.apiKey %>" placeholder="AIzaSy...">
+                        </div>
+                    </div>
+                    <div style="text-align: right; margin-top: 10px;">
+                        <button type="submit" class="btn-primary">💾 Lưu Cấu Hình AI</button>
                     </div>
                 </form>
             </div>
+        </div>
 
+        <div class="card">
+            <h3>🌐 2. Danh Sách Fanpage</h3>
+            <button onclick="toggleForm('addPageForm')" class="btn-success" style="margin-bottom:15px">+ Thêm Page</button>
+            <div id="addPageForm" style="display:none; background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;">
+                <form method="POST" action="/admin/save-page">
+                    <label>Tên Gợi Nhớ:</label><input type="text" name="name" required>
+                    <label>Page ID:</label><input type="text" name="pageId" required>
+                    <label>Token:</label><input type="text" name="token" required>
+                    <div style="text-align: right;"><button type="submit" class="btn-primary">Lưu</button></div>
+                </form>
+            </div>
             <div style="border: 1px solid #eee; border-radius: 4px;">
                 <% pages.forEach(function(p) { %>
                     <div class="item-row">
-                        <div>
-                            <strong><%= p.name %></strong> <span style="color:#888; font-size:12px;">(ID: <%= p.pageId %>)</span>
-                        </div>
-                        <form method="POST" action="/admin/delete-page" onsubmit="return confirm('Xóa Page này?')" style="margin:0">
-                            <input type="hidden" name="id" value="<%= p.id %>">
-                            <button type="submit" class="btn-danger btn-sm"><i class="fas fa-trash"></i></button>
-                        </form>
+                        <div><strong><%= p.name %></strong> <span style="color:#888; font-size:12px;">(ID: <%= p.pageId %>)</span></div>
+                        <form method="POST" action="/admin/delete-page" onsubmit="return confirm('Xóa Page này?')"><input type="hidden" name="id" value="<%= p.id %>"><button type="submit" class="btn-danger btn-sm"><i class="fas fa-trash"></i></button></form>
                     </div>
                 <% }); %>
             </div>
@@ -89,108 +105,68 @@
 
         <div class="card">
             <form method="POST" action="/admin/save-rules">
-                <h3>📜 2. Luật Chung & Quy Trình</h3>
+                <h3>📜 3. Luật Chung</h3>
                 <textarea name="generalRules" class="rules-box"><%= generalRules %></textarea>
-                <div style="margin-top: 10px; text-align: right;">
-                    <button type="submit" class="btn-primary">💾 Lưu Luật</button>
-                </div>
+                <div style="margin-top: 10px; text-align: right;"><button type="submit" class="btn-primary">💾 Lưu Luật</button></div>
             </form>
         </div>
 
         <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h3>📦 3. Danh Sách Sản Phẩm</h3>
+                <h3>📦 4. Danh Sách Sản Phẩm</h3>
                 <button onclick="showAddProduct()" class="btn-success">+ Thêm SP Mới</button>
             </div>
-
             <div id="productFormContainer" style="display:none; background: #e9ecef; padding: 20px; border-radius: 6px; margin-bottom: 20px; border-left: 5px solid #007bff;">
-                <h4 id="formTitle" style="margin-top:0">Chỉnh Sửa Sản Phẩm</h4>
+                <h4 id="formTitle" style="margin-top:0">Sản Phẩm</h4>
                 <form method="POST" action="/admin/save-product">
-                    <input type="hidden" name="id" id="prodId"> <label>Tên Sản Phẩm:</label>
-                    <input type="text" name="name" id="prodName" required>
-                    
+                    <input type="hidden" name="id" id="prodId">
+                    <label>Tên SP:</label><input type="text" name="name" id="prodName" required>
                     <div style="display:flex; gap:15px;">
-                        <div style="flex:1"><label>Giá Bán:</label><input type="text" name="price" id="prodPrice" required></div>
-                        <div style="flex:1"><label>Link Ảnh:</label><input type="text" name="image" id="prodImage"></div>
+                        <div style="flex:1"><label>Giá:</label><input type="text" name="price" id="prodPrice" required></div>
+                        <div style="flex:1"><label>Ảnh:</label><input type="text" name="image" id="prodImage"></div>
                     </div>
-                    
-                    <label>Quà Tặng:</label>
-                    <input type="text" name="gift" id="prodGift" required>
-                    
-                    <label>Mô Tả Chi Tiết:</label>
-                    <input type="text" name="desc" id="prodDesc">
-                    
+                    <label>Quà Tặng:</label><input type="text" name="gift" id="prodGift" required>
+                    <label>Mô Tả:</label><input type="text" name="desc" id="prodDesc">
                     <div style="text-align: right; margin-top: 10px;">
                         <button type="button" onclick="document.getElementById('productFormContainer').style.display='none'" style="background:#6c757d;">Hủy</button>
-                        <button type="submit" class="btn-success">💾 Lưu Sản Phẩm</button>
+                        <button type="submit" class="btn-success">💾 Lưu</button>
                     </div>
                 </form>
             </div>
-
             <div style="border: 1px solid #eee; border-radius: 4px;">
                 <% products.forEach(function(p) { %>
                     <div class="item-row">
                         <div style="display:flex; gap:15px; align-items:center; flex:1;">
-                            <img src="<%= p.image %>" style="width:60px; height:60px; object-fit:cover; border-radius:4px; border:1px solid #ddd;" onerror="this.src='https://via.placeholder.com/60?text=No+Img'">
-                            <div>
-                                <div style="font-weight:bold; font-size:16px;"><%= p.name %></div>
-                                <div style="color:#d63384; font-weight:bold;"><%= p.price %></div>
-                                <div style="font-size:13px; color:#28a745;"><i class="fas fa-gift"></i> <%= p.gift %></div>
-                            </div>
+                            <img src="<%= p.image %>" style="width:60px; height:60px; object-fit:cover; border-radius:4px; border:1px solid #ddd;" onerror="this.src='https://via.placeholder.com/60'">
+                            <div><div style="font-weight:bold;"><%= p.name %></div><div style="color:#d63384; font-weight:bold;"><%= p.price %></div><div style="font-size:13px; color:#28a745;">🎁 <%= p.gift %></div></div>
                         </div>
                         <div style="display:flex; gap:5px;">
-                            <button class="btn-warning" 
-                                data-id="<%= p.id %>"
-                                data-name="<%= p.name %>"
-                                data-price="<%= p.price %>"
-                                data-image="<%= p.image %>"
-                                data-gift="<%= p.gift %>"
-                                data-desc="<%= p.desc %>"
-                                onclick="editProduct(this)">
-                                <i class="fas fa-edit"></i> Sửa
-                            </button>
-                            
-                            <form method="POST" action="/admin/delete-product" onsubmit="return confirm('Xóa sản phẩm này?')" style="margin:0">
-                                <input type="hidden" name="id" value="<%= p.id %>">
-                                <button type="submit" class="btn-danger"><i class="fas fa-trash"></i></button>
-                            </form>
+                            <button class="btn-warning" data-id="<%= p.id %>" data-name="<%= p.name %>" data-price="<%= p.price %>" data-image="<%= p.image %>" data-gift="<%= p.gift %>" data-desc="<%= p.desc %>" onclick="editProduct(this)"><i class="fas fa-edit"></i></button>
+                            <form method="POST" action="/admin/delete-product" onsubmit="return confirm('Xóa?')"><input type="hidden" name="id" value="<%= p.id %>"><button type="submit" class="btn-danger"><i class="fas fa-trash"></i></button></form>
                         </div>
                     </div>
                 <% }); %>
             </div>
         </div>
     </div>
-
     <script>
-        function toggleForm(id) {
-            var x = document.getElementById(id);
-            x.style.display = x.style.display === "none" ? "block" : "none";
-        }
-
-        // Hàm mở form để THÊM MỚI (Xóa trắng dữ liệu cũ)
+        function toggleForm(id) { var x = document.getElementById(id); x.style.display = x.style.display === "none" ? "block" : "none"; }
         function showAddProduct() {
             document.getElementById('formTitle').innerText = "Thêm Sản Phẩm Mới";
-            document.getElementById('prodId').value = ""; // Xóa ID để Server biết là thêm mới
-            document.getElementById('prodName').value = "";
-            document.getElementById('prodPrice').value = "";
-            document.getElementById('prodImage').value = "";
-            document.getElementById('prodGift').value = "";
-            document.getElementById('prodDesc').value = "";
-            
+            document.getElementById('prodId').value = ""; document.getElementById('prodName').value = "";
+            document.getElementById('prodPrice').value = ""; document.getElementById('prodImage').value = "";
+            document.getElementById('prodGift').value = ""; document.getElementById('prodDesc').value = "";
             document.getElementById('productFormContainer').style.display = 'block';
             window.scrollTo(0, document.getElementById('productFormContainer').offsetTop);
         }
-
-        // Hàm mở form để SỬA (Lấy dữ liệu từ data attribute an toàn tuyệt đối)
         function editProduct(btn) {
-            document.getElementById('formTitle').innerText = "Sửa Sản Phẩm: " + btn.getAttribute('data-name');
-            document.getElementById('prodId').value = btn.getAttribute('data-id'); // Điền ID vào ô ẩn
+            document.getElementById('formTitle').innerText = "Sửa: " + btn.getAttribute('data-name');
+            document.getElementById('prodId').value = btn.getAttribute('data-id');
             document.getElementById('prodName').value = btn.getAttribute('data-name');
             document.getElementById('prodPrice').value = btn.getAttribute('data-price');
             document.getElementById('prodImage').value = btn.getAttribute('data-image');
             document.getElementById('prodGift').value = btn.getAttribute('data-gift');
             document.getElementById('prodDesc').value = btn.getAttribute('data-desc');
-            
             document.getElementById('productFormContainer').style.display = 'block';
             window.scrollTo(0, document.getElementById('productFormContainer').offsetTop);
         }
