@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v10.3" - Update Date Samsung 2027 & Ham Luong Tram Huong)
+// File: index.js (Phiên bản "MULTI-BOT v10.5" - Fix Loi Vision: Anh La Thi Bao Cho Kiem Tra)
 
 // 1. Nạp các thư viện
 require('dotenv').config();
@@ -61,12 +61,12 @@ pageTokenMap.set(PAGE_ID_TUYEN_SI, TOKEN_TUYEN_SI);
 
 console.log(`Bot đã được khởi tạo cho ${pageTokenMap.size} Fanpage.`);
 
-// 4. Khởi tạo Gemini (2.0 Flash)
+// 4. Khởi tạo Gemini
 let model;
 try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); 
-    console.log("Đã kết nối với Gemini API (Model: gemini-2.0-flash).");
+    console.log("Đã kết nối với Gemini API (Vision Enabled).");
 } catch(error) {
     console.error("LỖI KHI KHỞI TẠO GEMINI:", error);
     process.exit(1);
@@ -131,14 +131,10 @@ app.post('/webhook', (req, res) => {
             const sender_psid = webhook_event.sender.id;
 
             if (webhook_event.message.sticker_id) return; 
-            if (webhook_event.message.attachments && webhook_event.message.attachments.length > 0) {
-                const att = webhook_event.message.attachments[0];
-                if (att.payload && att.payload.sticker_id) return;
-            }
-
+            
             const userState = await loadState(`${pageId}_${sender_psid}`);
             if (userState.is_paused) {
-                await saveState(`${pageId}_${sender_psid}`, webhook_event.message.text || "[Image]", null);
+                await saveState(`${pageId}_${sender_psid}`, webhook_event.message.text || "[Khách gửi ảnh/file]", null);
                 return;
             }
 
@@ -163,15 +159,19 @@ app.post('/webhook', (req, res) => {
                 return; 
             }
 
+            // Xử lý tin nhắn (Text hoặc Ảnh)
             let userMessage = "";
+            let imageUrl = null;
+
             if (webhook_event.message.attachments && webhook_event.message.attachments[0].type === 'image') {
                 userMessage = "[Khách gửi hình ảnh]";
+                imageUrl = webhook_event.message.attachments[0].payload.url; 
             } else if (webhook_event.message.text) {
                 userMessage = webhook_event.message.text;
             }
 
             if (userMessage) {
-                processMessage(pageId, sender_psid, userMessage);
+                processMessage(pageId, sender_psid, userMessage, imageUrl);
             }
         }
       }
@@ -229,7 +229,7 @@ async function sendAlertEmail(userName, userMessage) {
 // -------------------------------------------------------------------
 // HÀM XỬ LÝ CHÍNH
 // -------------------------------------------------------------------
-async function processMessage(pageId, sender_psid, userMessage) {
+async function processMessage(pageId, sender_psid, userMessage, imageUrl = null) {
     const FB_PAGE_TOKEN = pageTokenMap.get(pageId);
     if (!FB_PAGE_TOKEN) return;
     
@@ -265,7 +265,7 @@ async function processMessage(pageId, sender_psid, userMessage) {
 
       if (pageId === process.env.PAGE_ID_THAO_KOREA || pageId === process.env.PAGE_ID_TRANG_MOI) {
           productKnowledge = getProductKnowledge_ThaoKorea();
-          geminiResult = await callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge);
+          geminiResult = await callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge, imageUrl);
       } 
       else if (pageId === PAGE_ID_TUYEN_SI) {
           productKnowledge = getProductKnowledge_TuyenSiNghe();
@@ -329,10 +329,9 @@ function getProductKnowledge_ThaoKorea() {
 
     knowledgeString += "---[DANH SÁCH SẢN PHẨM]---\n";
     knowledgeString += "1. AN CUNG SAMSUNG HỘP GỖ 60 VIÊN (780k) - Freeship - Tặng 1 Dầu/Cao\n";
-    knowledgeString += "   - Thành phần: Có Trầm Hương (hàm lượng ít), chủ yếu là Ngưu Hoàng.\n";
-    knowledgeString += "   - Date: Tháng 10/2027 (Hàng mới nhất).\n";
-    knowledgeString += "   - Ảnh Date (Gửi khi khách hỏi Date): \"https://i.ibb.co/yFwbzwGS/z7379237606061-c93c7bafd60a14c6641d71244bc05b4a.jpg\"\n";
-    knowledgeString += "   - Image_URL (Ảnh hộp): \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
+    knowledgeString += "   - Thành phần: Có Trầm Hương (ít), chủ yếu Ngưu Hoàng.\n";
+    knowledgeString += "   - Date: Tháng 10/2027 (Hàng mới). Ảnh Date: \"https://i.ibb.co/yFwbzwGS/z7379237606061-c93c7bafd60a14c6641d71244bc05b4a.jpg\"\n";
+    knowledgeString += "   - Image_URL: \"https://samhanquoconglee.vn/wp-content/uploads/2021/08/an-cung-nguu-hoang-hoan-han-quoc-hop-go-den-loai-60-vien-9.jpg\"\n";
     
     knowledgeString += "2. HỘP CAO HỒNG SÂM 365 (DẠNG CAO SỆT - 240g/LỌ)\n";
     knowledgeString += "   - Hộp 2 Lọ: 470k (Freeship) - KHÔNG QUÀ.\n";
@@ -344,14 +343,13 @@ function getProductKnowledge_ThaoKorea() {
     knowledgeString += "   - Image_URL: \"https://product.hstatic.net/1000260265/product/tinh_dau_thong_do_tai_da_nang_5b875a5a4c114cb09455e328aee71b97_master.jpg\"\n";
 
     knowledgeString += "7. AN CUNG KWANGDONG 60 VIÊN (1.290k) - Freeship - Tặng 1 Dầu/Cao\n";
-    knowledgeString += "   - Thành phần: 15% Trầm Hương (Cao cấp, hỗ trợ tim mạch mạnh).\n";
+    knowledgeString += "   - Thành phần: 15% Trầm Hương (Cao cấp).\n";
     knowledgeString += "   - Image_URL: \"https://nhansamthinhphat.com/storage/uploads/2025/product/images/An-Cung-Nguu/an-cung-kwangdong-hop-60-vien-3.jpg\"\n";
     
     knowledgeString += "8. AN CUNG ROYAL 32 VIÊN (690k) - Freeship - KHÔNG QUÀ\n";
     knowledgeString += "   - Thành phần: 5% Trầm Hương.\n";
     knowledgeString += "   - Image_URL: \"https://ikute.vn/wp-content/uploads/2022/11/An-cung-nguu-tram-huong-hoan-Royal-Family-Chim-Hyang-Hwan-1-ikute.vn_.jpg\"\n";
 
-    // ... (Giữ nguyên các sản phẩm khác: Sâm nước, Nghệ, Đạm sâm, Canxi, Bổ mắt, Hắc sâm...)
     knowledgeString += "13. TINH CHẤT HỒNG SÂM 365 NƯỚC (690k) - HỘP 100 GÓI - Freeship - KHÔNG QUÀ\n";
     knowledgeString += "   - Image_URL: \"https://nhungnheng.com/uploads/shops/2024_04/555439700_24765749976387672_8906127611892730086_n.jpg\"\n";
 
@@ -393,7 +391,7 @@ function getProductKnowledge_ThaoKorea() {
     return knowledgeString;
 }
 
-async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge) {
+async function callGemini_ThaoKorea(userMessage, userName, userState, productKnowledge, imageUrl = null) {
   if (!model) return { response_message: "..." };
   try {
     const historyString = userState.history.map(h => `${h.role === 'user' ? 'Khách' : 'Shop'}: ${h.content}`).join('\n');
@@ -410,18 +408,21 @@ async function callGemini_ThaoKorea(userMessage, userName, userState, productKno
 2. CẤM bịa quà. CẤM giảm giá. CẤM nói lặp.
 3. CẤM dùng ký tự đặc biệt như dấu * để bôi đậm.
 
-**LUẬT TRẢ LỜI DATE (THÔNG MINH):**
-- **Riêng AN CUNG SAMSUNG (60v):** Trả lời ngay "Date 10/2027" và GỬI KÈM ẢNH DATE (có trong link Image_Date).
-- **Các SP khác:** Vẫn dùng câu "Dạ để Shop kiểm tra kho báo lại Bác sau ạ" (Tránh nói bừa).
+**LUẬT XỬ LÝ ẢNH (VISION - QUAN TRỌNG):**
+- Nếu khách gửi ảnh sản phẩm **KHÁC VỚI** danh sách của Shop (hoặc ảnh lạ, không rõ):
+  -> **TUYỆT ĐỐI KHÔNG TƯ VẤN BỪA.**
+  -> **HÀNH ĐỘNG:** Trả lời: "Dạ mẫu này nhìn lạ quá, Bác chờ xíu để Shop kiểm tra lại kho xem có hàng không rồi báo lại Bác ngay nhé ạ!".
+
+**LUẬT TRẢ LỜI DATE:**
+- **An Cung Samsung (60v):** "Date 10/2027" + GỬI ẢNH DATE.
+- **SP Khác:** "Dạ để Shop kiểm tra kho báo lại Bác sau ạ".
 
 **QUY TRÌNH CHỐT ĐƠN (CHECK SĐT):**
 - Bước 1: Soi tin nhắn khách.
 - Bước 2: **Chưa có SĐT:** "Dạ vâng, Bác ưng mã này rồi thì cho Shop xin **Số Điện Thoại** và **Địa Chỉ** để nhân viên lên đơn Freeship cho Bác nhé ạ!".
 - Bước 3: **Đã có SĐT:** Xác nhận đã nhận số và báo nhân viên gọi lại (Theo giờ HC/Ngoài giờ).
 
-**LUẬT SHIP:**
-- SP Chính: Freeship.
-- Dầu Nóng/Lạnh mua lẻ: Ship 20k.
+**LUẬT SHIP:** SP Chính: Freeship. Dầu Nóng/Lạnh mua lẻ: Ship 20k.
 
 **NGỮ CẢNH:** ${timeContext}
 
@@ -431,6 +432,7 @@ ${productKnowledge}
 ${historyString}
 
 **Khách nhắn:** "${userMessage}"
+${imageUrl ? "[Khách có gửi kèm 1 hình ảnh]" : ""}
 
 **Yêu cầu JSON:**
 {
@@ -439,7 +441,26 @@ ${historyString}
 }
 `;
 
-    const result = await model.generateContent(prompt);
+    // Chuẩn bị dữ liệu gửi lên Gemini
+    let parts = [{ text: prompt }];
+    
+    // Nếu có ảnh, tải ảnh về và gửi lên Gemini
+    if (imageUrl) {
+        try {
+            const imageResp = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+            const base64Image = Buffer.from(imageResp.data).toString('base64');
+            parts.push({
+                inlineData: {
+                    data: base64Image,
+                    mimeType: "image/jpeg"
+                }
+            });
+        } catch (imgErr) {
+            console.error("Lỗi tải ảnh:", imgErr);
+        }
+    }
+
+    const result = await model.generateContent(parts);
     const text = result.response.text();
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const json = jsonMatch ? JSON.parse(jsonMatch[0]) : { response_message: "Dạ Bác chờ Shop xíu ạ." };
@@ -544,5 +565,5 @@ async function sendFacebookTyping(FB_PAGE_TOKEN, sender_psid, isTyping) {
 
 // 5. Khởi động
 app.listen(PORT, () => {
-  console.log(`Bot v10.3 (Update Date Samsung & Tram Huong) chạy tại port ${PORT}`);
+  console.log(`Bot v10.5 (Fix Vision Hallucination) chạy tại port ${PORT}`);
 });
