@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v14.3" - Fix Lỗi Liệt Kê & Tối Ưu Hiển Thị)
+// File: index.js (Phiên bản "MULTI-BOT v14.5 Final" - Tinh Gọn & Giải Thích Giá Rõ Ràng)
 
 // =================================================================
 // 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH
@@ -17,6 +17,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 const PORT = process.env.PORT || 3000;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
+// Cấu hình Email
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: { user: 'vngenmart@gmail.com', pass: 'mat_khau_ung_dung_cua_ban' }
@@ -43,7 +44,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v14-smart-list', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v14-final', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 // =================================================================
 // PHẦN A: WEB ADMIN ROUTES
@@ -260,34 +261,42 @@ async function buildKnowledgeBaseFromDB() {
     let rules = rulesDoc.exists ? rulesDoc.data().content : getDefaultRules();
     let productsSnap = await db.collection('products').get();
     
-    // TẠO 2 PHIÊN BẢN DATA:
-    // 1. Bản chi tiết (Để AI hiểu)
     let productFull = "";
-    // 2. Bản tóm tắt (Để nhắc AI khi cần liệt kê)
-    let productSummary = "DANH SÁCH TÓM TẮT (Dùng để liệt kê):\n";
+    // DATA TÓM TẮT: CHỈ CHỨA SẢN PHẨM CHÍNH (Giá > 500k hoặc tên đặc biệt)
+    let productSummary = "DANH SÁCH RÚT GỌN (CHỈ LIỆT KÊ NHỮNG MÓN NÀY KHI KHÁCH HỎI LIST):\n";
 
     if (productsSnap.empty) {
         getDefaultProducts().forEach(p => {
-            productFull += `- Tên: ${p.name}\n  + Giá: ${p.price}\n  + Quà: ${p.gift}\n  + Info: ${p.desc}\n  + Ảnh: "${p.image}"\n`;
+            productFull += `- Tên: ${p.name}\n  + Giá CHUẨN: ${p.price}\n  + Quà: ${p.gift}\n  + Info: ${p.desc}\n  + Ảnh: "${p.image}"\n`;
             productSummary += `- ${p.name}: ${p.price}\n`;
         });
     } else {
         productsSnap.forEach(doc => {
             let p = doc.data();
-            productFull += `- Tên: ${p.name}\n  + Giá: ${p.price}\n  + Quà Tặng: ${p.gift}\n  + Thông tin: ${p.desc}\n  + Ảnh (URL): "${p.image}"\n`;
-            productSummary += `- ${p.name}: ${p.price}\n`;
+            productFull += `- Tên: ${p.name}\n  + Giá CHUẨN: ${p.price}\n  + Quà Tặng: ${p.gift}\n  + Thông tin: ${p.desc}\n  + Ảnh (URL): "${p.image}"\n`;
+            
+            // LOGIC LỌC HÀNG TUYỂN (Để danh sách không bị dài)
+            let priceVal = parseInt(p.price.replace(/\D/g, '')) || 0;
+            let isMainProduct = priceVal >= 500 || 
+                                p.name.includes("An Cung") || 
+                                p.name.includes("Thông Đỏ") || 
+                                p.name.includes("Nghệ") || 
+                                p.name.includes("Hắc Sâm");
+
+            if (isMainProduct) {
+                productSummary += `- ${p.name}: ${p.price}\n`;
+            }
         });
     }
     
-    // Ghép vào prompt
     return `
 === LUẬT CHUNG ===
 ${rules}
 
-=== DATA SẢN PHẨM CHI TIẾT (ĐỂ TRA CỨU) ===
+=== DATA CHI TIẾT (ĐỂ TRA CỨU SÂU) ===
 ${productFull}
 
-=== DATA SẢN PHẨM TÓM TẮT (ĐỂ LIỆT KÊ) ===
+=== DATA RÚT GỌN (ĐỂ LIỆT KÊ) ===
 ${productSummary}
 `;
 }
@@ -302,28 +311,27 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
         const timeContext = (now.getHours() >= 8 && now.getHours() < 17) ? "GIỜ HÀNH CHÍNH" : "NGOÀI GIỜ";
 
-        // PROMPT ĐƯỢC DẠY CÁCH LIỆT KÊ KHÔN NGOAN
+        // PROMPT HOÀN HẢO (Kết hợp Tinh gọn list + Giải thích giá rõ ràng)
         let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea. Khách: '${greetingName}'.
 
 **DỮ LIỆU SHOP:**
 ${knowledgeBase}
 
-**QUY TẮC HIỂN THỊ (QUAN TRỌNG):**
-1. **KHI KHÁCH HỎI "DANH SÁCH SẢN PHẨM" HOẶC "CÓ NHỮNG GÌ":**
-   - Chỉ được dùng phần "DATA SẢN PHẨM TÓM TẮT" để trả lời.
-   - Liệt kê ngắn gọn: Tên sản phẩm + Giá tiền.
-   - **CẤM** copy nguyên văn phần mô tả/quà tặng dài dòng (trừ khi khách hỏi chi tiết vào từng món).
-   - Ví dụ chuẩn:
-     "Dạ bên Shop đang có các dòng này ạ:
-      1. An Cung Samsung - 780k
-      2. Tinh Dầu Thông Đỏ - 1.150k
-      ..."
-2. **KHI KHÁCH HỎI CHI TIẾT 1 MÓN:** Lúc này mới lấy thông tin từ "DATA CHI TIẾT" để tư vấn đầy đủ (Công dụng, Quà tặng, Date...).
+**QUY TẮC HIỂN THỊ DANH SÁCH (CHỐNG DÀI DÒNG):**
+- Khi khách hỏi "Có những món gì", "Xin danh sách": **CHỈ DÙNG DATA RÚT GỌN** để liệt kê.
+- Format: Tên SP - Giá. (Không mô tả rườm rà).
+- Ẩn các món phụ (Dầu, cao, kẹo...) trừ khi khách hỏi đích danh.
 
-**CÁC QUY TẮC KHÁC:**
-- Không gửi Link trong Text.
-- Chỉ giảm giá An Cung Samsung (750k) khi khách chê đắt.
-- SĐT Khách: ${hasPhone ? "ĐÃ CÓ" : "CHƯA CÓ"}.
+**CHIẾN THUẬT BÁO GIÁ (BẮT BUỘC):**
+1. **Báo giá lần 1 (Mặc định):** Báo giá CHUẨN 780k + Quà tặng. Không nhắc giảm giá.
+2. **Báo giá lần 2 (Khi khách chê đắt):**
+   - Được phép báo giá 750k.
+   - **BẮT BUỘC GIẢI THÍCH:** "Dạ vì Bác không lấy quà tặng nên Shop trừ tiền quà đi, để giá hỗ trợ cho Bác còn 750k ạ".
+   - (Mục đích: Để khách hiểu là giá trị thực vẫn là 780k).
+
+**QUY ĐỊNH KHÁC:**
+- SĐT Khách: ${hasPhone ? "ĐÃ CÓ (XÁC NHẬN LUÔN)" : "CHƯA CÓ (HỎI KHÉO)"}.
+- Không gửi link text.
 
 **LỊCH SỬ:**
 ${historyText}
@@ -348,7 +356,7 @@ ${imageUrl ? "[Khách gửi ảnh]" : ""}
     }
 }
 
-// ... Helper functions giữ nguyên ...
+// ... Helper functions ...
 function getDefaultRules() { return `**LUẬT CẤM:** CẤM bịa giá.\n**SHIP:** SP Chính Freeship. Dầu lẻ 20k.`; }
 function getDefaultProducts() { return [{ name: "An Cung Samsung", price: "780k", gift: "Tặng 1 Dầu", image: "", desc: "Freeship" }]; }
 async function setBotStatus(uid, status) { try { await db.collection('users').doc(uid).set({ is_paused: status }, { merge: true }); } catch(e){} }
@@ -362,4 +370,4 @@ async function sendMessage(token, id, text) { try { await axios.post(`https://gr
 async function sendImage(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "image", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v14.3 (Smart List) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v14.5 (Final Perfect) chạy tại port ${PORT}`));
