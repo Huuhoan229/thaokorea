@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v14.6" - Dynamic Gift: Tự Động Đọc Quà Từ Web Admin)
+// File: index.js (Phiên bản "MULTI-BOT v14.6" - Fix Lỗi Quà Tặng: Đọc Data Thay Vì Học Vẹt)
 
 // =================================================================
 // 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH
@@ -44,7 +44,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v14-dynamic-gift', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v14-gift-fix', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 // =================================================================
 // PHẦN A: WEB ADMIN ROUTES
@@ -272,10 +272,9 @@ async function buildKnowledgeBaseFromDB() {
     } else {
         productsSnap.forEach(doc => {
             let p = doc.data();
-            // CHÚ Ý: Đã sửa để AI đọc chính xác Quà Tặng từ DB
             productFull += `- Tên: ${p.name}\n  + Giá CHUẨN: ${p.price}\n  + Quà Tặng: ${p.gift}\n  + Thông tin: ${p.desc}\n  + Ảnh (URL): "${p.image}"\n`;
             
-            // Logic lọc hàng tuyển
+            // Logic lọc hàng tuyển (giữ nguyên)
             let priceVal = parseInt(p.price.replace(/\D/g, '')) || 0;
             let isMainProduct = priceVal >= 500 || 
                                 p.name.includes("An Cung") || 
@@ -293,10 +292,10 @@ async function buildKnowledgeBaseFromDB() {
 === LUẬT CHUNG ===
 ${rules}
 
-=== DATA CHI TIẾT (NGUỒN DỮ LIỆU GỐC) ===
+=== DATA CHI TIẾT (TRA CỨU QUÀ TẶNG TẠI ĐÂY) ===
 ${productFull}
 
-=== DATA RÚT GỌN (ĐỂ LIỆT KÊ) ===
+=== DATA RÚT GỌN ===
 ${productSummary}
 `;
 }
@@ -311,31 +310,33 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
         const timeContext = (now.getHours() >= 8 && now.getHours() < 17) ? "GIỜ HÀNH CHÍNH" : "NGOÀI GIỜ";
 
-        // PROMPT DYNAMIC: KHÔNG CÒN HARDCODE TÊN QUÀ
+        // PROMPT ĐÃ FIX: XOÁ BỎ CÂU MẪU CỨNG NHẮC
         let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea. Khách: '${greetingName}'.
 
-**DỮ LIỆU SHOP:**
+**DỮ LIỆU SHOP (QUAN TRỌNG):**
 ${knowledgeBase}
 
 **QUY TẮC HIỂN THỊ DANH SÁCH:**
-- Khi khách hỏi list: Dùng "DATA RÚT GỌN".
-- Format: Tên - Giá. Ẩn món phụ.
+- Khi khách hỏi "Xin danh sách", "Có những món gì": Chỉ dùng **DATA RÚT GỌN** để liệt kê (Tên - Giá).
+- Không liệt kê món phụ nếu không được hỏi.
 
-**CHIẾN THUẬT BÁO GIÁ AN CUNG SAMSUNG (QUAN TRỌNG):**
-1. **Báo giá lần 1 (Mặc định):**
-   - Báo giá 780k + **[ĐỌC QUÀ TẶNG TỪ PHẦN "DATA CHI TIẾT" BÊN TRÊN]** + Freeship.
-   - Ví dụ Data ghi quà là "Cao Dán" thì báo tặng "Cao Dán". Data ghi "Kẹo" thì báo "Kẹo".
-   - KHÔNG ĐƯỢC BỊA QUÀ.
+**CHIẾN THUẬT BÁO GIÁ (THỰC HIỆN THEO 2 BƯỚC):**
 
-2. **Báo giá lần 2 (Khi khách chê đắt):**
-   - Được phép báo giá 750k.
-   - **BẮT BUỘC GIẢI THÍCH:** "Dạ do Bác không lấy quà tặng (như Cao dán/Kẹo sâm...) nên Shop trừ tiền quà đi, để giá hỗ trợ cho Bác còn 750k ạ".
+1. **BÁO GIÁ LẦN 1 (MẶC ĐỊNH):**
+   - **Cách làm:** Tra cứu trong phần **"DATA CHI TIẾT"** để xem sản phẩm đó có Giá bao nhiêu và Quà tặng là gì.
+   - **Yêu cầu:** Báo đúng Giá + Quà tặng (Ví dụ: Nếu Data ghi tặng Kẹo Sâm thì phải báo tặng Kẹo Sâm).
+   - **Tuyệt đối:** Không được bịa đặt quà tặng khác với Data. Không nhắc đến việc giảm giá ở bước này.
+
+2. **BÁO GIÁ LẦN 2 (KHI KHÁCH CHÊ ĐẮT / ÉP GIÁ):**
+   - **Điều kiện:** Khách nói "Đắt quá", "Bớt đi", "Không lấy quà có giảm không".
+   - **Hành động:** Báo giá hỗ trợ (thường là giảm 30k-50k tuỳ sản phẩm, ví dụ An Cung 780k giảm còn 750k).
+   - **BẮT BUỘC GIẢI THÍCH:** "Dạ vì Bác không lấy quà tặng nên Shop trừ tiền quà đi, để giá hỗ trợ cho Bác ạ".
 
 **QUY ĐỊNH KHÁC:**
-- SĐT Khách: ${hasPhone ? "ĐÃ CÓ (XÁC NHẬN LUÔN)" : "CHƯA CÓ"}.
+- SĐT Khách: ${hasPhone ? "ĐÃ CÓ (XÁC NHẬN)" : "CHƯA CÓ (HỎI KHÉO)"}.
 - Không gửi link text.
 
-**LỊCH SỬ:**
+**LỊCH SỬ CHAT:**
 ${historyText}
 
 **INPUT:** "${userMessage}"
@@ -372,4 +373,4 @@ async function sendMessage(token, id, text) { try { await axios.post(`https://gr
 async function sendImage(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "image", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v14.6 (Dynamic Gift) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v14.6 (Fix Gift & Price) chạy tại port ${PORT}`));
