@@ -1,4 +1,4 @@
-// File: index.js (Phiên bản "MULTI-BOT v14.6" - Fix Lỗi Quà Tặng: Đọc Data Thay Vì Học Vẹt)
+// File: index.js (Phiên bản "MULTI-BOT v14.8" - Smart Vision: Nhìn Hình Gọi Đúng Tên SP)
 
 // =================================================================
 // 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH
@@ -44,7 +44,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v14-gift-fix', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v14-vision-smart', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 // =================================================================
 // PHẦN A: WEB ADMIN ROUTES
@@ -273,8 +273,6 @@ async function buildKnowledgeBaseFromDB() {
         productsSnap.forEach(doc => {
             let p = doc.data();
             productFull += `- Tên: ${p.name}\n  + Giá CHUẨN: ${p.price}\n  + Quà Tặng: ${p.gift}\n  + Thông tin: ${p.desc}\n  + Ảnh (URL): "${p.image}"\n`;
-            
-            // Logic lọc hàng tuyển (giữ nguyên)
             let priceVal = parseInt(p.price.replace(/\D/g, '')) || 0;
             let isMainProduct = priceVal >= 500 || 
                                 p.name.includes("An Cung") || 
@@ -292,7 +290,7 @@ async function buildKnowledgeBaseFromDB() {
 === LUẬT CHUNG ===
 ${rules}
 
-=== DATA CHI TIẾT (TRA CỨU QUÀ TẶNG TẠI ĐÂY) ===
+=== DATA CHI TIẾT ===
 ${productFull}
 
 === DATA RÚT GỌN ===
@@ -310,30 +308,29 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
         const timeContext = (now.getHours() >= 8 && now.getHours() < 17) ? "GIỜ HÀNH CHÍNH" : "NGOÀI GIỜ";
 
-        // PROMPT ĐÃ FIX: XOÁ BỎ CÂU MẪU CỨNG NHẮC
+        // PROMPT ĐÃ ĐƯỢC DẠY LẠI CÁCH NHÌN ẢNH (GỌI ĐÚNG TÊN)
         let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea. Khách: '${greetingName}'.
 
-**DỮ LIỆU SHOP (QUAN TRỌNG):**
+**DỮ LIỆU SHOP:**
 ${knowledgeBase}
 
-**QUY TẮC HIỂN THỊ DANH SÁCH:**
-- Khi khách hỏi "Xin danh sách", "Có những món gì": Chỉ dùng **DATA RÚT GỌN** để liệt kê (Tên - Giá).
-- Không liệt kê món phụ nếu không được hỏi.
+**QUY TẮC XỬ LÝ HÌNH ẢNH (VISION) - THÔNG MINH:**
+1. **KHÔNG** dùng từ "Lạ quá".
+2. **HÃY NHÌN KỸ ẢNH VÀ GỌI ĐÚNG TÊN SẢN PHẨM:**
+   - Nếu thấy ảnh là **Sâm Nhung Hươu** -> Nói: "Dạ đây là mẫu **Sâm Nhung Hươu** bên Shop đúng không ạ?".
+   - Nếu thấy ảnh là **Tinh Dầu Thông Đỏ** -> Nói: "Dạ đây là mẫu **Tinh Dầu Thông Đỏ** bên Shop đúng không ạ?".
+   - Nếu thấy ảnh là **An Cung** -> Nói: "Dạ đây là mẫu **An Cung** bên Shop đúng không ạ?".
+   - Nếu ảnh lạ hoặc không rõ -> Nói: "Dạ để Shop kiểm tra lại kho xem có đúng mẫu này không rồi báo lại Bác nhé!".
 
-**CHIẾN THUẬT BÁO GIÁ (THỰC HIỆN THEO 2 BƯỚC):**
-
-1. **BÁO GIÁ LẦN 1 (MẶC ĐỊNH):**
-   - **Cách làm:** Tra cứu trong phần **"DATA CHI TIẾT"** để xem sản phẩm đó có Giá bao nhiêu và Quà tặng là gì.
-   - **Yêu cầu:** Báo đúng Giá + Quà tặng (Ví dụ: Nếu Data ghi tặng Kẹo Sâm thì phải báo tặng Kẹo Sâm).
-   - **Tuyệt đối:** Không được bịa đặt quà tặng khác với Data. Không nhắc đến việc giảm giá ở bước này.
-
-2. **BÁO GIÁ LẦN 2 (KHI KHÁCH CHÊ ĐẮT / ÉP GIÁ):**
-   - **Điều kiện:** Khách nói "Đắt quá", "Bớt đi", "Không lấy quà có giảm không".
-   - **Hành động:** Báo giá hỗ trợ (thường là giảm 30k-50k tuỳ sản phẩm, ví dụ An Cung 780k giảm còn 750k).
-   - **BẮT BUỘC GIẢI THÍCH:** "Dạ vì Bác không lấy quà tặng nên Shop trừ tiền quà đi, để giá hỗ trợ cho Bác ạ".
+**CHIẾN THUẬT BÁO GIÁ (2 BƯỚC):**
+1. **Báo giá lần 1 (Mặc định):** Báo đúng Giá + Quà trong "DATA CHI TIẾT".
+2. **Báo giá lần 2 (Khách chê đắt):**
+   - Giảm giá hỗ trợ (VD: An Cung 780k -> 750k).
+   - BẮT BUỘC GIẢI THÍCH: "Dạ vì Bác không lấy quà tặng nên Shop trừ tiền quà đi, để giá hỗ trợ cho Bác ạ".
 
 **QUY ĐỊNH KHÁC:**
-- SĐT Khách: ${hasPhone ? "ĐÃ CÓ (XÁC NHẬN)" : "CHƯA CÓ (HỎI KHÉO)"}.
+- Liệt kê danh sách: Dùng DATA RÚT GỌN.
+- SĐT Khách: ${hasPhone ? "ĐÃ CÓ" : "CHƯA CÓ"}.
 - Không gửi link text.
 
 **LỊCH SỬ CHAT:**
@@ -359,7 +356,7 @@ ${imageUrl ? "[Khách gửi ảnh]" : ""}
     }
 }
 
-// ... Helper functions ...
+// ... Helper functions giữ nguyên ...
 function getDefaultRules() { return `**LUẬT CẤM:** CẤM bịa giá.\n**SHIP:** SP Chính Freeship. Dầu lẻ 20k.`; }
 function getDefaultProducts() { return [{ name: "An Cung Samsung", price: "780k", gift: "Tặng 1 Dầu", image: "", desc: "Freeship" }]; }
 async function setBotStatus(uid, status) { try { await db.collection('users').doc(uid).set({ is_paused: status }, { merge: true }); } catch(e){} }
@@ -373,4 +370,4 @@ async function sendMessage(token, id, text) { try { await axios.post(`https://gr
 async function sendImage(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "image", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v14.6 (Fix Gift & Price) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v14.8 (Vision Smart) chạy tại port ${PORT}`));
