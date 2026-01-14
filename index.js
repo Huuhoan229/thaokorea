@@ -1,4 +1,4 @@
-// File: index.js (FULL VERSION v16.4 - FINAL FIX LOGIC)
+// File: index.js (FULL VERSION v16.7 - GỬI TOÀN BỘ LỊCH SỬ CHAT)
 
 // =================================================================
 // 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH
@@ -13,8 +13,8 @@ const fs = require('fs');
 const nodemailer = require('nodemailer');
 const path = require('path');
 
-// 👇👇👇 THAY LINK MỚI VÀO ĐÂY 👇👇👇
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhqhI-oAvOuuC_98yvnVvGWtik2cOAPVOsESIkF4zJ60qErtSnW74Nr497OjPfmqw/exec"; 
+// 👇👇👇 GIỮ NGUYÊN LINK APPS SCRIPT CỦA BÁC 👇👇👇
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz80_RIYwoTmjZd3MLWrrtmO2auM_s-LHLJcPAYb_TrgbCbQbT4bz90eC5gBs24dI0/exec"; 
 const APPS_SCRIPT_SECRET = "VNGEN123"; 
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
@@ -47,7 +47,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v16-final-fix', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v16-history-sync', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 // =================================================================
 // PHẦN A: WEB ADMIN ROUTES
@@ -60,7 +60,6 @@ app.post('/login', (req, res) => {
 });
 app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
 
-// DASHBOARD
 app.get('/admin', checkAuth, async (req, res) => {
     try {
         let aiDoc = await db.collection('settings').doc('aiConfig').get();
@@ -73,12 +72,11 @@ app.get('/admin', checkAuth, async (req, res) => {
         let pages = []; pagesSnap.forEach(doc => pages.push({ id: doc.id, ...doc.data() }));
         let productsSnap = await db.collection('products').get();
         let products = [];
-        if (productsSnap.empty) { /* Rỗng */ } else { productsSnap.forEach(doc => products.push({ id: doc.id, ...doc.data() })); }
+        if (!productsSnap.empty) productsSnap.forEach(doc => products.push({ id: doc.id, ...doc.data() }));
         res.render('admin', { systemStatus, generalRules, pages, products, aiConfig });
     } catch (e) { res.send("Lỗi: " + e.message); }
 });
 
-// SAVE FUNCTIONS
 app.post('/admin/save-ai', checkAuth, async (req, res) => { await db.collection('settings').doc('aiConfig').set({ apiKey: req.body.apiKey.trim(), modelName: req.body.modelName }, { merge: true }); res.redirect('/admin'); });
 app.post('/admin/toggle-system', checkAuth, async (req, res) => { await db.collection('settings').doc('systemConfig').set({ isActive: req.body.status === 'true' }, { merge: true }); res.redirect('/admin'); });
 app.post('/admin/save-page', checkAuth, async (req, res) => { await db.collection('pages').add({ name: req.body.name, pageId: req.body.pageId, token: req.body.token }); res.redirect('/admin'); });
@@ -133,30 +131,23 @@ app.post('/webhook', (req, res) => {
 
             if (entry.messaging && entry.messaging.length > 0) {
                 const webhook_event = entry.messaging[0];
-                if (webhook_event.message && webhook_event.message.is_echo) {
-                    if (webhook_event.message.metadata === "FROM_BOT_AUTO") return;
-                    const adminText = webhook_event.message.text;
-                    const uid = `${pageId}_${webhook_event.recipient.id}`;
-                    if (adminText) {
-                        const lower = adminText.toLowerCase().trim();
-                        if (lower === '.' || lower === '!tatbot') await setBotStatus(uid, true);
-                        if (lower === ',' || lower === '!batbot') await setBotStatus(uid, false);
-                        await saveHistory(uid, 'Shop', adminText);
-                    }
-                    return;
-                }
+                if (webhook_event.message && webhook_event.message.is_echo) return;
+
                 if (webhook_event.message) {
                     const senderId = webhook_event.sender.id;
                     const uid = `${pageId}_${senderId}`;
                     if (webhook_event.message.sticker_id) return;
+                    
                     const userState = await loadState(uid);
                     if (userState.is_paused) { await saveHistory(uid, 'Khách', webhook_event.message.text || "[Media]"); return; }
                     if (isMissedCall(webhook_event)) { await handleMissedCall(pageId, senderId); return; }
+                    
                     let userMessage = webhook_event.message.text || "[Khách gửi hình ảnh]";
                     let imageUrl = null;
                     if (webhook_event.message.attachments && webhook_event.message.attachments[0].type === 'image') {
                         imageUrl = webhook_event.message.attachments[0].payload.url;
                     } else if (webhook_event.message.text) userMessage = webhook_event.message.text;
+                    
                     if (userMessage) await processMessage(pageId, senderId, userMessage, imageUrl, userState);
                 }
             }
@@ -178,14 +169,22 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
             sendAlertEmail(userName, userMessage);
         }
 
-        // --- XỬ LÝ SĐT ---
+        // --- XỬ LÝ SĐT (KÈM TOÀN BỘ LỊCH SỬ CHAT) ---
         const phoneRegex = /0\d{9}/; 
         const cleanMsg = userMessage.replace(/\s+/g, '').replace(/\./g, '').replace(/-/g, '');
         const hasPhone = phoneRegex.test(cleanMsg);
 
         if (hasPhone) {
             const matchedPhone = cleanMsg.match(phoneRegex)[0];
-            sendPhoneToSheet(matchedPhone);
+            
+            // 1. Lấy lịch sử cũ
+            let historyText = userState.history.map(h => `[${h.role}]: ${h.content}`).join('\n');
+            
+            // 2. Gộp với tin nhắn mới nhất
+            let fullConversation = `${historyText}\n----------------\n[KHÁCH CHỐT - Mới nhất]: ${userMessage}`;
+            
+            // 3. Gửi sang Sheet
+            sendPhoneToSheet(matchedPhone, userName, fullConversation);
         }
 
         // --- GỌI GEMINI ---
@@ -232,13 +231,15 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
 }
 
 // --- HÀM GỬI SĐT SANG SHEET ---
-async function sendPhoneToSheet(phone) {
+async function sendPhoneToSheet(phone, name, message) {
     if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("xxxxxxxxx")) return;
     try {
-        console.log(`[SHEET] Đang gửi SĐT: ${phone}...`);
+        console.log(`[SHEET] Đang gửi toàn bộ lịch sử chat của ${name}...`);
         let res = await axios.post(APPS_SCRIPT_URL, {
             secret: APPS_SCRIPT_SECRET,
-            phone: phone
+            phone: phone,
+            name: name,      
+            message: message // Lúc này 'message' là toàn bộ lịch sử
         });
         if (res.data.ok) {
             console.log(`[SHEET] ✅ OK. Lưu vào dòng ${res.data.row}`);
@@ -254,13 +255,9 @@ async function buildKnowledgeBaseFromDB() {
     let rulesDoc = await db.collection('settings').doc('generalRules').get();
     let rules = rulesDoc.exists ? rulesDoc.data().content : "Luật chung...";
     let productsSnap = await db.collection('products').get();
-    
     let productFull = "";
     let productSummary = "DANH SÁCH RÚT GỌN:\n";
-
-    if (productsSnap.empty) {
-        productFull = "Chưa có SP";
-    } else {
+    if (productsSnap.empty) { productFull = "Chưa có SP"; } else {
         productsSnap.forEach(doc => {
             let p = doc.data();
             let cleanDesc = p.desc;
@@ -269,7 +266,6 @@ async function buildKnowledgeBaseFromDB() {
                 cleanDesc += " (Thành phần: Có chứa trầm hương tự nhiên)"; 
             }
             productFull += `- Tên: ${p.name}\n  + Giá CHUẨN: ${p.price}\n  + Quà Tặng: ${p.gift}\n  + Thông tin: ${cleanDesc}\n  + Ảnh (URL): "${p.image}"\n`;
-            
             let priceVal = parseInt(p.price.replace(/\D/g, '')) || 0;
             let isMainProduct = priceVal >= 500 || p.name.includes("An Cung") || p.name.includes("Thông Đỏ") || p.name.includes("Nghệ") || p.name.includes("Hắc Sâm");
             if (isMainProduct) productSummary += `- ${p.name}: ${p.price}\n`;
@@ -281,60 +277,44 @@ async function buildKnowledgeBaseFromDB() {
 async function callGeminiRetail(userMessage, userName, history, knowledgeBase, imageUrl = null, hasPhone = false) {
     const model = await getGeminiModel();
     if (!model) return { response_message: "Dạ Bác chờ Shop xíu nha." };
-
     try {
         const historyText = history.map(h => `${h.role}: ${h.content}`).join('\n');
         const greetingName = userName ? "Bác " + userName : "Bác";
-        
         const VIDEO_CHECK_SAMSUNG = "https://www.facebook.com/share/v/1Su33dR62T/"; 
         const VIDEO_INTRO_KWANGDONG = "https://www.facebook.com/share/v/1aX41A7wCY/"; 
-
         let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea. Khách: '${greetingName}'.
-
 **DỮ LIỆU SHOP:**
 ${knowledgeBase}
-
 **QUY TẮC QUÀ TẶNG (TUYỆT ĐỐI):**
 1. **Quà hợp lệ:** Dầu Lạnh, Cao Dán, Kẹo Sâm.
 2. **CẤM:** Tặng Dầu Nóng Antiphlamine.
 3. **Từ chối khéo:** "Dạ Dầu Nóng (Antiphlamine) không nằm trong danh sách quà tặng của chương trình đợt này ạ. Bác thông cảm chọn sang Dầu Lạnh/Cao Dán/Kẹo Sâm giúp con nhé!".
-
 **QUY TẮC VIDEO:**
 - Hỏi check Samsung -> Gửi Video: "${VIDEO_CHECK_SAMSUNG}"
 - Hỏi Kwangdong -> Gửi Video: "${VIDEO_INTRO_KWANGDONG}"
-
 **QUY TẮC KHÁC:**
 - An Cung Kwangdong: Chỉ nói "Có chứa trầm hương". Cấm nói 15%.
 - Báo giá: Mặc định Giá Chuẩn -> Chê đắt mới Giảm hỗ trợ.
 - Vision: Không dùng từ "Lạ quá". Gọi đúng tên SP.
 - Link: Không gửi link trong Text.
 - SĐT: ${hasPhone ? "ĐÃ CÓ (XÁC NHẬN)" : "CHƯA CÓ"}.
-
 **LỊCH SỬ:**
 ${historyText}
-
 **INPUT:** "${userMessage}"
 ${imageUrl ? "[Khách gửi ảnh]" : ""}
-
-**JSON:** { 
-  "response_message": "...", 
-  "image_url_to_send": "",
-  "video_url_to_send": ""
-}`;
+**JSON:** { "response_message": "...", "image_url_to_send": "", "video_url_to_send": "" }`;
 
         let parts = [{ text: prompt }];
         if (imageUrl) {
             let imgData = await axios.get(imageUrl, { responseType: 'arraybuffer' });
             parts.push({ inlineData: { data: Buffer.from(imgData.data).toString('base64'), mimeType: "image/jpeg" }});
         }
-
         let result = await model.generateContent(parts);
         let jsonStr = result.response.text().match(/\{[\s\S]*\}/)[0];
         return JSON.parse(jsonStr);
     } catch (e) { console.error("Gemini Error:", e); return { response_message: "Dạ Bác chờ Shop xíu nha." }; }
 }
 
-// ... HELPER FUNCTIONS ...
 async function setBotStatus(uid, status) { try { await db.collection('users').doc(uid).set({ is_paused: status }, { merge: true }); } catch(e){} }
 async function loadState(uid) { try { let d = await db.collection('users').doc(uid).get(); return d.exists ? d.data() : { history: [], is_paused: false }; } catch(e){ return { history: [], is_paused: false }; } }
 async function saveHistory(uid, role, content) { try { await db.collection('users').doc(uid).set({ history: admin.firestore.FieldValue.arrayUnion({ role, content }), last_updated: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); } catch(e){} }
@@ -347,4 +327,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v16.4 (Final Fix Logic) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v16.7 (Full History Sync) chạy tại port ${PORT}`));
