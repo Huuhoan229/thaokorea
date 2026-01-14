@@ -24,7 +24,7 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
 const transporter = nodemailer.createTransport({
     service: 'gmail',
-    auth: { user: 'vngenmart@gmail.com', pass: 'mat_khau_ung_dung_cua_ban' }
+    auth: { user: 'vngenmart@gmail.com', pass: 'nzns iwrw xcye djze' }
 });
 
 const processingUserSet = new Set();
@@ -244,18 +244,29 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
     finally { processingUserSet.delete(uid); }
 }
 
-// --- HÀM GỬI SĐT SANG GOOGLE SHEET ---
+// --- HÀM GỬI SĐT SANG GOOGLE SHEET (CÓ IN RA LỖI CHI TIẾT) ---
 async function sendPhoneToSheet(phone) {
     if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("xxxxxxxxx")) return;
     try {
         console.log(`[SHEET] Đang gửi SĐT: ${phone}...`);
-        await axios.post(APPS_SCRIPT_URL, {
+        
+        // Gửi đi
+        let res = await axios.post(APPS_SCRIPT_URL, {
             secret: APPS_SCRIPT_SECRET,
             phone: phone
         });
-        console.log(`[SHEET] Đã gửi thành công.`);
+
+        // In ra xem Google trả lời cái gì
+        console.log(`[SHEET PHẢN HỒI]:`, res.data); 
+
+        if (res.data.ok) {
+            console.log(`[SHEET] ✅ Ghi thành công vào dòng ${res.data.row}`);
+        } else {
+            console.log(`[SHEET] ❌ LỖI TỪ GOOGLE: ${res.data.error}`);
+        }
+
     } catch (e) {
-        console.error("[SHEET ERROR] Không gửi được:", e.message);
+        console.error("[SHEET ERROR] Lỗi kết nối:", e.message);
     }
 }
 
