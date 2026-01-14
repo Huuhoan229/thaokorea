@@ -1,4 +1,4 @@
-// File: index.js (FULL VERSION v15.4 - ĐÃ ĐIỀN SẴN LINK FACEBOOK VIDEO)
+// File: index.js (FULL VERSION v15.6 - TỪ CHỐI QUÀ KHÉO LÉO + FULL TÍNH NĂNG)
 
 // =================================================================
 // 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH
@@ -43,7 +43,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v15-final-update', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v15-diplomatic', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 // =================================================================
 // PHẦN A: WEB ADMIN ROUTES
@@ -196,19 +196,15 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
 
         let cleanTextMessage = geminiResult.response_message.replace(/(https?:\/\/[^\s]+)/g, "").trim();
 
-        // 1. VIDEO (Ưu tiên)
+        // 1. VIDEO
         if (geminiResult.video_url_to_send && geminiResult.video_url_to_send.length > 5) {
             let vids = geminiResult.video_url_to_send.split(',');
             for (let vid of vids) {
                 let cleanVid = vid.trim();
-                // Nếu là file mp4 -> Gửi Attachment
                 if (cleanVid.endsWith('.mp4') || cleanVid.includes('.mp4?')) {
                      await sendVideo(token, senderId, cleanVid);
-                } else {
-                    // Nếu là Link Facebook/Youtube -> Gửi Text kèm lời mời
-                    if (cleanVid.startsWith('http')) {
-                        await sendMessage(token, senderId, `📺 Dạ mời Bác xem video chi tiết tại đây ạ: ${cleanVid}`);
-                    }
+                } else if (cleanVid.startsWith('http')) {
+                    await sendMessage(token, senderId, `📺 Dạ mời Bác xem video chi tiết tại đây ạ: ${cleanVid}`);
                 }
             }
         }
@@ -249,14 +245,11 @@ async function buildKnowledgeBaseFromDB() {
     } else {
         productsSnap.forEach(doc => {
             let p = doc.data();
-            
-            // --- FIX NỘI DUNG KWANGDONG (XÓA 15% TRẦM HƯƠNG) ---
             let cleanDesc = p.desc;
             if (p.name.toLowerCase().includes("kwangdong")) {
                 cleanDesc = cleanDesc.replace(/15%/g, "").replace(/15 phần trăm/g, ""); 
                 cleanDesc += " (Thành phần: Có chứa trầm hương tự nhiên)"; 
             }
-
             productFull += `- Tên: ${p.name}\n  + Giá CHUẨN: ${p.price}\n  + Quà Tặng: ${p.gift}\n  + Thông tin: ${cleanDesc}\n  + Ảnh (URL): "${p.image}"\n`;
             
             let priceVal = parseInt(p.price.replace(/\D/g, '')) || 0;
@@ -277,26 +270,32 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
         const timeContext = (now.getHours() >= 8 && now.getHours() < 17) ? "GIỜ HÀNH CHÍNH" : "NGOÀI GIỜ";
 
-        // --- CẤU HÌNH VIDEO ĐẶC BIỆT (ĐÃ CẬP NHẬT LINK FACEBOOK CỦA BÁC) ---
+        // LINK VIDEO CỐ ĐỊNH CỦA BÁC
         const VIDEO_CHECK_SAMSUNG = "https://www.facebook.com/share/v/1Su33dR62T/"; 
         const VIDEO_INTRO_KWANGDONG = "https://www.facebook.com/share/v/1aX41A7wCY/"; 
 
+        // PROMPT v15.6: THAY ĐỔI CÁCH TỪ CHỐI QUÀ
         let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea. Khách: '${greetingName}'.
 
 **DỮ LIỆU SHOP:**
 ${knowledgeBase}
 
-**QUY TẮC VIDEO ĐẶC BIỆT:**
-1. Khách hỏi **"Hướng dẫn kiểm tra chính hãng An Cung Samsung"**:
-   - Trả lời: "Dạ mời Bác xem video hướng dẫn chi tiết ạ."
-   - Điền Link Video: "${VIDEO_CHECK_SAMSUNG}" vào ô "video_url_to_send".
-2. Khách hỏi **"Giới thiệu An Cung Kwangdong"**:
-   - Điền Link Video: "${VIDEO_INTRO_KWANGDONG}" vào ô "video_url_to_send".
+**LUẬT QUÀ TẶNG & ĐỔI QUÀ (NGHIÊM NGẶT):**
+1. **QUÀ HỢP LỆ:** Dầu Lạnh, Cao Dán, Kẹo Sâm.
+2. **CẤM TẶNG:** Dầu Nóng (Antiphlamine).
+3. **CÁCH TỪ CHỐI (KHI KHÁCH ĐÒI DẦU NÓNG):**
+   - Nói khéo: "Dạ Dầu Nóng (Antiphlamine) không nằm trong danh sách quà tặng của chương trình khuyến mãi đợt này ạ. Bác thông cảm đổi sang Dầu Lạnh, Cao Dán hoặc Kẹo Sâm giúp con nhé!".
+   - Lý do: Không nằm trong chương trình (nghe chuyên nghiệp, tránh nói "đắt/rẻ").
 
-**QUY TẮC NỘI DUNG:**
-- An Cung Kwangdong: Chỉ nói "Có chứa trầm hương". CẤM nói "15%".
+**VIDEO ĐẶC BIỆT:**
+- Hỏi check Samsung -> Gửi Video: "${VIDEO_CHECK_SAMSUNG}".
+- Hỏi Kwangdong -> Gửi Video: "${VIDEO_INTRO_KWANGDONG}".
+
+**CÁC QUY TẮC KHÁC:**
+- An Cung Kwangdong: Chỉ nói "Có chứa trầm hương". Cấm nói "15%".
+- Báo giá: Mặc định Giá Chuẩn -> Chê đắt mới Giảm hỗ trợ (cắt quà).
 - Vision: Không dùng từ "Lạ quá". Gọi đúng tên SP.
-- Báo giá: Mặc định Giá Chuẩn -> Chê đắt mới Giảm hỗ trợ.
+- Link: Không gửi link trong Text.
 
 **LỊCH SỬ:**
 ${historyText}
@@ -307,7 +306,7 @@ ${imageUrl ? "[Khách gửi ảnh]" : ""}
 **JSON:** { 
   "response_message": "...", 
   "image_url_to_send": "",
-  "video_url_to_send": "Điền link video vào đây"
+  "video_url_to_send": ""
 }`;
 
         let parts = [{ text: prompt }];
@@ -337,4 +336,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v15.4 (Video FB Updated) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v15.6 (Diplomatic Gift Refusal) chạy tại port ${PORT}`));
