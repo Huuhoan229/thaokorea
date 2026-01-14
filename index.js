@@ -1,4 +1,4 @@
-// File: index.js (FULL VERSION v16.7 - GỬI TOÀN BỘ LỊCH SỬ CHAT)
+// File: index.js (FULL VERSION v16.8 - LIMIT HISTORY 10 MESSAGES)
 
 // =================================================================
 // 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH
@@ -47,7 +47,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v16-history-sync', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v16-limit-history', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 // =================================================================
 // PHẦN A: WEB ADMIN ROUTES
@@ -169,7 +169,7 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
             sendAlertEmail(userName, userMessage);
         }
 
-        // --- XỬ LÝ SĐT (KÈM TOÀN BỘ LỊCH SỬ CHAT) ---
+        // --- XỬ LÝ SĐT (CHỈ LẤY 10 TIN GẦN NHẤT) ---
         const phoneRegex = /0\d{9}/; 
         const cleanMsg = userMessage.replace(/\s+/g, '').replace(/\./g, '').replace(/-/g, '');
         const hasPhone = phoneRegex.test(cleanMsg);
@@ -177,11 +177,13 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
         if (hasPhone) {
             const matchedPhone = cleanMsg.match(phoneRegex)[0];
             
-            // 1. Lấy lịch sử cũ
-            let historyText = userState.history.map(h => `[${h.role}]: ${h.content}`).join('\n');
+            // 1. Cắt lấy 10 tin nhắn gần nhất từ lịch sử
+            // slice(-10) sẽ lấy 10 phần tử cuối mảng
+            let recentHistory = userState.history.slice(-10);
+            let historyText = recentHistory.map(h => `[${h.role}]: ${h.content}`).join('\n');
             
             // 2. Gộp với tin nhắn mới nhất
-            let fullConversation = `${historyText}\n----------------\n[KHÁCH CHỐT - Mới nhất]: ${userMessage}`;
+            let fullConversation = `... (Lược bỏ tin cũ) ...\n${historyText}\n----------------\n[KHÁCH CHỐT]: ${userMessage}`;
             
             // 3. Gửi sang Sheet
             sendPhoneToSheet(matchedPhone, userName, fullConversation);
@@ -234,12 +236,12 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
 async function sendPhoneToSheet(phone, name, message) {
     if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("xxxxxxxxx")) return;
     try {
-        console.log(`[SHEET] Đang gửi toàn bộ lịch sử chat của ${name}...`);
+        console.log(`[SHEET] Đang gửi thông tin khách: ${name} (Limit History)...`);
         let res = await axios.post(APPS_SCRIPT_URL, {
             secret: APPS_SCRIPT_SECRET,
             phone: phone,
             name: name,      
-            message: message // Lúc này 'message' là toàn bộ lịch sử
+            message: message 
         });
         if (res.data.ok) {
             console.log(`[SHEET] ✅ OK. Lưu vào dòng ${res.data.row}`);
@@ -327,4 +329,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v16.7 (Full History Sync) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v16.8 (History Limit 10) chạy tại port ${PORT}`));
