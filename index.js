@@ -1,4 +1,4 @@
-// File: index.js (FULL VERSION v16.3 - FINAL - NODEJS BOT)
+// File: index.js (FULL VERSION v16.4 - FINAL FIX LOGIC)
 
 // =================================================================
 // 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH
@@ -13,9 +13,8 @@ const fs = require('fs');
 const nodemailer = require('nodemailer');
 const path = require('path');
 
-// --- CẤU HÌNH LIÊN KẾT GOOGLE SHEET ---
-// 👇👇👇 THAY LINK CỦA BÁC VÀO DƯỚI ĐÂY 👇👇👇
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzD555CzroB8u6gI89-5LW6MvR7TiMPuDIA8sSS3sbHWDXm6cenNwKhBi7YsDMiE7s/exec"; 
+// 👇👇👇 THAY LINK MỚI VÀO ĐÂY 👇👇👇
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyBIF586nVJIsI75RAFLpbMC2FJoZEX1VM1ddJuuaouFiT3nWqIgGdZM7PiVwiqiZI/exec"; 
 const APPS_SCRIPT_SECRET = "VNGEN123"; 
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
@@ -48,7 +47,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v16-final', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v16-final-fix', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 // =================================================================
 // PHẦN A: WEB ADMIN ROUTES
@@ -74,8 +73,7 @@ app.get('/admin', checkAuth, async (req, res) => {
         let pages = []; pagesSnap.forEach(doc => pages.push({ id: doc.id, ...doc.data() }));
         let productsSnap = await db.collection('products').get();
         let products = [];
-        if (productsSnap.empty) { /* Nếu rỗng thì có thể thêm default hoặc để trống */ } 
-        else { productsSnap.forEach(doc => products.push({ id: doc.id, ...doc.data() })); }
+        if (productsSnap.empty) { /* Rỗng */ } else { productsSnap.forEach(doc => products.push({ id: doc.id, ...doc.data() })); }
         res.render('admin', { systemStatus, generalRules, pages, products, aiConfig });
     } catch (e) { res.send("Lỗi: " + e.message); }
 });
@@ -154,13 +152,11 @@ app.post('/webhook', (req, res) => {
                     const userState = await loadState(uid);
                     if (userState.is_paused) { await saveHistory(uid, 'Khách', webhook_event.message.text || "[Media]"); return; }
                     if (isMissedCall(webhook_event)) { await handleMissedCall(pageId, senderId); return; }
-                    
                     let userMessage = webhook_event.message.text || "[Khách gửi hình ảnh]";
                     let imageUrl = null;
                     if (webhook_event.message.attachments && webhook_event.message.attachments[0].type === 'image') {
                         imageUrl = webhook_event.message.attachments[0].payload.url;
                     } else if (webhook_event.message.text) userMessage = webhook_event.message.text;
-                    
                     if (userMessage) await processMessage(pageId, senderId, userMessage, imageUrl, userState);
                 }
             }
@@ -235,7 +231,7 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
     finally { processingUserSet.delete(uid); }
 }
 
-// --- HÀM GỬI SĐT SANG SHEET (DEBUG LOG) ---
+// --- HÀM GỬI SĐT SANG SHEET ---
 async function sendPhoneToSheet(phone) {
     if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("xxxxxxxxx")) return;
     try {
@@ -263,7 +259,6 @@ async function buildKnowledgeBaseFromDB() {
     let productSummary = "DANH SÁCH RÚT GỌN:\n";
 
     if (productsSnap.empty) {
-        // Fallback default
         productFull = "Chưa có SP";
     } else {
         productsSnap.forEach(doc => {
@@ -291,7 +286,6 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const historyText = history.map(h => `${h.role}: ${h.content}`).join('\n');
         const greetingName = userName ? "Bác " + userName : "Bác";
         
-        // VIDEO LINKS
         const VIDEO_CHECK_SAMSUNG = "https://www.facebook.com/share/v/1Su33dR62T/"; 
         const VIDEO_INTRO_KWANGDONG = "https://www.facebook.com/share/v/1aX41A7wCY/"; 
 
@@ -353,4 +347,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v16.3 (Final Clean Version) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v16.4 (Final Fix Logic) chạy tại port ${PORT}`));
