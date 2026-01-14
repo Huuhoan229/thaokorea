@@ -1,4 +1,4 @@
-// File: index.js (FULL VERSION v16.0 - AUTO SAVE PHONE TO SHEET & EMAIL ADMIN)
+// File: index.js (FULL VERSION v15.6 - TỪ CHỐI QUÀ KHÉO LÉO + FULL TÍNH NĂNG)
 
 // =================================================================
 // 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH
@@ -12,11 +12,6 @@ const admin = require('firebase-admin');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
 const path = require('path');
-
-// --- CẤU HÌNH LIÊN KẾT GOOGLE SHEET (QUAN TRỌNG) ---
-// Bác dán cái Link "URL Ứng dụng Web" mà bác vừa Deploy bên Apps Script vào đây:
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIAfWDlUDiKJpIMThxAYDYBBDzkWLB84z-ULQVG3keLR6vOODGICwvESzRbV_oQx4/exec"; 
-const APPS_SCRIPT_SECRET = "VNGEN123"; // Mật khẩu khớp với bên Apps Script
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 const PORT = process.env.PORT || 3000;
@@ -48,7 +43,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v16-phone-sync', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v15-diplomatic', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 // =================================================================
 // PHẦN A: WEB ADMIN ROUTES
@@ -188,19 +183,9 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
         if (userMessage.toLowerCase().includes("hủy đơn") || userMessage.toLowerCase().includes("bom hàng")) {
             sendAlertEmail(userName, userMessage);
         }
-
-        // --- TÍNH NĂNG MỚI: TỰ ĐỘNG BẮT SĐT & BẮN SANG GOOGLE SHEET ---
         const phoneRegex = /0\d{9}/; 
         const cleanMsg = userMessage.replace(/\s+/g, '').replace(/\./g, '').replace(/-/g, '');
         const hasPhone = phoneRegex.test(cleanMsg);
-
-        if (hasPhone) {
-            // Lấy chính xác số điện thoại để gửi
-            const matchedPhone = cleanMsg.match(phoneRegex)[0];
-            // Gọi hàm gửi sang Google Sheet (chạy ngầm, không đợi kết quả để tránh lag chat)
-            sendPhoneToSheet(matchedPhone);
-        }
-        // -------------------------------------------------------------
 
         let knowledgeBase = await buildKnowledgeBaseFromDB();
         let geminiResult = await callGeminiRetail(userMessage, userName, userState.history, knowledgeBase, imageUrl, hasPhone);
@@ -244,21 +229,6 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
     finally { processingUserSet.delete(uid); }
 }
 
-// --- HÀM GỬI SĐT SANG GOOGLE SHEET ---
-async function sendPhoneToSheet(phone) {
-    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("xxxxxxxxx")) return;
-    try {
-        console.log(`[SHEET] Đang gửi SĐT: ${phone}...`);
-        await axios.post(APPS_SCRIPT_URL, {
-            secret: APPS_SCRIPT_SECRET,
-            phone: phone
-        });
-        console.log(`[SHEET] Đã gửi thành công.`);
-    } catch (e) {
-        console.error("[SHEET ERROR] Không gửi được:", e.message);
-    }
-}
-
 async function buildKnowledgeBaseFromDB() {
     let rulesDoc = await db.collection('settings').doc('generalRules').get();
     let rules = rulesDoc.exists ? rulesDoc.data().content : getDefaultRules();
@@ -300,19 +270,22 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
         const timeContext = (now.getHours() >= 8 && now.getHours() < 17) ? "GIỜ HÀNH CHÍNH" : "NGOÀI GIỜ";
 
-        // LINK VIDEO
+        // LINK VIDEO CỐ ĐỊNH CỦA BÁC
         const VIDEO_CHECK_SAMSUNG = "https://www.facebook.com/share/v/1Su33dR62T/"; 
         const VIDEO_INTRO_KWANGDONG = "https://www.facebook.com/share/v/1aX41A7wCY/"; 
 
+        // PROMPT v15.6: THAY ĐỔI CÁCH TỪ CHỐI QUÀ
         let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea. Khách: '${greetingName}'.
 
 **DỮ LIỆU SHOP:**
 ${knowledgeBase}
 
-**LUẬT QUÀ TẶNG (NGHIÊM NGẶT):**
+**LUẬT QUÀ TẶNG & ĐỔI QUÀ (NGHIÊM NGẶT):**
 1. **QUÀ HỢP LỆ:** Dầu Lạnh, Cao Dán, Kẹo Sâm.
 2. **CẤM TẶNG:** Dầu Nóng (Antiphlamine).
-3. **CÁCH TỪ CHỐI:** "Dạ Dầu Nóng (Antiphlamine) không nằm trong danh sách quà tặng của chương trình đợt này ạ. Bác thông cảm đổi sang Dầu Lạnh/Cao Dán giúp con nhé!".
+3. **CÁCH TỪ CHỐI (KHI KHÁCH ĐÒI DẦU NÓNG):**
+   - Nói khéo: "Dạ Dầu Nóng (Antiphlamine) không nằm trong danh sách quà tặng của chương trình khuyến mãi đợt này ạ. Bác thông cảm đổi sang Dầu Lạnh, Cao Dán hoặc Kẹo Sâm giúp con nhé!".
+   - Lý do: Không nằm trong chương trình (nghe chuyên nghiệp, tránh nói "đắt/rẻ").
 
 **VIDEO ĐẶC BIỆT:**
 - Hỏi check Samsung -> Gửi Video: "${VIDEO_CHECK_SAMSUNG}".
@@ -320,10 +293,9 @@ ${knowledgeBase}
 
 **CÁC QUY TẮC KHÁC:**
 - An Cung Kwangdong: Chỉ nói "Có chứa trầm hương". Cấm nói "15%".
-- Báo giá: Mặc định Giá Chuẩn -> Chê đắt mới Giảm hỗ trợ.
+- Báo giá: Mặc định Giá Chuẩn -> Chê đắt mới Giảm hỗ trợ (cắt quà).
 - Vision: Không dùng từ "Lạ quá". Gọi đúng tên SP.
 - Link: Không gửi link trong Text.
-- SĐT Khách: ${hasPhone ? "ĐÃ CÓ (XÁC NHẬN)" : "CHƯA CÓ"}.
 
 **LỊCH SỬ:**
 ${historyText}
@@ -364,4 +336,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v16.0 (Phone Sync) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v15.6 (Diplomatic Gift Refusal) chạy tại port ${PORT}`));
