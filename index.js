@@ -14,7 +14,7 @@ const nodemailer = require('nodemailer');
 const path = require('path');
 
 // 👇👇👇 LINK APPS SCRIPT CỦA BÁC 👇👇👇
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyxxxxxxxxx/exec"; 
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz80_RIYwoTmjZd3MLWrrtmO2auM_s-LHLJcPAYb_TrgbCbQbT4bz90eC5gBs24dI0/exec"; 
 const APPS_SCRIPT_SECRET = "VNGEN123"; 
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
