@@ -1,4 +1,4 @@
-// File: index.js (FULL VERSION v16.8 - LIMIT HISTORY 10 MESSAGES)
+// File: index.js (FULL VERSION v17.0 - AI VISION PRO)
 
 // =================================================================
 // 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH
@@ -13,8 +13,8 @@ const fs = require('fs');
 const nodemailer = require('nodemailer');
 const path = require('path');
 
-// 👇👇👇 GIỮ NGUYÊN LINK APPS SCRIPT CỦA BÁC 👇👇👇
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz80_RIYwoTmjZd3MLWrrtmO2auM_s-LHLJcPAYb_TrgbCbQbT4bz90eC5gBs24dI0/exec"; 
+// 👇👇👇 LINK APPS SCRIPT CỦA BÁC 👇👇👇
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyxxxxxxxxx/exec"; 
 const APPS_SCRIPT_SECRET = "VNGEN123"; 
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
@@ -47,7 +47,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v16-limit-history', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v17-vision-pro', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 // =================================================================
 // PHẦN A: WEB ADMIN ROUTES
@@ -136,19 +136,31 @@ app.post('/webhook', (req, res) => {
                 if (webhook_event.message) {
                     const senderId = webhook_event.sender.id;
                     const uid = `${pageId}_${senderId}`;
-                    if (webhook_event.message.sticker_id) return;
+                    
+                    // ⚠️ CHÚ Ý: Em đã bỏ dòng "if (webhook_event.message.sticker_id) return;"
+                    // Để Bot NHẬN CẢ STICKER và xử lý bằng AI
                     
                     const userState = await loadState(uid);
                     if (userState.is_paused) { await saveHistory(uid, 'Khách', webhook_event.message.text || "[Media]"); return; }
                     if (isMissedCall(webhook_event)) { await handleMissedCall(pageId, senderId); return; }
                     
-                    let userMessage = webhook_event.message.text || "[Khách gửi hình ảnh]";
+                    let userMessage = webhook_event.message.text || "";
                     let imageUrl = null;
-                    if (webhook_event.message.attachments && webhook_event.message.attachments[0].type === 'image') {
-                        imageUrl = webhook_event.message.attachments[0].payload.url;
-                    } else if (webhook_event.message.text) userMessage = webhook_event.message.text;
-                    
-                    if (userMessage) await processMessage(pageId, senderId, userMessage, imageUrl, userState);
+
+                    // Xử lý ảnh / Sticker
+                    if (webhook_event.message.attachments) {
+                        const att = webhook_event.message.attachments[0];
+                        if (att.type === 'image') {
+                            imageUrl = att.payload.url;
+                            if (!userMessage) userMessage = "[Khách gửi ảnh]";
+                        } else if (att.type === 'sticker' || webhook_event.message.sticker_id) {
+                            // Nếu là Sticker -> Coi như là ảnh để AI nhìn
+                            if (att.payload) imageUrl = att.payload.url;
+                            if (!userMessage) userMessage = "[Khách gửi Sticker]";
+                        }
+                    }
+
+                    if (userMessage || imageUrl) await processMessage(pageId, senderId, userMessage, imageUrl, userState);
                 }
             }
         });
@@ -169,23 +181,16 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
             sendAlertEmail(userName, userMessage);
         }
 
-        // --- XỬ LÝ SĐT (CHỈ LẤY 10 TIN GẦN NHẤT) ---
+        // --- XỬ LÝ SĐT ---
         const phoneRegex = /0\d{9}/; 
         const cleanMsg = userMessage.replace(/\s+/g, '').replace(/\./g, '').replace(/-/g, '');
         const hasPhone = phoneRegex.test(cleanMsg);
 
         if (hasPhone) {
             const matchedPhone = cleanMsg.match(phoneRegex)[0];
-            
-            // 1. Cắt lấy 10 tin nhắn gần nhất từ lịch sử
-            // slice(-10) sẽ lấy 10 phần tử cuối mảng
             let recentHistory = userState.history.slice(-10);
             let historyText = recentHistory.map(h => `[${h.role}]: ${h.content}`).join('\n');
-            
-            // 2. Gộp với tin nhắn mới nhất
             let fullConversation = `... (Lược bỏ tin cũ) ...\n${historyText}\n----------------\n[KHÁCH CHỐT]: ${userMessage}`;
-            
-            // 3. Gửi sang Sheet
             sendPhoneToSheet(matchedPhone, userName, fullConversation);
         }
 
@@ -232,25 +237,18 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
     finally { processingUserSet.delete(uid); }
 }
 
-// --- HÀM GỬI SĐT SANG SHEET ---
 async function sendPhoneToSheet(phone, name, message) {
     if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("xxxxxxxxx")) return;
     try {
-        console.log(`[SHEET] Đang gửi thông tin khách: ${name} (Limit History)...`);
+        console.log(`[SHEET] Đang gửi thông tin khách: ${name}...`);
         let res = await axios.post(APPS_SCRIPT_URL, {
             secret: APPS_SCRIPT_SECRET,
             phone: phone,
             name: name,      
             message: message 
         });
-        if (res.data.ok) {
-            console.log(`[SHEET] ✅ OK. Lưu vào dòng ${res.data.row}`);
-        } else {
-            console.log(`[SHEET] ❌ Lỗi Apps Script: ${res.data.error}`);
-        }
-    } catch (e) {
-        console.error("[SHEET ERROR] Lỗi kết nối:", e.message);
-    }
+        if (res.data.ok) console.log(`[SHEET] ✅ OK.`);
+    } catch (e) { console.error("[SHEET ERROR] Lỗi kết nối:", e.message); }
 }
 
 async function buildKnowledgeBaseFromDB() {
@@ -284,26 +282,35 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const greetingName = userName ? "Bác " + userName : "Bác";
         const VIDEO_CHECK_SAMSUNG = "https://www.facebook.com/share/v/1Su33dR62T/"; 
         const VIDEO_INTRO_KWANGDONG = "https://www.facebook.com/share/v/1aX41A7wCY/"; 
+        
+        // --- PROMPT "NÉM AI VÀO TRONG" (Tư duy nhận diện) ---
         let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea. Khách: '${greetingName}'.
+
 **DỮ LIỆU SHOP:**
 ${knowledgeBase}
-**QUY TẮC QUÀ TẶNG (TUYỆT ĐỐI):**
-1. **Quà hợp lệ:** Dầu Lạnh, Cao Dán, Kẹo Sâm.
-2. **CẤM:** Tặng Dầu Nóng Antiphlamine.
-3. **Từ chối khéo:** "Dạ Dầu Nóng (Antiphlamine) không nằm trong danh sách quà tặng của chương trình đợt này ạ. Bác thông cảm chọn sang Dầu Lạnh/Cao Dán/Kẹo Sâm giúp con nhé!".
-**QUY TẮC VIDEO:**
-- Hỏi check Samsung -> Gửi Video: "${VIDEO_CHECK_SAMSUNG}"
-- Hỏi Kwangdong -> Gửi Video: "${VIDEO_INTRO_KWANGDONG}"
+
+**NHIỆM VỤ NHẬN DIỆN HÌNH ẢNH (AI VISION):**
+Nếu khách gửi ảnh, bạn hãy tự phân tích nội dung ảnh đó:
+1. **Trường hợp A (Sản phẩm Shop bán):**
+   - Nếu nhìn thấy Sâm, An Cung, Tinh Dầu Thông Đỏ, Thuốc... -> Hãy tư vấn ngay như một chuyên gia.
+   - Báo giá chuẩn và quà tặng.
+2. **Trường hợp B (Sticker / Meme / Ảnh vui / Mặt cười):**
+   - TUYỆT ĐỐI KHÔNG nói "ảnh lạ" hay "không nhận diện được".
+   - Hãy phản ứng tự nhiên: "Dạ :D", "Hihi", "Dạ con nghe ạ", hoặc thả icon vui vẻ.
+3. **Trường hợp C (Sản phẩm lạ / Hàng Shop không bán):**
+   - Khéo léo lái về sản phẩm của mình. Ví dụ: "Dạ mẫu này bên em chưa về hàng, Bác tham khảo mẫu An Cung Samsung này dùng tốt lắm ạ...".
+
 **QUY TẮC KHÁC:**
-- An Cung Kwangdong: Chỉ nói "Có chứa trầm hương". Cấm nói 15%.
-- Báo giá: Mặc định Giá Chuẩn -> Chê đắt mới Giảm hỗ trợ.
-- Vision: Không dùng từ "Lạ quá". Gọi đúng tên SP.
-- Link: Không gửi link trong Text.
-- SĐT: ${hasPhone ? "ĐÃ CÓ (XÁC NHẬN)" : "CHƯA CÓ"}.
-**LỊCH SỬ:**
+- Quà tặng: CẤM tặng Dầu Nóng. Chỉ tặng Dầu Lạnh/Cao Dán/Kẹo.
+- Video: Hỏi Samsung gửi "${VIDEO_CHECK_SAMSUNG}", Hỏi Kwangdong gửi "${VIDEO_INTRO_KWANGDONG}".
+- SĐT: ${hasPhone ? "ĐÃ CÓ" : "CHƯA CÓ"}.
+
+**LỊCH SỬ CHAT:**
 ${historyText}
+
 **INPUT:** "${userMessage}"
-${imageUrl ? "[Khách gửi ảnh]" : ""}
+${imageUrl ? "[Khách gửi kèm một bức ảnh/sticker. Hãy nhìn và phân tích nó]" : ""}
+
 **JSON:** { "response_message": "...", "image_url_to_send": "", "video_url_to_send": "" }`;
 
         let parts = [{ text: prompt }];
@@ -329,4 +336,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v16.8 (History Limit 10) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v17.0 (AI Vision - Sticker Friendly) chạy tại port ${PORT}`));
