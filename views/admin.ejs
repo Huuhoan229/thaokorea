@@ -1,39 +1,63 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Shop Thảo Korea (v19.5)</title>
+    <title>Admin Shop Thảo Korea (v19.8)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         body { background-color: #f0f2f5; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 24px; }
         .card-header { border-radius: 12px 12px 0 0 !important; font-weight: 700; padding: 15px 20px; }
         .btn-sm { border-radius: 6px; }
         .form-control, .form-select { border-radius: 8px; }
+        
         .bg-gradient-primary { background: linear-gradient(45deg, #4e73df, #224abe); color: white; }
         .bg-gradient-warning { background: linear-gradient(45deg, #f6c23e, #dda20a); color: #333; }
+        
         .product-thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6; background-color: #fff; }
         .form-check-input:checked { background-color: #1cc88a; border-color: #1cc88a; }
         .text-instock { color: #1cc88a; font-weight: bold; }
         .text-outstock { color: #e74a3b; font-weight: bold; }
         
-        /* Style cho vùng chọn quà */
-        .gift-selector {
-            max-height: 100px;
-            overflow-y: auto;
-            border: 1px solid #e3e6f0;
-            padding: 8px;
-            border-radius: 6px;
-            background: #fff;
-        }
-        .gift-option { font-size: 0.85em; display: block; margin-bottom: 4px; }
+        /* Status Card */
+        .status-indicator { width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .status-on { background-color: #1cc88a; box-shadow: 0 0 10px #1cc88a; }
+        .status-off { background-color: #e74a3b; box-shadow: 0 0 10px #e74a3b; }
     </style>
 </head>
 <body>
     <div class="container" style="max-width: 1200px;">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="fw-bold text-primary">🛍️ QUẢN LÝ SHOP & QUÀ TẶNG</h3>
+            <h3 class="fw-bold text-primary"><i class="bi bi-robot"></i> ADMIN CENTER</h3>
             <a href="/logout" class="btn btn-outline-secondary">Đăng xuất</a>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="fw-bold text-secondary mb-1">TRẠNG THÁI HỆ THỐNG</h5>
+                    <div class="d-flex align-items-center">
+                        <span class="status-indicator <%= systemStatus ? 'status-on' : 'status-off' %>"></span>
+                        <h4 class="m-0 fw-bold <%= systemStatus ? 'text-success' : 'text-danger' %>">
+                            <%= systemStatus ? 'BOT ĐANG HOẠT ĐỘNG' : 'BOT ĐANG TẠM DỪNG' %>
+                        </h4>
+                    </div>
+                    <small class="text-muted"><%= systemStatus ? 'Bot sẽ tự động trả lời khách hàng.' : 'Bot sẽ im lặng, không trả lời tin nhắn.' %></small>
+                </div>
+                
+                <form action="/admin/toggle-system" method="POST" style="min-width: 200px;">
+                    <% if(systemStatus) { %>
+                        <button type="submit" name="status" value="false" class="btn btn-danger w-100 fw-bold py-3 rounded-3 shadow-sm">
+                            <i class="bi bi-power"></i> TẮT BOT NGAY
+                        </button>
+                    <% } else { %>
+                        <button type="submit" name="status" value="true" class="btn btn-success w-100 fw-bold py-3 rounded-3 shadow-sm">
+                            <i class="bi bi-power"></i> BẬT BOT LÊN
+                        </button>
+                    <% } %>
+                </form>
+            </div>
         </div>
 
         <div class="card">
@@ -78,7 +102,7 @@
             <div class="card-header bg-gradient-primary">📦 2. DANH SÁCH SẢN PHẨM</div>
             <div class="card-body">
                 <div class="alert alert-info py-2 small">
-                    <i class="bi bi-info-circle"></i> <strong>Lưu ý:</strong> Tích vào những món quà mà sản phẩm đó ĐƯỢC PHÉP tặng. Nếu không tích món nào nghĩa là KHÔNG CÓ QUÀ.
+                    <i class="bi bi-info-circle"></i> <strong>Lưu ý:</strong> Tích vào những món quà mà sản phẩm đó ĐƯỢC PHÉP tặng.
                 </div>
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
@@ -122,14 +146,12 @@
                                 </td>
 
                                 <td>
-                                    <div class="gift-selector">
+                                    <div class="gift-selector" style="max-height: 100px; overflow-y: auto; border: 1px solid #e3e6f0; padding: 5px; border-radius: 5px; background: #fff;">
                                         <% customGifts.forEach(g => { 
-                                            // Kiểm tra xem món quà này có trong danh sách quà của SP không
                                             let isSelected = p.allowedGifts && p.allowedGifts.includes(g.name);
-                                            // Chỉ hiện những món quà CÒN HÀNG để chọn
                                             if (g.inStock) {
                                         %>
-                                            <div class="form-check gift-option">
+                                            <div class="form-check gift-option" style="font-size: 0.85em; margin-bottom: 2px;">
                                                 <input class="form-check-input" type="checkbox" name="allowedGifts" value="<%= g.name %>" <%= isSelected ? 'checked' : '' %>>
                                                 <label class="form-check-label"><%= g.name %></label>
                                             </div>
