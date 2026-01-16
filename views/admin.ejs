@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Shop Thảo Korea (v19.3)</title>
+    <title>Admin Shop Thảo Korea (v19.5)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -12,15 +12,21 @@
         .form-control, .form-select { border-radius: 8px; }
         .bg-gradient-primary { background: linear-gradient(45deg, #4e73df, #224abe); color: white; }
         .bg-gradient-warning { background: linear-gradient(45deg, #f6c23e, #dda20a); color: #333; }
-        
-        .product-thumb { 
-            width: 60px; height: 60px; object-fit: cover; 
-            border-radius: 8px; border: 1px solid #dee2e6; background-color: #fff;
-        }
+        .product-thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6; background-color: #fff; }
         .form-check-input:checked { background-color: #1cc88a; border-color: #1cc88a; }
-        .stock-status { font-weight: bold; font-size: 0.9em; }
-        .text-instock { color: #1cc88a; }
-        .text-outstock { color: #e74a3b; }
+        .text-instock { color: #1cc88a; font-weight: bold; }
+        .text-outstock { color: #e74a3b; font-weight: bold; }
+        
+        /* Style cho vùng chọn quà */
+        .gift-selector {
+            max-height: 100px;
+            overflow-y: auto;
+            border: 1px solid #e3e6f0;
+            padding: 8px;
+            border-radius: 6px;
+            background: #fff;
+        }
+        .gift-option { font-size: 0.85em; display: block; margin-bottom: 4px; }
     </style>
 </head>
 <body>
@@ -31,7 +37,7 @@
         </div>
 
         <div class="card">
-            <div class="card-header bg-gradient-warning">🎁 1. QUẢN LÝ KHO QUÀ TẶNG</div>
+            <div class="card-header bg-gradient-warning">🎁 1. KHO QUÀ TẶNG (Tạo danh sách quà để chọn)</div>
             <div class="card-body">
                 <table class="table align-middle">
                     <thead class="table-light"><tr><th>Tên Quà</th><th>Trạng Thái Kho</th><th>Hành Động</th></tr></thead>
@@ -44,7 +50,7 @@
                                     <input type="hidden" name="id" value="<%= g.id %>">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" onchange="this.form.submit()" <%= g.inStock ? 'checked' : '' %>>
-                                        <label class="form-check-label stock-status <%= g.inStock ? 'text-instock' : 'text-outstock' %>">
+                                        <label class="form-check-label <%= g.inStock ? 'text-instock' : 'text-outstock' %>">
                                             <%= g.inStock ? 'CÒN HÀNG' : 'HẾT HÀNG' %>
                                         </label>
                                     </div>
@@ -62,7 +68,7 @@
                 </table>
                 <form action="/admin/add-gift" method="POST" class="row g-2 mt-2 border-top pt-3">
                     <div class="col-auto"><label class="col-form-label fw-bold">Thêm Quà:</label></div>
-                    <div class="col-md-6"><input type="text" name="name" class="form-control" placeholder="Ví dụ: Khẩu trang 4D..." required></div>
+                    <div class="col-md-6"><input type="text" name="name" class="form-control" placeholder="Ví dụ: Dầu lạnh, Kẹo sâm..." required></div>
                     <div class="col-auto"><button type="submit" class="btn btn-warning fw-bold">Thêm Mới</button></div>
                 </form>
             </div>
@@ -71,15 +77,18 @@
         <div class="card">
             <div class="card-header bg-gradient-primary">📦 2. DANH SÁCH SẢN PHẨM</div>
             <div class="card-body">
+                <div class="alert alert-info py-2 small">
+                    <i class="bi bi-info-circle"></i> <strong>Lưu ý:</strong> Tích vào những món quà mà sản phẩm đó ĐƯỢC PHÉP tặng. Nếu không tích món nào nghĩa là KHÔNG CÓ QUÀ.
+                </div>
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
-                            <th style="width: 10%" class="text-center">Ảnh</th>
+                            <th style="width: 8%" class="text-center">Ảnh</th>
                             <th style="width: 25%">Tên SP</th>
-                            <th style="width: 15%">Giá</th>
-                            <th style="width: 15%">Kho Hàng</th>
-                            <th style="width: 15%">Chế Độ Quà</th>
-                            <th style="width: 20%">Hành động</th>
+                            <th style="width: 12%">Giá</th>
+                            <th style="width: 12%">Kho</th>
+                            <th style="width: 28%">Chọn Quà Tặng Kèm (Tích chọn)</th>
+                            <th style="width: 15%">Hành động</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -91,6 +100,7 @@
                                 <input type="hidden" name="price" value="<%= p.price %>">
                                 <input type="hidden" name="desc" value="<%= p.desc %>">
                                 <input type="hidden" name="image" value="<%= p.image %>">
+                                <input type="hidden" name="inStock" value="<%= p.inStock %>">
                                 
                                 <td class="text-center">
                                     <% if (p.image && p.image.includes('http')) { %>
@@ -99,24 +109,40 @@
                                         <span class="badge bg-secondary">No Img</span>
                                     <% } %>
                                 </td>
+                                
                                 <td><strong><%= p.name %></strong></td>
                                 <td class="text-danger fw-bold"><%= p.price %></td>
+                                
                                 <td>
-                                    <select name="inStock" class="form-select form-select-sm <%= p.inStock ? 'text-success fw-bold' : 'text-danger fw-bold' %>" onchange="this.form.submit()">
-                                        <option value="true" <%= p.inStock ? 'selected' : '' %>>✅ CÒN</option>
-                                        <option value="false" <%= !p.inStock ? 'selected' : '' %>>❌ HẾT</option>
-                                    </select>
+                                    <% if(p.inStock) { %> 
+                                        <span class="badge bg-success">CÒN</span> 
+                                    <% } else { %> 
+                                        <span class="badge bg-danger">HẾT</span> 
+                                    <% } %>
                                 </td>
+
                                 <td>
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" name="hasGift" value="true" onchange="this.form.submit()" <%= p.hasGift ? 'checked' : '' %>>
-                                        <label class="form-check-label fw-bold <%= p.hasGift ? 'text-primary' : 'text-secondary' %>">
-                                            <%= p.hasGift ? '🎁 TẶNG' : '⛔ KHÔNG' %>
-                                        </label>
+                                    <div class="gift-selector">
+                                        <% customGifts.forEach(g => { 
+                                            // Kiểm tra xem món quà này có trong danh sách quà của SP không
+                                            let isSelected = p.allowedGifts && p.allowedGifts.includes(g.name);
+                                            // Chỉ hiện những món quà CÒN HÀNG để chọn
+                                            if (g.inStock) {
+                                        %>
+                                            <div class="form-check gift-option">
+                                                <input class="form-check-input" type="checkbox" name="allowedGifts" value="<%= g.name %>" <%= isSelected ? 'checked' : '' %>>
+                                                <label class="form-check-label"><%= g.name %></label>
+                                            </div>
+                                        <% }}) %>
+                                        <% if (customGifts.filter(g => g.inStock).length === 0) { %>
+                                            <small class="text-muted fst-italic">Kho quà đang trống</small>
+                                        <% } %>
                                     </div>
+                                    <button type="submit" class="btn btn-sm btn-link text-decoration-none p-0 mt-1">💾 Lưu Quà</button>
                                 </td>
+
                                 <td>
-                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal<%= p.id %>">Sửa</button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal<%= p.id %>">Sửa TT</button>
                                     <button type="submit" formaction="/admin/delete-product" class="btn btn-sm btn-outline-danger">Xóa</button>
                                 </td>
                             </form>
@@ -125,24 +151,22 @@
                         <div class="modal fade" id="editModal<%= p.id %>" tabindex="-1">
                             <div class="modal-dialog">
                                 <div class="modal-content">
-                                    <form action="/admin/save-product" method="POST">
-                                        <div class="modal-header bg-primary text-white"><h5 class="modal-title">Sửa SP</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                                    <form action="/admin/save-product-info" method="POST">
+                                        <div class="modal-header bg-primary text-white"><h5 class="modal-title">Sửa Thông Tin SP</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                                         <div class="modal-body">
                                             <input type="hidden" name="id" value="<%= p.id %>">
-                                            <input type="hidden" name="inStock" value="<%= p.inStock %>">
-                                            <div class="mb-3">
-                                                <label class="fw-bold">Chế độ Quà Tặng</label>
-                                                <select name="hasGift" class="form-control">
-                                                    <option value="true" <%= p.hasGift ? 'selected' : '' %>>🎁 Có Tặng Quà</option>
-                                                    <option value="false" <%= !p.hasGift ? 'selected' : '' %>>⛔ Không Tặng Quà</option>
-                                                </select>
-                                            </div>
                                             <div class="mb-3"><label class="fw-bold">Tên SP</label><input type="text" name="name" class="form-control" value="<%= p.name %>"></div>
                                             <div class="mb-3"><label class="fw-bold">Giá</label><input type="text" name="price" class="form-control" value="<%= p.price %>"></div>
+                                            <div class="mb-3"><label class="fw-bold">Trạng thái kho</label>
+                                                <select name="inStock" class="form-select">
+                                                    <option value="true" <%= p.inStock ? 'selected' : '' %>>Còn hàng</option>
+                                                    <option value="false" <%= !p.inStock ? 'selected' : '' %>>Hết hàng</option>
+                                                </select>
+                                            </div>
                                             <div class="mb-3"><label class="fw-bold">Link Ảnh</label><input type="text" name="image" class="form-control" value="<%= p.image %>"></div>
                                             <div class="mb-3"><label class="fw-bold">Mô tả thêm</label><textarea name="desc" class="form-control" rows="3"><%= p.desc %></textarea></div>
                                         </div>
-                                        <div class="modal-footer"><button type="submit" class="btn btn-primary w-100">Lưu Thay Đổi</button></div>
+                                        <div class="modal-footer"><button type="submit" class="btn btn-primary w-100">Lưu Thông Tin</button></div>
                                     </form>
                                 </div>
                             </div>
@@ -153,9 +177,7 @@
 
                 <div class="bg-light p-3 rounded mt-3 border">
                     <h6 class="fw-bold mb-3">➕ Thêm Sản Phẩm Mới</h6>
-                    <form action="/admin/save-product" method="POST" class="row g-2">
-                        <input type="hidden" name="inStock" value="true">
-                        <input type="hidden" name="hasGift" value="true">
+                    <form action="/admin/add-product" method="POST" class="row g-2">
                         <div class="col-md-3"><input type="text" name="name" class="form-control" placeholder="Tên Sản Phẩm" required></div>
                         <div class="col-md-2"><input type="text" name="price" class="form-control" placeholder="Giá bán" required></div>
                         <div class="col-md-4"><input type="text" name="image" class="form-control" placeholder="Link Ảnh (URL)..."></div>
