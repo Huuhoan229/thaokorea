@@ -1,4 +1,4 @@
-// File: index.js (VERSION v19.0 - CUSTOM GIFT MANAGER + PRODUCT TOGGLE)
+// File: index.js (VERSION v19.1 - AUTO RESTORE DEFAULT GIFTS)
 
 require('dotenv').config();
 const express = require('express');
@@ -34,7 +34,26 @@ try {
     admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
     db = admin.firestore();
     console.log("✅ Đã kết nối Firestore.");
+    
+    // --- TỰ ĐỘNG KHÔI PHỤC QUÀ CŨ NẾU MẤT ---
+    seedDefaultGifts(); 
+
 } catch (error) { console.error("❌ LỖI FIRESTORE:", error); process.exit(1); }
+
+// HÀM KHÔI PHỤC QUÀ
+async function seedDefaultGifts() {
+    try {
+        const snapshot = await db.collection('customGifts').get();
+        if (snapshot.empty) {
+            console.log("⚠️ Danh sách quà đang trống. Đang khôi phục quà mặc định...");
+            const defaults = ["Dầu Lạnh", "Cao Dán", "Kẹo Sâm"];
+            for (const gift of defaults) {
+                await db.collection('customGifts').add({ name: gift, inStock: true });
+            }
+            console.log("✅ Đã khôi phục xong: Dầu Lạnh, Cao Dán, Kẹo Sâm.");
+        }
+    } catch (e) { console.error("Lỗi khôi phục quà:", e); }
+}
 
 // =================================================================
 // 3. CẤU HÌNH SERVER WEB
@@ -44,10 +63,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v19-custom-gift', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v19-1-restore', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 // =================================================================
-// PHẦN A: WEB ADMIN ROUTES (QUẢN LÝ QUÀ & SP)
+// PHẦN A: WEB ADMIN ROUTES
 // =================================================================
 function checkAuth(req, res, next) { if (req.session.loggedIn) next(); else res.redirect('/login'); }
 app.get('/login', (req, res) => res.render('login'));
@@ -65,12 +84,12 @@ app.get('/admin', checkAuth, async (req, res) => {
         let configDoc = await db.collection('settings').doc('systemConfig').get();
         let systemStatus = configDoc.exists ? configDoc.data().isActive : true;
         
-        // 1. LẤY DANH SÁCH QUÀ TÙY CHỈNH (SECTION 1)
+        // 1. LẤY DANH SÁCH QUÀ TÙY CHỈNH
         let giftsSnap = await db.collection('customGifts').get();
         let customGifts = [];
         giftsSnap.forEach(doc => customGifts.push({ id: doc.id, ...doc.data() }));
 
-        // 2. LẤY DANH SÁCH SẢN PHẨM (SECTION 2)
+        // 2. LẤY DANH SÁCH SẢN PHẨM
         let productsSnap = await db.collection('products').get();
         let products = [];
         if (!productsSnap.empty) productsSnap.forEach(doc => products.push({ id: doc.id, ...doc.data() }));
@@ -79,7 +98,6 @@ app.get('/admin', checkAuth, async (req, res) => {
     } catch (e) { res.send("Lỗi: " + e.message); }
 });
 
-// --- ROUTES XỬ LÝ QUÀ TẶNG (MỚI) ---
 app.post('/admin/add-gift', checkAuth, async (req, res) => {
     await db.collection('customGifts').add({ name: req.body.name, inStock: true });
     res.redirect('/admin');
@@ -95,21 +113,16 @@ app.post('/admin/delete-gift', checkAuth, async (req, res) => {
     res.redirect('/admin');
 });
 
-// --- ROUTES XỬ LÝ SẢN PHẨM (CẬP NHẬT LOGIC) ---
 app.post('/admin/save-product', checkAuth, async (req, res) => { 
     const { id, inStock, hasGift, ...data } = req.body; 
-    
-    // Chuyển đổi dữ liệu form sang boolean
     data.inStock = (inStock === 'true' || inStock === true);
-    data.hasGift = (hasGift === 'true' || hasGift === 'on'); // Nếu tick checkbox thì nó gửi 'true' hoặc 'on'
-
+    data.hasGift = (hasGift === 'true' || hasGift === 'on'); 
     if (id) await db.collection('products').doc(id).update(data); 
     else await db.collection('products').add(data); 
     res.redirect('/admin'); 
 });
 app.post('/admin/delete-product', checkAuth, async (req, res) => { await db.collection('products').doc(req.body.id).delete(); res.redirect('/admin'); });
 
-// --- ROUTES CẤU HÌNH KHÁC ---
 app.post('/admin/save-ai', checkAuth, async (req, res) => { 
     let updateData = { apiKey: req.body.apiKey.trim() };
     updateData.modelName = "gemini-2.0-flash";
@@ -274,15 +287,14 @@ async function buildKnowledgeBaseFromDB() {
     let rulesDoc = await db.collection('settings').doc('generalRules').get();
     let rules = rulesDoc.exists ? rulesDoc.data().content : "Luật chung...";
     
-    // 1. LẤY DANH SÁCH QUÀ TÙY CHỈNH (CHỈ LẤY MÓN CÒN HÀNG)
+    // 1. LẤY DANH SÁCH QUÀ (SECTION 1) - CHỈ LẤY MÓN CÒN HÀNG
     let giftsSnap = await db.collection('customGifts').where('inStock', '==', true).get();
     let activeGiftNames = [];
     giftsSnap.forEach(doc => activeGiftNames.push(doc.data().name));
     
-    // Tạo chuỗi quà chung: "Dầu Lạnh hoặc Kẹo Sâm..."
     let commonGiftString = activeGiftNames.length > 0 ? activeGiftNames.join(" HOẶC ") : "Hiện đã hết quà tặng";
 
-    // 2. LẤY SẢN PHẨM & GẮN QUÀ
+    // 2. LẤY SP (SECTION 2)
     let productsSnap = await db.collection('products').get();
     let productFull = "";
     let productSummary = "DANH SÁCH RÚT GỌN:\n";
@@ -290,19 +302,14 @@ async function buildKnowledgeBaseFromDB() {
     if (productsSnap.empty) { productFull = "Chưa có SP"; } else {
         productsSnap.forEach(doc => {
             let p = doc.data();
-            
-            // Xử lý tồn kho
             let stockStatus = (p.inStock === false) ? " (❌ TẠM HẾT HÀNG)" : " (✅ CÒN HÀNG)";
             let nameWithStock = p.name + stockStatus;
 
-            // Xử lý quà tặng (LOGIC MỚI)
-            // Nếu hasGift = true -> Gán chuỗi quà chung
-            // Nếu hasGift = false -> Gán "Không quà"
+            // NẾU BẬT QUÀ -> THAY THẾ TOÀN BỘ QUÀ CŨ BẰNG DANH SÁCH MỚI
             let giftInfo = (p.hasGift === true) 
                 ? `Tặng 1 trong các món: [${commonGiftString}] + Freeship` 
                 : `Sản phẩm này KHÔNG áp dụng tặng quà + Freeship`;
 
-            // Làm sạch mô tả
             let cleanDesc = p.desc || "";
             if (p.name.toLowerCase().includes("kwangdong")) {
                 cleanDesc = cleanDesc.replace(/15%/g, "").replace(/15 phần trăm/g, ""); 
@@ -311,7 +318,6 @@ async function buildKnowledgeBaseFromDB() {
 
             productFull += `- Tên: ${nameWithStock}\n  + Giá CHUẨN: ${p.price}\n  + Quà Tặng: ${giftInfo}\n  + Thông tin: ${cleanDesc}\n  + Ảnh (URL): "${p.image}"\n`;
             
-            // Summary cho AI
             let priceVal = parseInt(p.price.replace(/\D/g, '')) || 0;
             let isMainProduct = priceVal >= 500 || p.name.includes("An Cung") || p.name.includes("Thông Đỏ");
             if (isMainProduct) productSummary += `- ${nameWithStock}: ${p.price}\n`;
@@ -335,8 +341,8 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
 ${knowledgeBase}
 
 **QUY TẮC QUAN TRỌNG:**
-1. **Quà Tặng:** Chỉ những sản phẩm ghi "Tặng 1 trong các món..." mới được tư vấn quà. Sản phẩm ghi "KHÔNG áp dụng tặng quà" thì tuyệt đối không hứa tặng.
-2. **Danh sách quà:** Chỉ được mời những món quà có trong danh sách ở trên (Do Admin quy định).
+1. **Quà Tặng:** BẠN PHẢI QUÊN HẾT NHỮNG QUÀ TẶNG CŨ. Chỉ được tư vấn quà có trong danh sách: "DANH SÁCH QUÀ TẶNG HIỆN CÓ" ở trên.
+2. **Sản phẩm:** Nếu sản phẩm ghi "Tặng 1 trong các món..." thì liệt kê quà ra. Nếu ghi "KHÔNG áp dụng tặng quà" thì báo chỉ Freeship.
 3. **Tồn kho:** SP (❌ TẠM HẾT HÀNG) -> Mời mẫu khác. SP (✅ CÒN HÀNG) -> Tư vấn.
 
 **NHIỆM VỤ:**
@@ -375,4 +381,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v19.0 (Custom Gift Manager) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v19.1 (Auto Restore Gifts) chạy tại port ${PORT}`));
