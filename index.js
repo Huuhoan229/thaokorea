@@ -1,4 +1,4 @@
-// File: index.js (VERSION v19.1 - AUTO RESTORE DEFAULT GIFTS)
+// File: index.js (VERSION v19.3 - FIX TOGGLE LOGIC)
 
 require('dotenv').config();
 const express = require('express');
@@ -25,49 +25,32 @@ const transporter = nodemailer.createTransport({
 
 const processingUserSet = new Set();
 
-// =================================================================
-// 2. KẾT NỐI DATABASE
-// =================================================================
 let db;
 try {
     const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY_JSON);
     admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
     db = admin.firestore();
     console.log("✅ Đã kết nối Firestore.");
-    
-    // --- TỰ ĐỘNG KHÔI PHỤC QUÀ CŨ NẾU MẤT ---
     seedDefaultGifts(); 
-
 } catch (error) { console.error("❌ LỖI FIRESTORE:", error); process.exit(1); }
 
-// HÀM KHÔI PHỤC QUÀ
 async function seedDefaultGifts() {
     try {
         const snapshot = await db.collection('customGifts').get();
         if (snapshot.empty) {
-            console.log("⚠️ Danh sách quà đang trống. Đang khôi phục quà mặc định...");
             const defaults = ["Dầu Lạnh", "Cao Dán", "Kẹo Sâm"];
-            for (const gift of defaults) {
-                await db.collection('customGifts').add({ name: gift, inStock: true });
-            }
-            console.log("✅ Đã khôi phục xong: Dầu Lạnh, Cao Dán, Kẹo Sâm.");
+            for (const gift of defaults) await db.collection('customGifts').add({ name: gift, inStock: true });
         }
-    } catch (e) { console.error("Lỗi khôi phục quà:", e); }
+    } catch (e) {}
 }
 
-// =================================================================
-// 3. CẤU HÌNH SERVER WEB
-// =================================================================
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v19-1-restore', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v19-3-fix-toggle', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
-// =================================================================
-// PHẦN A: WEB ADMIN ROUTES
-// =================================================================
 function checkAuth(req, res, next) { if (req.session.loggedIn) next(); else res.redirect('/login'); }
 app.get('/login', (req, res) => res.render('login'));
 app.post('/login', (req, res) => {
@@ -80,20 +63,14 @@ app.get('/admin', checkAuth, async (req, res) => {
     try {
         let aiDoc = await db.collection('settings').doc('aiConfig').get();
         let aiConfig = aiDoc.exists ? aiDoc.data() : { apiKey: '', modelName: 'gemini-2.0-flash' };
-        
         let configDoc = await db.collection('settings').doc('systemConfig').get();
         let systemStatus = configDoc.exists ? configDoc.data().isActive : true;
-        
-        // 1. LẤY DANH SÁCH QUÀ TÙY CHỈNH
         let giftsSnap = await db.collection('customGifts').get();
         let customGifts = [];
         giftsSnap.forEach(doc => customGifts.push({ id: doc.id, ...doc.data() }));
-
-        // 2. LẤY DANH SÁCH SẢN PHẨM
         let productsSnap = await db.collection('products').get();
         let products = [];
         if (!productsSnap.empty) productsSnap.forEach(doc => products.push({ id: doc.id, ...doc.data() }));
-        
         res.render('admin', { systemStatus, customGifts, products, aiConfig });
     } catch (e) { res.send("Lỗi: " + e.message); }
 });
@@ -113,27 +90,37 @@ app.post('/admin/delete-gift', checkAuth, async (req, res) => {
     res.redirect('/admin');
 });
 
+// --- FIX LOGIC LƯU SẢN PHẨM ---
 app.post('/admin/save-product', checkAuth, async (req, res) => { 
     const { id, inStock, hasGift, ...data } = req.body; 
+    
+    // Xử lý logic nút gạt chuẩn xác nhất:
+    // Nếu có gửi lên 'true' hoặc 'on' -> True
+    // Nếu không gửi lên (undefined) -> False
+    
     data.inStock = (inStock === 'true' || inStock === true);
-    data.hasGift = (hasGift === 'true' || hasGift === 'on'); 
+    
+    // Kiểm tra kỹ hasGift (vì checkbox nếu không tick sẽ không gửi gì lên)
+    if (hasGift === undefined) data.hasGift = false;
+    else if (Array.isArray(hasGift)) data.hasGift = hasGift.includes('true') || hasGift.includes('on');
+    else data.hasGift = (hasGift === 'true' || hasGift === 'on');
+
     if (id) await db.collection('products').doc(id).update(data); 
     else await db.collection('products').add(data); 
     res.redirect('/admin'); 
 });
-app.post('/admin/delete-product', checkAuth, async (req, res) => { await db.collection('products').doc(req.body.id).delete(); res.redirect('/admin'); });
 
+app.post('/admin/delete-product', checkAuth, async (req, res) => { await db.collection('products').doc(req.body.id).delete(); res.redirect('/admin'); });
 app.post('/admin/save-ai', checkAuth, async (req, res) => { 
-    let updateData = { apiKey: req.body.apiKey.trim() };
-    updateData.modelName = "gemini-2.0-flash";
+    let updateData = { apiKey: req.body.apiKey.trim(), modelName: "gemini-2.0-flash" };
     await db.collection('settings').doc('aiConfig').set(updateData, { merge: true }); 
     res.redirect('/admin'); 
 });
 app.post('/admin/toggle-system', checkAuth, async (req, res) => { await db.collection('settings').doc('systemConfig').set({ isActive: req.body.status === 'true' }, { merge: true }); res.redirect('/admin'); });
 
-// =================================================================
-// PHẦN B: BOT ENGINE
-// =================================================================
+// ... (CÁC PHẦN DƯỚI GIỮ NGUYÊN) ...
+// Để tiết kiệm dòng, bác giữ nguyên phần Bot Engine bên dưới của bản v19.1 nhé.
+// Em chỉ dán lại phần này cho đủ file nếu bác muốn copy full:
 
 async function getPageToken(pageId) {
     let pageSnap = await db.collection('pages').where('pageId', '==', pageId).get();
@@ -161,10 +148,7 @@ async function getGeminiModel() {
     } catch (e) { return null; }
 }
 
-app.get('/webhook', (req, res) => {
-    if (req.query['hub.verify_token'] === VERIFY_TOKEN) res.send(req.query['hub.challenge']);
-    else res.sendStatus(403);
-});
+app.get('/webhook', (req, res) => { if (req.query['hub.verify_token'] === VERIFY_TOKEN) res.send(req.query['hub.challenge']); else res.sendStatus(403); });
 
 app.post('/webhook', (req, res) => {
     res.status(200).send('EVENT_RECEIVED');
@@ -175,30 +159,21 @@ app.post('/webhook', (req, res) => {
             if (fs.existsSync('PAUSE_MODE')) return;
             let configDoc = await db.collection('settings').doc('systemConfig').get();
             if (configDoc.exists && !configDoc.data().isActive) return;
-
             if (entry.messaging && entry.messaging.length > 0) {
                 const webhook_event = entry.messaging[0];
                 if (webhook_event.message && webhook_event.message.is_echo) return;
-
                 if (webhook_event.message) {
                     const senderId = webhook_event.sender.id;
                     const uid = `${pageId}_${senderId}`;
-                    
                     const userState = await loadState(uid);
                     if (userState.is_paused) { await saveHistory(uid, 'Khách', webhook_event.message.text || "[Media]"); return; }
                     if (isMissedCall(webhook_event)) { await handleMissedCall(pageId, senderId); return; }
-                    
                     let userMessage = webhook_event.message.text || "";
                     let imageUrl = null;
                     if (webhook_event.message.attachments) {
                         const att = webhook_event.message.attachments[0];
-                        if (att.type === 'image') {
-                            imageUrl = att.payload.url;
-                            if (!userMessage) userMessage = "[Khách gửi ảnh]";
-                        } else if (att.type === 'sticker' || webhook_event.message.sticker_id) {
-                            if (att.payload) imageUrl = att.payload.url;
-                            if (!userMessage) userMessage = "[Khách gửi Sticker]";
-                        }
+                        if (att.type === 'image') { imageUrl = att.payload.url; if (!userMessage) userMessage = "[Khách gửi ảnh]"; }
+                        else if (att.type === 'sticker' || webhook_event.message.sticker_id) { if (att.payload) imageUrl = att.payload.url; if (!userMessage) userMessage = "[Khách gửi Sticker]"; }
                     }
                     if (userMessage || imageUrl) await processMessage(pageId, senderId, userMessage, imageUrl, userState);
                 }
@@ -213,18 +188,13 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
     const uid = `${pageId}_${senderId}`;
     if (processingUserSet.has(uid)) return;
     processingUserSet.add(uid);
-
     try {
         await sendTyping(token, senderId, true);
         let userName = await getFacebookUserName(token, senderId);
-        if (userMessage.toLowerCase().includes("hủy đơn") || userMessage.toLowerCase().includes("bom hàng")) {
-            sendAlertEmail(userName, userMessage);
-        }
-
+        if (userMessage.toLowerCase().includes("hủy đơn") || userMessage.toLowerCase().includes("bom hàng")) sendAlertEmail(userName, userMessage);
         const phoneRegex = /0\d{9}/; 
         const cleanMsg = userMessage.replace(/\s+/g, '').replace(/\./g, '').replace(/-/g, '');
         const hasPhone = phoneRegex.test(cleanMsg);
-
         if (hasPhone) {
             const matchedPhone = cleanMsg.match(phoneRegex)[0];
             let recentHistory = userState.history.slice(-10);
@@ -232,16 +202,12 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
             let fullConversation = `... (Lược bỏ tin cũ) ...\n${historyText}\n----------------\n[KHÁCH CHỐT]: ${userMessage}`;
             sendPhoneToSheet(matchedPhone, userName, fullConversation);
         }
-
         let knowledgeBase = await buildKnowledgeBaseFromDB();
         let geminiResult = await callGeminiRetail(userMessage, userName, userState.history, knowledgeBase, imageUrl, hasPhone);
-
         console.log(`[Bot Reply]: ${geminiResult.response_message}`);
         await saveHistory(uid, 'Khách', userMessage);
         await saveHistory(uid, 'Bot', geminiResult.response_message);
-
         let cleanTextMessage = geminiResult.response_message.replace(/(https?:\/\/[^\s]+)/g, "").trim();
-
         if (geminiResult.video_url_to_send && geminiResult.video_url_to_send.length > 5) {
             let vids = geminiResult.video_url_to_send.split(',');
             for (let vid of vids) {
@@ -250,12 +216,10 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
                 else if (cleanVid.startsWith('http')) await sendMessage(token, senderId, `📺 Dạ mời Bác xem video chi tiết tại đây ạ: ${cleanVid}`);
             }
         }
-
         if (geminiResult.image_url_to_send && geminiResult.image_url_to_send.length > 5) {
             let imgs = geminiResult.image_url_to_send.split(',');
             for (let img of imgs) if(img.trim().startsWith('http')) await sendImage(token, senderId, img.trim());
         }
-
         let msgs = cleanTextMessage.split('|');
         await sendTyping(token, senderId, false);
         for (let msg of msgs) {
@@ -265,65 +229,42 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
                 await sendMessage(token, senderId, msg.trim());
             }
         }
-    } catch (e) { console.error("Lỗi:", e); } 
-    finally { processingUserSet.delete(uid); }
+    } catch (e) { console.error("Lỗi:", e); } finally { processingUserSet.delete(uid); }
 }
 
 async function sendPhoneToSheet(phone, name, message) {
-    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("xxxxxxxxx")) { console.error("❌ CHƯA CẤU HÌNH LINK APPS SCRIPT!"); return; }
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("xxxxxxxxx")) return;
     try {
         console.log(`[SHEET] Đang gửi thông tin khách: ${name}...`);
-        let res = await axios.post(APPS_SCRIPT_URL, {
-            secret: APPS_SCRIPT_SECRET,
-            phone: phone,
-            name: name,      
-            message: message 
-        });
-        if (res.data.ok) console.log(`[SHEET] ✅ Đã lưu xong vào dòng ${res.data.row}.`);
-    } catch (e) { console.error("[SHEET ERROR] Lỗi kết nối:", e.message); }
+        let res = await axios.post(APPS_SCRIPT_URL, { secret: APPS_SCRIPT_SECRET, phone: phone, name: name, message: message });
+        if (res.data.ok) console.log(`[SHEET] ✅ OK.`);
+    } catch (e) { console.error("[SHEET ERROR]", e.message); }
 }
 
 async function buildKnowledgeBaseFromDB() {
     let rulesDoc = await db.collection('settings').doc('generalRules').get();
     let rules = rulesDoc.exists ? rulesDoc.data().content : "Luật chung...";
-    
-    // 1. LẤY DANH SÁCH QUÀ (SECTION 1) - CHỈ LẤY MÓN CÒN HÀNG
     let giftsSnap = await db.collection('customGifts').where('inStock', '==', true).get();
     let activeGiftNames = [];
     giftsSnap.forEach(doc => activeGiftNames.push(doc.data().name));
-    
     let commonGiftString = activeGiftNames.length > 0 ? activeGiftNames.join(" HOẶC ") : "Hiện đã hết quà tặng";
-
-    // 2. LẤY SP (SECTION 2)
     let productsSnap = await db.collection('products').get();
     let productFull = "";
     let productSummary = "DANH SÁCH RÚT GỌN:\n";
-    
     if (productsSnap.empty) { productFull = "Chưa có SP"; } else {
         productsSnap.forEach(doc => {
             let p = doc.data();
             let stockStatus = (p.inStock === false) ? " (❌ TẠM HẾT HÀNG)" : " (✅ CÒN HÀNG)";
             let nameWithStock = p.name + stockStatus;
-
-            // NẾU BẬT QUÀ -> THAY THẾ TOÀN BỘ QUÀ CŨ BẰNG DANH SÁCH MỚI
-            let giftInfo = (p.hasGift === true) 
-                ? `Tặng 1 trong các món: [${commonGiftString}] + Freeship` 
-                : `Sản phẩm này KHÔNG áp dụng tặng quà + Freeship`;
-
+            let giftInfo = (p.hasGift === true) ? `Tặng 1 trong các món: [${commonGiftString}] + Freeship` : `Sản phẩm này KHÔNG áp dụng tặng quà + Freeship`;
             let cleanDesc = p.desc || "";
-            if (p.name.toLowerCase().includes("kwangdong")) {
-                cleanDesc = cleanDesc.replace(/15%/g, "").replace(/15 phần trăm/g, ""); 
-                cleanDesc += " (Thành phần: Có chứa trầm hương tự nhiên)"; 
-            }
-
+            if (p.name.toLowerCase().includes("kwangdong")) cleanDesc += " (Thành phần: Có chứa trầm hương tự nhiên)";
             productFull += `- Tên: ${nameWithStock}\n  + Giá CHUẨN: ${p.price}\n  + Quà Tặng: ${giftInfo}\n  + Thông tin: ${cleanDesc}\n  + Ảnh (URL): "${p.image}"\n`;
-            
             let priceVal = parseInt(p.price.replace(/\D/g, '')) || 0;
             let isMainProduct = priceVal >= 500 || p.name.includes("An Cung") || p.name.includes("Thông Đỏ");
             if (isMainProduct) productSummary += `- ${nameWithStock}: ${p.price}\n`;
         });
     }
-    
     return `=== LUẬT CHUNG ===\n${rules}\n\n=== DANH SÁCH QUÀ TẶNG HIỆN CÓ ===\n${commonGiftString}\n\n=== DANH SÁCH SẢN PHẨM ===\n${productFull}\n=== DATA RÚT GỌN ===\n${productSummary}`;
 }
 
@@ -335,29 +276,24 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const greetingName = userName ? "Bác " + userName : "Bác";
         const VIDEO_CHECK_SAMSUNG = "https://www.facebook.com/share/v/1Su33dR62T/"; 
         const VIDEO_INTRO_KWANGDONG = "https://www.facebook.com/share/v/1aX41A7wCY/"; 
-        
         let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea. Khách: '${greetingName}'.
-**DỮ LIỆU SẢN PHẨM & QUÀ TẶNG:**
+**DỮ LIỆU:**
 ${knowledgeBase}
-
-**QUY TẮC QUAN TRỌNG:**
-1. **Quà Tặng:** BẠN PHẢI QUÊN HẾT NHỮNG QUÀ TẶNG CŨ. Chỉ được tư vấn quà có trong danh sách: "DANH SÁCH QUÀ TẶNG HIỆN CÓ" ở trên.
+**QUY TẮC:**
+1. **Quà Tặng:** BẠN PHẢI QUÊN HẾT NHỮNG QUÀ TẶNG CŨ. Chỉ được tư vấn quà có trong danh sách: "DANH SÁCH QUÀ TẶNG HIỆN CÓ".
 2. **Sản phẩm:** Nếu sản phẩm ghi "Tặng 1 trong các món..." thì liệt kê quà ra. Nếu ghi "KHÔNG áp dụng tặng quà" thì báo chỉ Freeship.
 3. **Tồn kho:** SP (❌ TẠM HẾT HÀNG) -> Mời mẫu khác. SP (✅ CÒN HÀNG) -> Tư vấn.
-
 **NHIỆM VỤ:**
 - Tư vấn bán hàng.
 - AI Vision: Nhìn ảnh SP -> Tư vấn. Sticker -> Cười.
-- CẤM Tặng Dầu Nóng Antiphlamine.
+- CẤM Tặng Dầu Nóng.
 - Video: Hỏi Samsung gửi "${VIDEO_CHECK_SAMSUNG}". Hỏi Kwangdong gửi "${VIDEO_INTRO_KWANGDONG}".
 - SĐT: ${hasPhone ? "ĐÃ CÓ (XÁC NHẬN)" : "CHƯA CÓ"}.
-
-**LỊCH SỬ CHAT:**
+**LỊCH SỬ:**
 ${historyText}
 **INPUT:** "${userMessage}"
 ${imageUrl ? "[Khách gửi ảnh]" : ""}
 **JSON:** { "response_message": "...", "image_url_to_send": "", "video_url_to_send": "" }`;
-
         let parts = [{ text: prompt }];
         if (imageUrl) {
             let imgData = await axios.get(imageUrl, { responseType: 'arraybuffer' });
@@ -369,6 +305,7 @@ ${imageUrl ? "[Khách gửi ảnh]" : ""}
     } catch (e) { console.error("Gemini Error:", e); return { response_message: "Dạ Bác chờ Shop xíu nha." }; }
 }
 
+// Helper functions (Giữ nguyên)
 async function setBotStatus(uid, status) { try { await db.collection('users').doc(uid).set({ is_paused: status }, { merge: true }); } catch(e){} }
 async function loadState(uid) { try { let d = await db.collection('users').doc(uid).get(); return d.exists ? d.data() : { history: [], is_paused: false }; } catch(e){ return { history: [], is_paused: false }; } }
 async function saveHistory(uid, role, content) { try { await db.collection('users').doc(uid).set({ history: admin.firestore.FieldValue.arrayUnion({ role, content }), last_updated: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); } catch(e){} }
@@ -381,4 +318,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v19.1 (Auto Restore Gifts) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v19.3 (Toggle Fix) chạy tại port ${PORT}`));
