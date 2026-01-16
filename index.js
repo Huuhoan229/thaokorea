@@ -1,4 +1,4 @@
-// File: index.js (VERSION v19.3 - FIX TOGGLE LOGIC)
+// File: index.js (VERSION v19.6 - STRICT PRICING RULES)
 
 require('dotenv').config();
 const express = require('express');
@@ -49,7 +49,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v19-3-fix-toggle', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v19-6-strict-pricing', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 function checkAuth(req, res, next) { if (req.session.loggedIn) next(); else res.redirect('/login'); }
 app.get('/login', (req, res) => res.render('login'));
@@ -75,52 +75,33 @@ app.get('/admin', checkAuth, async (req, res) => {
     } catch (e) { res.send("Lỗi: " + e.message); }
 });
 
-app.post('/admin/add-gift', checkAuth, async (req, res) => {
-    await db.collection('customGifts').add({ name: req.body.name, inStock: true });
-    res.redirect('/admin');
-});
-app.post('/admin/toggle-gift', checkAuth, async (req, res) => {
-    let giftRef = db.collection('customGifts').doc(req.body.id);
-    let doc = await giftRef.get();
-    if(doc.exists) await giftRef.update({ inStock: !doc.data().inStock });
-    res.redirect('/admin');
-});
-app.post('/admin/delete-gift', checkAuth, async (req, res) => {
-    await db.collection('customGifts').doc(req.body.id).delete();
-    res.redirect('/admin');
-});
+// --- ROUTES XỬ LÝ (GIỮ NGUYÊN) ---
+app.post('/admin/add-gift', checkAuth, async (req, res) => { await db.collection('customGifts').add({ name: req.body.name, inStock: true }); res.redirect('/admin'); });
+app.post('/admin/toggle-gift', checkAuth, async (req, res) => { let giftRef = db.collection('customGifts').doc(req.body.id); let doc = await giftRef.get(); if(doc.exists) await giftRef.update({ inStock: !doc.data().inStock }); res.redirect('/admin'); });
+app.post('/admin/delete-gift', checkAuth, async (req, res) => { await db.collection('customGifts').doc(req.body.id).delete(); res.redirect('/admin'); });
 
-// --- FIX LOGIC LƯU SẢN PHẨM ---
 app.post('/admin/save-product', checkAuth, async (req, res) => { 
-    const { id, inStock, hasGift, ...data } = req.body; 
-    
-    // Xử lý logic nút gạt chuẩn xác nhất:
-    // Nếu có gửi lên 'true' hoặc 'on' -> True
-    // Nếu không gửi lên (undefined) -> False
-    
+    const { id, allowedGifts, inStock, ...data } = req.body; 
+    data.allowedGifts = allowedGifts ? (Array.isArray(allowedGifts) ? allowedGifts : [allowedGifts]) : [];
     data.inStock = (inStock === 'true' || inStock === true);
-    
-    // Kiểm tra kỹ hasGift (vì checkbox nếu không tick sẽ không gửi gì lên)
-    if (hasGift === undefined) data.hasGift = false;
-    else if (Array.isArray(hasGift)) data.hasGift = hasGift.includes('true') || hasGift.includes('on');
-    else data.hasGift = (hasGift === 'true' || hasGift === 'on');
-
-    if (id) await db.collection('products').doc(id).update(data); 
-    else await db.collection('products').add(data); 
+    if (id) await db.collection('products').doc(id).update(data); else await db.collection('products').add(data); 
     res.redirect('/admin'); 
 });
-
+app.post('/admin/add-product', checkAuth, async (req, res) => {
+    await db.collection('products').add({ name: req.body.name, price: req.body.price, image: req.body.image, desc: "", inStock: true, allowedGifts: [] });
+    res.redirect('/admin');
+});
+app.post('/admin/save-product-info', checkAuth, async (req, res) => {
+    const { id, inStock, ...data } = req.body;
+    data.inStock = (inStock === 'true');
+    await db.collection('products').doc(id).update(data);
+    res.redirect('/admin');
+});
 app.post('/admin/delete-product', checkAuth, async (req, res) => { await db.collection('products').doc(req.body.id).delete(); res.redirect('/admin'); });
-app.post('/admin/save-ai', checkAuth, async (req, res) => { 
-    let updateData = { apiKey: req.body.apiKey.trim(), modelName: "gemini-2.0-flash" };
-    await db.collection('settings').doc('aiConfig').set(updateData, { merge: true }); 
-    res.redirect('/admin'); 
-});
+app.post('/admin/save-ai', checkAuth, async (req, res) => { let updateData = { apiKey: req.body.apiKey.trim(), modelName: "gemini-2.0-flash" }; await db.collection('settings').doc('aiConfig').set(updateData, { merge: true }); res.redirect('/admin'); });
 app.post('/admin/toggle-system', checkAuth, async (req, res) => { await db.collection('settings').doc('systemConfig').set({ isActive: req.body.status === 'true' }, { merge: true }); res.redirect('/admin'); });
 
-// ... (CÁC PHẦN DƯỚI GIỮ NGUYÊN) ...
-// Để tiết kiệm dòng, bác giữ nguyên phần Bot Engine bên dưới của bản v19.1 nhé.
-// Em chỉ dán lại phần này cho đủ file nếu bác muốn copy full:
+// ... (BOT ENGINE) ...
 
 async function getPageToken(pageId) {
     let pageSnap = await db.collection('pages').where('pageId', '==', pageId).get();
@@ -244,28 +225,34 @@ async function sendPhoneToSheet(phone, name, message) {
 async function buildKnowledgeBaseFromDB() {
     let rulesDoc = await db.collection('settings').doc('generalRules').get();
     let rules = rulesDoc.exists ? rulesDoc.data().content : "Luật chung...";
-    let giftsSnap = await db.collection('customGifts').where('inStock', '==', true).get();
-    let activeGiftNames = [];
-    giftsSnap.forEach(doc => activeGiftNames.push(doc.data().name));
-    let commonGiftString = activeGiftNames.length > 0 ? activeGiftNames.join(" HOẶC ") : "Hiện đã hết quà tặng";
     let productsSnap = await db.collection('products').get();
     let productFull = "";
     let productSummary = "DANH SÁCH RÚT GỌN:\n";
+    
     if (productsSnap.empty) { productFull = "Chưa có SP"; } else {
         productsSnap.forEach(doc => {
             let p = doc.data();
             let stockStatus = (p.inStock === false) ? " (❌ TẠM HẾT HÀNG)" : " (✅ CÒN HÀNG)";
             let nameWithStock = p.name + stockStatus;
-            let giftInfo = (p.hasGift === true) ? `Tặng 1 trong các món: [${commonGiftString}] + Freeship` : `Sản phẩm này KHÔNG áp dụng tặng quà + Freeship`;
+
+            // XỬ LÝ QUÀ: Liệt kê rõ các món
+            let giftInfo = "KHÔNG tặng kèm quà";
+            if (p.allowedGifts && p.allowedGifts.length > 0) {
+                giftInfo = `Được chọn 1 trong các món: [${p.allowedGifts.join(", ")}] + Freeship`;
+            } else {
+                giftInfo = "Chỉ Freeship, KHÔNG tặng quà khác.";
+            }
+
             let cleanDesc = p.desc || "";
             if (p.name.toLowerCase().includes("kwangdong")) cleanDesc += " (Thành phần: Có chứa trầm hương tự nhiên)";
             productFull += `- Tên: ${nameWithStock}\n  + Giá CHUẨN: ${p.price}\n  + Quà Tặng: ${giftInfo}\n  + Thông tin: ${cleanDesc}\n  + Ảnh (URL): "${p.image}"\n`;
+            
             let priceVal = parseInt(p.price.replace(/\D/g, '')) || 0;
             let isMainProduct = priceVal >= 500 || p.name.includes("An Cung") || p.name.includes("Thông Đỏ");
             if (isMainProduct) productSummary += `- ${nameWithStock}: ${p.price}\n`;
         });
     }
-    return `=== LUẬT CHUNG ===\n${rules}\n\n=== DANH SÁCH QUÀ TẶNG HIỆN CÓ ===\n${commonGiftString}\n\n=== DANH SÁCH SẢN PHẨM ===\n${productFull}\n=== DATA RÚT GỌN ===\n${productSummary}`;
+    return `=== LUẬT CHUNG ===\n${rules}\n\n=== DANH SÁCH SẢN PHẨM & QUÀ TẶNG CỤ THỂ ===\n${productFull}\n=== DATA RÚT GỌN ===\n${productSummary}`;
 }
 
 async function callGeminiRetail(userMessage, userName, history, knowledgeBase, imageUrl = null, hasPhone = false) {
@@ -276,24 +263,36 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const greetingName = userName ? "Bác " + userName : "Bác";
         const VIDEO_CHECK_SAMSUNG = "https://www.facebook.com/share/v/1Su33dR62T/"; 
         const VIDEO_INTRO_KWANGDONG = "https://www.facebook.com/share/v/1aX41A7wCY/"; 
+        
+        // --- PROMPT CẬP NHẬT LUẬT GIÁ MỚI & CHẶT CHẼ HƠN ---
         let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea. Khách: '${greetingName}'.
-**DỮ LIỆU:**
+**DỮ LIỆU SẢN PHẨM & QUÀ TẶNG:**
 ${knowledgeBase}
-**QUY TẮC:**
-1. **Quà Tặng:** BẠN PHẢI QUÊN HẾT NHỮNG QUÀ TẶNG CŨ. Chỉ được tư vấn quà có trong danh sách: "DANH SÁCH QUÀ TẶNG HIỆN CÓ".
-2. **Sản phẩm:** Nếu sản phẩm ghi "Tặng 1 trong các món..." thì liệt kê quà ra. Nếu ghi "KHÔNG áp dụng tặng quà" thì báo chỉ Freeship.
-3. **Tồn kho:** SP (❌ TẠM HẾT HÀNG) -> Mời mẫu khác. SP (✅ CÒN HÀNG) -> Tư vấn.
+
+**LUẬT BÁN HÀNG ĐẶC BIỆT (AN CUNG NGƯU HOÀNG SAMSUNG 60 VIÊN):**
+1. **GIÁ CHUẨN:** **780k** (Kèm 1 quà + Freeship). -> BẠN PHẢI BÁO GIÁ NÀY ĐẦU TIÊN.
+2. **GIÁ GIẢM (KHÔNG QUÀ):** **750k** (Chỉ Freeship, CẮT BỎ QUÀ).
+   - *Điều kiện áp dụng:* Chỉ khi khách mặc cả gắt hoặc khách chủ động bảo "không lấy quà".
+   - *Quy tắc sống còn:* Nếu bán giá 750k thì **TUYỆT ĐỐI KHÔNG TẶNG QUÀ**. Phải nói rõ: "Dạ nếu Bác lấy giá 750k thì bên con xin phép cắt phần quà tặng đi ạ, chỉ còn Freeship thôi Bác nhé".
+   - Nếu khách đòi "750k vẫn phải có quà", hãy từ chối lịch sự nhưng kiên quyết.
+
+**QUY TẮC QUÀ TẶNG CHUNG (CÁC SẢN PHẨM KHÁC):**
+1. **Chỉ tặng 1 món:** Với mỗi sản phẩm, khách chỉ được chọn **1 món duy nhất** trong danh sách quà liệt kê ở trên (ví dụ chọn Dầu Lạnh thì thôi Kẹo Sâm).
+2. **Đúng loại:** Chỉ được tặng những món có tên trong danh sách "Được chọn 1 trong các món...".
+3. Cấm Dầu Nóng.
+
 **NHIỆM VỤ:**
 - Tư vấn bán hàng.
 - AI Vision: Nhìn ảnh SP -> Tư vấn. Sticker -> Cười.
-- CẤM Tặng Dầu Nóng.
 - Video: Hỏi Samsung gửi "${VIDEO_CHECK_SAMSUNG}". Hỏi Kwangdong gửi "${VIDEO_INTRO_KWANGDONG}".
 - SĐT: ${hasPhone ? "ĐÃ CÓ (XÁC NHẬN)" : "CHƯA CÓ"}.
-**LỊCH SỬ:**
+
+**LỊCH SỬ CHAT:**
 ${historyText}
 **INPUT:** "${userMessage}"
 ${imageUrl ? "[Khách gửi ảnh]" : ""}
 **JSON:** { "response_message": "...", "image_url_to_send": "", "video_url_to_send": "" }`;
+
         let parts = [{ text: prompt }];
         if (imageUrl) {
             let imgData = await axios.get(imageUrl, { responseType: 'arraybuffer' });
@@ -305,7 +304,7 @@ ${imageUrl ? "[Khách gửi ảnh]" : ""}
     } catch (e) { console.error("Gemini Error:", e); return { response_message: "Dạ Bác chờ Shop xíu nha." }; }
 }
 
-// Helper functions (Giữ nguyên)
+// ... (HELPER FUNCTIONS GIỮ NGUYÊN) ...
 async function setBotStatus(uid, status) { try { await db.collection('users').doc(uid).set({ is_paused: status }, { merge: true }); } catch(e){} }
 async function loadState(uid) { try { let d = await db.collection('users').doc(uid).get(); return d.exists ? d.data() : { history: [], is_paused: false }; } catch(e){ return { history: [], is_paused: false }; } }
 async function saveHistory(uid, role, content) { try { await db.collection('users').doc(uid).set({ history: admin.firestore.FieldValue.arrayUnion({ role, content }), last_updated: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); } catch(e){} }
@@ -318,4 +317,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v19.3 (Toggle Fix) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v19.6 (Strict Pricing) chạy tại port ${PORT}`));
