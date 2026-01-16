@@ -1,4 +1,4 @@
-// File: index.js (FULL VERSION v18.0 - SMART INVENTORY & GIFT MANAGER)
+// File: index.js (VERSION v18.4 - FORCE REAL-TIME INVENTORY UPDATE)
 
 // =================================================================
 // 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH
@@ -13,7 +13,7 @@ const fs = require('fs');
 const nodemailer = require('nodemailer');
 const path = require('path');
 
-// 👇👇👇 LINK APPS SCRIPT CỦA BÁC 👇👇👇
+// 👇👇👇 DÁN LẠI LINK APPS SCRIPT CỦA BÁC VÀO ĐÂY 👇👇👇
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz80_RIYwoTmjZd3MLWrrtmO2auM_s-LHLJcPAYb_TrgbCbQbT4bz90eC5gBs24dI0/exec"; 
 const APPS_SCRIPT_SECRET = "VNGEN123"; 
 
@@ -47,7 +47,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v18-inventory', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v18-4-realtime', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 // =================================================================
 // PHẦN A: WEB ADMIN ROUTES
@@ -68,7 +68,6 @@ app.get('/admin', checkAuth, async (req, res) => {
         let configDoc = await db.collection('settings').doc('systemConfig').get();
         let systemStatus = configDoc.exists ? configDoc.data().isActive : true;
         
-        // Lấy cấu hình Quà Tặng
         let giftDoc = await db.collection('settings').doc('giftConfig').get();
         let giftConfig = giftDoc.exists ? giftDoc.data() : { dauLanh: true, caoDan: true, keoSam: true };
 
@@ -86,29 +85,27 @@ app.get('/admin', checkAuth, async (req, res) => {
     } catch (e) { res.send("Lỗi: " + e.message); }
 });
 
-app.post('/admin/save-ai', checkAuth, async (req, res) => { await db.collection('settings').doc('aiConfig').set({ apiKey: req.body.apiKey.trim(), modelName: req.body.modelName }, { merge: true }); res.redirect('/admin'); });
+app.post('/admin/save-ai', checkAuth, async (req, res) => { 
+    let updateData = { apiKey: req.body.apiKey.trim() };
+    if (req.body.modelName) updateData.modelName = req.body.modelName;
+    else updateData.modelName = "gemini-2.0-flash";
+    await db.collection('settings').doc('aiConfig').set(updateData, { merge: true }); 
+    res.redirect('/admin'); 
+});
 app.post('/admin/toggle-system', checkAuth, async (req, res) => { await db.collection('settings').doc('systemConfig').set({ isActive: req.body.status === 'true' }, { merge: true }); res.redirect('/admin'); });
 app.post('/admin/save-page', checkAuth, async (req, res) => { await db.collection('pages').add({ name: req.body.name, pageId: req.body.pageId, token: req.body.token }); res.redirect('/admin'); });
 app.post('/admin/delete-page', checkAuth, async (req, res) => { await db.collection('pages').doc(req.body.id).delete(); res.redirect('/admin'); });
 app.post('/admin/save-rules', checkAuth, async (req, res) => { await db.collection('settings').doc('generalRules').set({ content: req.body.generalRules }); res.redirect('/admin'); });
 
-// --- LƯU TRẠNG THÁI QUÀ TẶNG ---
 app.post('/admin/save-gifts', checkAuth, async (req, res) => {
-    let config = {
-        dauLanh: req.body.dauLanh === 'true',
-        caoDan: req.body.caoDan === 'true',
-        keoSam: req.body.keoSam === 'true'
-    };
+    let config = { dauLanh: req.body.dauLanh === 'true', caoDan: req.body.caoDan === 'true', keoSam: req.body.keoSam === 'true' };
     await db.collection('settings').doc('giftConfig').set(config, { merge: true });
     res.redirect('/admin');
 });
 
-// --- LƯU SẢN PHẨM (KÈM TRẠNG THÁI KHO) ---
 app.post('/admin/save-product', checkAuth, async (req, res) => { 
     const { id, inStock, ...data } = req.body; 
-    // Chuyển string 'true'/'false' thành boolean
     data.inStock = (inStock === 'true');
-    
     if (id) await db.collection('products').doc(id).update(data); 
     else await db.collection('products').add(data); 
     res.redirect('/admin'); 
@@ -137,8 +134,9 @@ async function getGeminiModel() {
         if (aiDoc.exists) {
             const data = aiDoc.data();
             if (data.apiKey && data.apiKey.length > 10) apiKey = data.apiKey;
-            if (data.modelName) modelName = data.modelName;
+            if (data.modelName && data.modelName.length > 0) modelName = data.modelName;
         }
+        if (!apiKey) return null;
         const genAI = new GoogleGenerativeAI(apiKey);
         return genAI.getGenerativeModel({ model: modelName });
     } catch (e) { return null; }
@@ -173,7 +171,6 @@ app.post('/webhook', (req, res) => {
                     
                     let userMessage = webhook_event.message.text || "";
                     let imageUrl = null;
-
                     if (webhook_event.message.attachments) {
                         const att = webhook_event.message.attachments[0];
                         if (att.type === 'image') {
@@ -184,7 +181,6 @@ app.post('/webhook', (req, res) => {
                             if (!userMessage) userMessage = "[Khách gửi Sticker]";
                         }
                     }
-
                     if (userMessage || imageUrl) await processMessage(pageId, senderId, userMessage, imageUrl, userState);
                 }
             }
@@ -218,7 +214,9 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
             sendPhoneToSheet(matchedPhone, userName, fullConversation);
         }
 
+        // --- GỌI GEMINI VỚI PROMPT MỚI ---
         let knowledgeBase = await buildKnowledgeBaseFromDB();
+        
         let geminiResult = await callGeminiRetail(userMessage, userName, userState.history, knowledgeBase, imageUrl, hasPhone);
 
         console.log(`[Bot Reply]: ${geminiResult.response_message}`);
@@ -231,11 +229,8 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
             let vids = geminiResult.video_url_to_send.split(',');
             for (let vid of vids) {
                 let cleanVid = vid.trim();
-                if (cleanVid.endsWith('.mp4') || cleanVid.includes('.mp4?')) {
-                     await sendVideo(token, senderId, cleanVid);
-                } else if (cleanVid.startsWith('http')) {
-                    await sendMessage(token, senderId, `📺 Dạ mời Bác xem video chi tiết tại đây ạ: ${cleanVid}`);
-                }
+                if (cleanVid.endsWith('.mp4') || cleanVid.includes('.mp4?')) await sendVideo(token, senderId, cleanVid);
+                else if (cleanVid.startsWith('http')) await sendMessage(token, senderId, `📺 Dạ mời Bác xem video chi tiết tại đây ạ: ${cleanVid}`);
             }
         }
 
@@ -258,15 +253,18 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
 }
 
 async function sendPhoneToSheet(phone, name, message) {
-    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("xxxxxxxxx")) return;
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("xxxxxxxxx")) { console.error("❌ CHƯA CẤU HÌNH LINK APPS SCRIPT!"); return; }
     try {
+        console.log(`[SHEET] Đang gửi thông tin khách: ${name}...`);
         let res = await axios.post(APPS_SCRIPT_URL, {
             secret: APPS_SCRIPT_SECRET,
             phone: phone,
             name: name,      
             message: message 
         });
-    } catch (e) { console.error("[SHEET ERROR]", e.message); }
+        if (res.data.ok) console.log(`[SHEET] ✅ Đã lưu xong vào dòng ${res.data.row}.`);
+        else console.log(`[SHEET] ❌ Lỗi từ Google: ${res.data.error}`);
+    } catch (e) { console.error("[SHEET ERROR] Lỗi kết nối:", e.message); }
 }
 
 async function buildKnowledgeBaseFromDB() {
@@ -274,22 +272,18 @@ async function buildKnowledgeBaseFromDB() {
     let rules = rulesDoc.exists ? rulesDoc.data().content : "Luật chung...";
     let productsSnap = await db.collection('products').get();
     
-    // --- 1. LẤY TRẠNG THÁI QUÀ TẶNG TỪ DB ---
     let giftDoc = await db.collection('settings').doc('giftConfig').get();
     let giftConfig = giftDoc.exists ? giftDoc.data() : { dauLanh: true, caoDan: true, keoSam: true };
-    
-    // Tạo danh sách quà CÒN HÀNG
     let activeGifts = [];
     if (giftConfig.dauLanh) activeGifts.push("Dầu Lạnh");
     if (giftConfig.caoDan) activeGifts.push("Cao Dán");
     if (giftConfig.keoSam) activeGifts.push("Kẹo Sâm");
-    
     let giftString = activeGifts.length > 0 ? activeGifts.join(" HOẶC ") : "Hiện tại đã hết quà tặng";
 
-    // --- 2. LẤY DANH SÁCH SẢN PHẨM & TRẠNG THÁI ---
+    console.log(`[GIFT STATUS] Đang Bật: ${giftString}`); 
+
     let productFull = "";
     let productSummary = "DANH SÁCH RÚT GỌN:\n";
-    
     if (productsSnap.empty) { productFull = "Chưa có SP"; } else {
         productsSnap.forEach(doc => {
             let p = doc.data();
@@ -298,21 +292,15 @@ async function buildKnowledgeBaseFromDB() {
                 cleanDesc = cleanDesc.replace(/15%/g, "").replace(/15 phần trăm/g, ""); 
                 cleanDesc += " (Thành phần: Có chứa trầm hương tự nhiên)"; 
             }
-            
-            // LOGIC KHO HÀNG: Nếu inStock = false -> Ghi chú rõ
-            let stockStatus = (p.inStock === false) ? " (❌ TẠM HẾT HÀNG - HÃY TƯ VẤN SANG LOẠI KHÁC)" : " (✅ CÒN HÀNG)";
+            let stockStatus = (p.inStock === false) ? " (❌ TẠM HẾT HÀNG)" : " (✅ CÒN HÀNG)";
             let nameWithStock = p.name + stockStatus;
-
             productFull += `- Tên: ${nameWithStock}\n  + Giá CHUẨN: ${p.price}\n  + Quà Tặng: ${p.gift}\n  + Thông tin: ${cleanDesc}\n  + Ảnh (URL): "${p.image}"\n`;
-            
             let priceVal = parseInt(p.price.replace(/\D/g, '')) || 0;
             let isMainProduct = priceVal >= 500 || p.name.includes("An Cung") || p.name.includes("Thông Đỏ") || p.name.includes("Nghệ") || p.name.includes("Hắc Sâm");
             if (isMainProduct) productSummary += `- ${nameWithStock}: ${p.price}\n`;
         });
     }
-    
-    // Trả về Prompt đã được nhúng trạng thái Quà & Hàng
-    return `=== LUẬT CHUNG ===\n${rules}\n\n=== TÌNH TRẠNG QUÀ TẶNG HIỆN TẠI ===\nChỉ được tặng: ${giftString}.\nNếu khách đòi quà đã hết (ví dụ Dầu Nóng hoặc món đã tắt), hãy bảo là hết hàng và mời chọn ${giftString}.\n\n=== DANH SÁCH SẢN PHẨM ===\n${productFull}\n=== DATA RÚT GỌN ===\n${productSummary}`;
+    return `=== LUẬT CHUNG ===\n${rules}\n\n=== TÌNH TRẠNG KHO & QUÀ TẶNG (REAL-TIME) ===\nQuà tặng hiện có: ${giftString}.\n\n=== DANH SÁCH SẢN PHẨM ===\n${productFull}\n=== DATA RÚT GỌN ===\n${productSummary}`;
 }
 
 async function callGeminiRetail(userMessage, userName, history, knowledgeBase, imageUrl = null, hasPhone = false) {
@@ -324,30 +312,27 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const VIDEO_CHECK_SAMSUNG = "https://www.facebook.com/share/v/1Su33dR62T/"; 
         const VIDEO_INTRO_KWANGDONG = "https://www.facebook.com/share/v/1aX41A7wCY/"; 
         
+        // --- PROMPT CỰC MẠNH: ƯU TIÊN DỮ LIỆU HIỆN TẠI ---
         let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea. Khách: '${greetingName}'.
-
-**DỮ LIỆU KHO & QUÀ TẶNG:**
+**DỮ LIỆU KHO & QUÀ (LỆNH TUYỆT ĐỐI):**
 ${knowledgeBase}
 
-**NHIỆM VỤ THÔNG MINH (AI):**
-1. **Kiểm tra tồn kho:** Nếu khách hỏi sản phẩm có ghi "(❌ TẠM HẾT HÀNG)", hãy khéo léo nói: "Dạ mẫu này bên em vừa hết hàng ạ, Bác tham khảo sang mẫu [Gợi ý món khác tương tự] dùng cũng tốt lắm ạ...".
-2. **Quà tặng:** Chỉ được mời chào những món quà có trong danh sách "TÌNH TRẠNG QUÀ TẶNG HIỆN TẠI". Tuyệt đối không hứa tặng món đã hết.
-3. **AI Vision (Nhìn ảnh):**
-   - Ảnh SP: Tư vấn, báo giá.
-   - Ảnh Sticker/Vui vẻ: Cười "Hihi" hoặc xã giao.
-   - Ảnh SP Lạ: Lái về hàng mình bán.
+**QUY TẮC BẤT DI BẤT DỊCH (CHỐNG MÂU THUẪN):**
+1. **Dữ liệu ở trên là SỰ THẬT DUY NHẤT.**
+2. Nếu lịch sử chat ở dưới nói "Hết Hàng" nhưng dữ liệu ở trên ghi "(✅ CÒN HÀNG)", bạn PHẢI hiểu là Admin vừa cập nhật kho.
+   -> Hãy nói: **"À tin vui Bác ơi, con vừa check lại kho thì thấy MỚI VỀ HÀNG lại rồi ạ!"**
+3. Ngược lại, nếu lịch sử nói còn mà dữ liệu ghi "(❌ TẠM HẾT HÀNG)", hãy nói: **"Dạ mẫu này bên em vừa cháy hàng tức thì ạ, mong Bác thông cảm đổi sang mẫu khác..."**
 
-**QUY TẮC KHÁC:**
-- CẤM Tặng Dầu Nóng Antiphlamine (Luôn từ chối khéo).
-- Video: Hỏi check Samsung -> Gửi "${VIDEO_CHECK_SAMSUNG}". Hỏi Kwangdong -> Gửi "${VIDEO_INTRO_KWANGDONG}".
-- SĐT: ${hasPhone ? "ĐÃ CÓ (XÁC NHẬN)" : "CHƯA CÓ"}.
+**NHIỆM VỤ:**
+- Tư vấn bán hàng dựa trên tình trạng kho hiện tại.
+- Quà tặng: Chỉ mời chào món có trong danh sách.
+- AI Vision: Nhìn ảnh và tư vấn.
 
-**LỊCH SỬ:**
+**LỊCH SỬ CHAT (CHỈ ĐỂ THAM KHẢO NGỮ CẢNH):**
 ${historyText}
 
 **INPUT:** "${userMessage}"
 ${imageUrl ? "[Khách gửi ảnh]" : ""}
-
 **JSON:** { "response_message": "...", "image_url_to_send": "", "video_url_to_send": "" }`;
 
         let parts = [{ text: prompt }];
@@ -373,4 +358,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v18.0 (Inventory Manager) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v18.4 (Real-time Priority) chạy tại port ${PORT}`));
