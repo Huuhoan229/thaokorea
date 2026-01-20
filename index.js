@@ -1,4 +1,4 @@
-// File: index.js (VERSION v19.9 - SMART CONTEXT & ANTI-SPAM PHONE)
+// File: index.js (VERSION v19.10 - FIX PRICE/GIFT LOGIC & CONVERSATION FLOW)
 
 require('dotenv').config();
 const express = require('express');
@@ -49,7 +49,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v19-9-smart-context', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v19-10-fix-logic', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 function checkAuth(req, res, next) { if (req.session.loggedIn) next(); else res.redirect('/login'); }
 app.get('/login', (req, res) => res.render('login'));
@@ -75,7 +75,7 @@ app.get('/admin', checkAuth, async (req, res) => {
     } catch (e) { res.send("Lỗi: " + e.message); }
 });
 
-// --- ROUTES XỬ LÝ (GIỮ NGUYÊN TỪ BẢN TRƯỚC) ---
+// --- ROUTES XỬ LÝ ---
 app.post('/admin/add-gift', checkAuth, async (req, res) => { await db.collection('customGifts').add({ name: req.body.name, inStock: true }); res.redirect('/admin'); });
 app.post('/admin/toggle-gift', checkAuth, async (req, res) => { let giftRef = db.collection('customGifts').doc(req.body.id); let doc = await giftRef.get(); if(doc.exists) await giftRef.update({ inStock: !doc.data().inStock }); res.redirect('/admin'); });
 app.post('/admin/delete-gift', checkAuth, async (req, res) => { await db.collection('customGifts').doc(req.body.id).delete(); res.redirect('/admin'); });
@@ -179,14 +179,12 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
         let userName = await getFacebookUserName(token, senderId);
         if (userMessage.toLowerCase().includes("hủy đơn") || userMessage.toLowerCase().includes("bom hàng")) sendAlertEmail(userName, userMessage);
         
-        // --- LOGIC MỚI: KIỂM TRA SĐT TRONG CẢ LỊCH SỬ ---
         const phoneRegex = /0\d{9}/; 
         const cleanMsg = userMessage.replace(/\s+/g, '').replace(/\./g, '').replace(/-/g, '');
         let hasPhoneNow = phoneRegex.test(cleanMsg);
         
-        // Kiểm tra xem TRONG QUÁ KHỨ đã có sđt chưa
+        // Check lịch sử xem có sđt chưa
         let hasPhoneInHistory = userState.history.some(h => h.role === 'Khách' && phoneRegex.test(h.content.replace(/\s+/g, '').replace(/\./g, '')));
-        
         let customerHasProvidedPhone = hasPhoneNow || hasPhoneInHistory;
 
         if (hasPhoneNow) {
@@ -198,8 +196,6 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
         }
 
         let knowledgeBase = await buildKnowledgeBaseFromDB();
-        
-        // Truyền trạng thái "Đã có SĐT hay chưa" vào cho AI
         let geminiResult = await callGeminiRetail(userMessage, userName, userState.history, knowledgeBase, imageUrl, customerHasProvidedPhone);
         
         console.log(`[Bot Reply]: ${geminiResult.response_message}`);
@@ -268,7 +264,7 @@ async function buildKnowledgeBaseFromDB() {
     return `=== LUẬT CHUNG ===\n${rules}\n\n=== DANH SÁCH SẢN PHẨM & QUÀ TẶNG CỤ THỂ ===\n${productFull}\n=== DATA RÚT GỌN ===\n${productSummary}`;
 }
 
-// ⚠️ CẬP NHẬT PROMPT ĐỂ CHỐNG NGÁO ⚠️
+// ⚠️ UPDATE PROMPT MỚI ĐỂ SỬA LỖI ⚠️
 async function callGeminiRetail(userMessage, userName, history, knowledgeBase, imageUrl = null, hasPhone = false) {
     const model = await getGeminiModel();
     if (!model) return { response_message: "Dạ Bác chờ Shop xíu nha." };
@@ -282,22 +278,24 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
 **DỮ LIỆU SẢN PHẨM:**
 ${knowledgeBase}
 
-**TÌNH TRẠNG SỐ ĐIỆN THOẠI KHÁCH HÀNG:**
-- Trạng thái: ${hasPhone ? "✅ ĐÃ CÓ SỐ" : "❌ CHƯA CÓ SỐ"}.
+**QUY TẮC SỐ 1: VỀ GIÁ VÀ QUÀ (AN CUNG NGƯU HOÀNG SAMSUNG):**
+- Giá chuẩn 1 hộp: 780k (Có quà).
+- Nếu mua 2 hộp (Combo):
+  + Giá 1.560k (780k x 2) -> CÓ TẶNG QUÀ.
+  + Nếu giảm còn 1.500k (tức 750k/hộp) -> **BẮT BUỘC CẮT HẾT QUÀ**.
+- **CẤM TUYỆT ĐỐI:** Không bao giờ được nói "Giá 1.500k tặng kèm quà đầy đủ". Đây là lỗi nghiêm trọng.
+- Nếu bán giá 750k/hộp, phải nói: "Dạ giá này bên con đã cắt hết quà tặng rồi ạ, chỉ còn Freeship thôi Bác nhé".
 
-**QUY TẮC PHẢN HỒI (QUAN TRỌNG NHẤT):**
-1. **NẾU ĐÃ CÓ SỐ (Trạng thái ✅):**
-   - **TUYỆT ĐỐI KHÔNG XIN LẠI SỐ.** Cấm nói câu "Cho shop xin sđt".
-   - Nếu khách nhắn "Ok", "Chốt", "Lấy nhé" -> Chỉ cần nói: "Dạ Shop đã nhận thông tin, nhân viên sẽ gọi lại chốt đơn cho Bác ngay ạ!".
-   - Nếu khách hỏi thêm -> Tư vấn bình thường.
+**QUY TẮC SỐ 2: VỀ SỐ ĐIỆN THOẠI (SĐT):**
+- Trạng thái hiện tại: ${hasPhone ? "✅ ĐÃ CÓ SĐT (Khách đã đưa rồi)" : "❌ CHƯA CÓ SĐT"}.
+- **Nếu ĐÃ CÓ SĐT:** + CÂM MIỆNG, KHÔNG ĐƯỢC XIN LẠI SĐT dưới mọi hình thức.
+  + Nếu khách chốt, chỉ cần báo: "Dạ Shop đã nhận thông tin, sẽ có nhân viên gọi chốt đơn cho Bác ạ".
+- **Nếu CHƯA CÓ SĐT:** + Chỉ xin khi khách xác nhận mua ("Lấy cho bác", "Gửi về...").
+  + Nếu khách đang hỏi giá/tư vấn -> Tư vấn tiếp, đừng vội xin số.
 
-2. **NẾU CHƯA CÓ SỐ (Trạng thái ❌):**
-   - Chỉ xin số khi khách xác nhận MUA hàng.
-   - Nếu khách đang hỏi thăm dò, hãy tư vấn nhiệt tình trước, đừng vội xin số.
-
-**LUẬT GIÁ (AN CUNG SAMSUNG):**
-- Giá chuẩn 780k (Có quà). Báo giá này trước.
-- Giá 750k (Không quà) chỉ bán khi khách mặc cả gắt.
+**QUY TẮC SỐ 3: KHÔNG ĐƯỢC ÉP KHÁCH:**
+- Nếu khách chưa nói "Mua", "Chốt", đừng nói câu "Bác ưng mã này rồi thì cho xin sđt". Nghe rất vô duyên.
+- Thay vào đó, hãy hỏi: "Bác cần tư vấn thêm gì về sản phẩm không ạ?" hoặc "Bác thấy giá này hợp lý chưa ạ?".
 
 **NHIỆM VỤ:**
 - Tư vấn bán hàng.
@@ -333,4 +331,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v19.9 (Smart Context - Anti-Spam Phone) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v19.10 (Fix Logic Gift & Context) chạy tại port ${PORT}`));
