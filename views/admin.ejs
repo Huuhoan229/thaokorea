@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Shop Thảo Korea (v19.11)</title>
+    <title>Admin Shop Thảo Korea (v19.13)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
@@ -45,18 +45,22 @@
         </div>
 
         <div class="card">
-            <div class="card-header bg-gradient-primary">📦 CÀI ĐẶT SẢN PHẨM & QUÀ TẶNG</div>
+            <div class="card-header bg-gradient-primary">📦 CÀI ĐẶT SẢN PHẨM</div>
             <div class="card-body">
                 <div class="alert alert-info py-2 small">
-                    <i class="bi bi-info-circle"></i> <strong>Lưu ý:</strong> Tích vào những món quà muốn tặng. Sau khi tích xong nhớ bấm nút <strong>"LƯU CẤU HÌNH QUÀ"</strong> màu xanh dương.
+                    <i class="bi bi-info-circle"></i> <strong>Quy tắc Ship:</strong>
+                    <ul class="mb-0 ps-3">
+                        <li>Mặc định: Đơn <strong>&gt;500k</strong> tự động Freeship. Dưới 500k ship <strong>20k</strong>.</li>
+                        <li>Nếu muốn <strong>Freeship đặc biệt</strong> cho món dưới 500k (ví dụ Cao dán), hãy tích vào ô "Ưu tiên Freeship".</li>
+                    </ul>
                 </div>
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
                             <th style="width: 25%">Tên SP</th>
-                            <th style="width: 10%">Giá</th>
+                            <th style="width: 15%">Giá & Ship</th>
                             <th style="width: 10%">Kho</th>
-                            <th style="width: 35%">Chọn Quà Tặng (Tích & Lưu)</th>
+                            <th style="width: 30%">Cài Đặt Quà Tặng</th>
                             <th style="width: 20%">Hành động</th>
                         </tr>
                     </thead>
@@ -75,22 +79,29 @@
                                     <strong><%= p.name %></strong><br>
                                     <% if (p.image) { %><img src="<%= p.image %>" class="product-thumb mt-1"><% } %>
                                 </td>
-                                <td class="text-danger fw-bold"><%= p.price %></td>
+                                
+                                <td>
+                                    <div class="text-danger fw-bold mb-2" style="font-size: 1.1em;"><%= p.price %></div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="isFreeship" value="true" <%= p.isFreeship ? 'checked' : '' %>>
+                                        <label class="form-check-label small fw-bold <%= p.isFreeship ? 'text-success' : 'text-secondary' %>">
+                                            <%= p.isFreeship ? '✅ Ưu tiên Freeship' : '⛔ Tính theo đơn' %>
+                                        </label>
+                                    </div>
+                                </td>
                                 
                                 <td><% if(p.inStock) { %> <span class="badge bg-success">CÒN</span> <% } else { %> <span class="badge bg-danger">HẾT</span> <% } %></td>
 
                                 <td>
                                     <div class="mb-2">
                                         <% if (p.allowedGifts && p.allowedGifts.length > 0) { %>
-                                            <span class="small text-muted">Đang áp dụng:</span><br>
                                             <% p.allowedGifts.forEach(giftName => { %>
                                                 <span class="gift-tag"><%= giftName %></span>
                                             <% }) %>
                                         <% } else { %>
-                                            <span class="text-danger small fw-bold">⚠️ Chưa cài quà (Bot sẽ báo: Chỉ Freeship)</span>
+                                            <span class="text-secondary small fst-italic">Không có quà</span>
                                         <% } %>
                                     </div>
-                                    
                                     <div class="gift-selector">
                                         <% customGifts.forEach(g => { 
                                             let isSelected = p.allowedGifts && p.allowedGifts.includes(g.name);
@@ -102,7 +113,7 @@
                                             </div>
                                         <% }}) %>
                                     </div>
-                                    <button type="submit" class="btn btn-sm btn-primary mt-2 w-100 fw-bold"><i class="bi bi-save"></i> LƯU CẤU HÌNH QUÀ</button>
+                                    <button type="submit" class="btn btn-sm btn-primary mt-2 w-100 fw-bold"><i class="bi bi-save"></i> LƯU CẤU HÌNH</button>
                                 </td>
 
                                 <td>
@@ -116,7 +127,7 @@
                             <div class="modal-dialog">
                                 <div class="modal-content">
                                     <form action="/admin/save-product-info" method="POST">
-                                        <div class="modal-header bg-primary text-white"><h5 class="modal-title">Sửa Thông Tin SP</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                                        <div class="modal-header bg-primary text-white"><h5 class="modal-title">Sửa SP</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                                         <div class="modal-body">
                                             <input type="hidden" name="id" value="<%= p.id %>">
                                             <div class="mb-3"><label>Tên SP</label><input type="text" name="name" class="form-control" value="<%= p.name %>"></div>

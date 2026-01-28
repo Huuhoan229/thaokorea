@@ -1,4 +1,4 @@
-// File: index.js (VERSION v19.11 - FIX CONFUSED PRODUCT & GIFT LIST)
+// File: index.js (VERSION v19.13 - SMART SHIPPING > 500K)
 
 require('dotenv').config();
 const express = require('express');
@@ -49,7 +49,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v19-11-final-fix', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v19-13-smart-ship', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 function checkAuth(req, res, next) { if (req.session.loggedIn) next(); else res.redirect('/login'); }
 app.get('/login', (req, res) => res.render('login'));
@@ -81,16 +81,19 @@ app.post('/admin/toggle-gift', checkAuth, async (req, res) => { let giftRef = db
 app.post('/admin/delete-gift', checkAuth, async (req, res) => { await db.collection('customGifts').doc(req.body.id).delete(); res.redirect('/admin'); });
 
 app.post('/admin/save-product', checkAuth, async (req, res) => { 
-    const { id, allowedGifts, inStock, ...data } = req.body; 
+    const { id, allowedGifts, inStock, isFreeship, ...data } = req.body; 
     data.allowedGifts = allowedGifts ? (Array.isArray(allowedGifts) ? allowedGifts : [allowedGifts]) : [];
     data.inStock = (inStock === 'true' || inStock === true);
+    data.isFreeship = (isFreeship === 'true' || isFreeship === 'on');
     if (id) await db.collection('products').doc(id).update(data); else await db.collection('products').add(data); 
     res.redirect('/admin'); 
 });
+
 app.post('/admin/add-product', checkAuth, async (req, res) => {
-    await db.collection('products').add({ name: req.body.name, price: req.body.price, image: req.body.image, desc: "", inStock: true, allowedGifts: [] });
+    await db.collection('products').add({ name: req.body.name, price: req.body.price, image: req.body.image, desc: "", inStock: true, allowedGifts: [], isFreeship: false });
     res.redirect('/admin');
 });
+
 app.post('/admin/save-product-info', checkAuth, async (req, res) => {
     const { id, inStock, ...data } = req.body;
     data.inStock = (inStock === 'true');
@@ -240,31 +243,43 @@ async function buildKnowledgeBaseFromDB() {
     let productFull = "";
     let productSummary = "DANH SÁCH RÚT GỌN:\n";
     
+    // --- TẠO LUẬT CHUNG VỀ SHIP ---
+    let shippingRules = "=== QUY ĐỊNH PHÍ SHIP (QUAN TRỌNG) ===\n";
+    shippingRules += "1. NẾU tổng giá trị đơn hàng > 500k -> FREESHIP.\n";
+    shippingRules += "2. NẾU tổng giá trị đơn hàng <= 500k -> Phí ship là 20k.\n";
+    shippingRules += "3. TRỪ KHI sản phẩm đó có ghi chú '[Đặc biệt: FREESHIP]' thì dù giá thấp cũng được Freeship.\n";
+
     if (productsSnap.empty) { productFull = "Chưa có SP"; } else {
         productsSnap.forEach(doc => {
             let p = doc.data();
             let stockStatus = (p.inStock === false) ? " (❌ TẠM HẾT HÀNG)" : " (✅ CÒN HÀNG)";
             let nameWithStock = p.name + stockStatus;
 
-            // --- FIX HIỂN THỊ QUÀ ---
+            // XỬ LÝ TEXT SHIP (ĐỂ BOT HIỂU)
+            let shipNote = "";
+            if (p.isFreeship) {
+                shipNote = " [Đặc biệt: FREESHIP]";
+            } else {
+                shipNote = " [Tính ship theo tổng đơn]";
+            }
+
             let giftInfo = "KHÔNG tặng kèm quà";
             if (p.allowedGifts && p.allowedGifts.length > 0) {
-                // Nối bằng "HOẶC" để Bot không tự ý tóm tắt
-                giftInfo = `Tặng 1 trong các món: [${p.allowedGifts.join(" HOẶC ")}] + Freeship`;
+                giftInfo = `Tặng 1 trong các món: [${p.allowedGifts.join(" HOẶC ")}]`;
             } else {
-                giftInfo = "Chỉ Freeship, KHÔNG tặng quà khác.";
+                giftInfo = "KHÔNG tặng quà khác.";
             }
 
             let cleanDesc = p.desc || "";
             if (p.name.toLowerCase().includes("kwangdong")) cleanDesc += " (Thành phần: Có chứa trầm hương tự nhiên)";
-            productFull += `- Tên: ${nameWithStock}\n  + Giá CHUẨN: ${p.price}\n  + Quà Tặng: ${giftInfo}\n  + Thông tin: ${cleanDesc}\n  + Ảnh (URL): "${p.image}"\n`;
+            productFull += `- Tên: ${nameWithStock}\n  + Giá: ${p.price}${shipNote}\n  + Quà Tặng: ${giftInfo}\n  + Thông tin: ${cleanDesc}\n  + Ảnh (URL): "${p.image}"\n`;
             
             let priceVal = parseInt(p.price.replace(/\D/g, '')) || 0;
             let isMainProduct = priceVal >= 500 || p.name.includes("An Cung") || p.name.includes("Thông Đỏ");
             if (isMainProduct) productSummary += `- ${nameWithStock}: ${p.price}\n`;
         });
     }
-    return `=== LUẬT CHUNG ===\n${rules}\n\n=== DANH SÁCH SẢN PHẨM & QUÀ TẶNG CỤ THỂ ===\n${productFull}\n=== DATA RÚT GỌN ===\n${productSummary}`;
+    return `=== LUẬT CHUNG ===\n${rules}\n\n${shippingRules}\n\n=== DANH SÁCH SẢN PHẨM ===\n${productFull}\n=== DATA RÚT GỌN ===\n${productSummary}`;
 }
 
 async function callGeminiRetail(userMessage, userName, history, knowledgeBase, imageUrl = null, hasPhone = false) {
@@ -277,27 +292,30 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const VIDEO_INTRO_KWANGDONG = "https://www.facebook.com/share/v/1aX41A7wCY/"; 
         
         let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea. Khách: '${greetingName}'.
-**DỮ LIỆU SẢN PHẨM (ĐỌC KỸ):**
+**DỮ LIỆU SẢN PHẨM & QUY ĐỊNH SHIP:**
 ${knowledgeBase}
 
+**NHIỆM VỤ TÍNH SHIP (BẮT BUỘC PHẢI TÍNH):**
+- Khi khách hỏi mua, hãy nhẩm tính tổng tiền:
+  + Nếu Tổng Tiền > 500k -> Báo Freeship.
+  + Nếu Tổng Tiền <= 500k -> Kiểm tra xem món đó có ghi "[Đặc biệt: FREESHIP]" không?
+    * Có -> Báo Freeship.
+    * Không -> Báo phí ship 20k.
+  + Ví dụ: Khách mua 1 Dầu Lạnh (50k) + 1 Dầu Nóng (89k) = 139k -> Báo ship 20k.
+  + Ví dụ: Khách mua 1 Tinh Dầu Thông (1150k) -> Báo Freeship.
+
 **QUY TẮC CHỐNG NHẦM SẢN PHẨM (CAO HỒNG SÂM):**
-- Có 2 loại Cao Hồng Sâm 365:
-  1. Hộp **2 lọ**: Giá **470k**.
-  2. Hộp **4 lọ**: Giá **850k**.
-- Nếu khách hỏi "2 lọ", phải báo giá 470k. Tuyệt đối không được lấy giá 850k báo cho khách.
+- Hộp **2 lọ**: Giá **470k**.
+- Hộp **4 lọ**: Giá **850k**.
+- Khách hỏi "2 lọ" -> Báo giá 470k (Và tính ship 20k vì < 500k).
 
-**QUY TẮC QUÀ TẶNG:**
-- Đọc kỹ dòng "+ Quà Tặng" của từng sản phẩm.
-- Nếu ghi "Tặng 1 trong các món: [A HOẶC B HOẶC C]", bạn phải liệt kê đủ cả A, B, C ra cho khách chọn. Không được tự ý cắt bớt.
-- Nếu ghi "KHÔNG tặng quà", thì trả lời là chỉ Freeship.
-
-**LUẬT GIÁ AN CUNG SAMSUNG (QUAN TRỌNG):**
+**LUẬT GIÁ AN CUNG SAMSUNG:**
 - Giá 780k -> Có quà.
 - Giá 750k -> CẮT HẾT QUÀ.
 
 **TRẠNG THÁI SĐT:** ${hasPhone ? "✅ ĐÃ CÓ" : "❌ CHƯA CÓ"}. (Đã có thì KHÔNG xin lại).
 
-**NHIỆM VỤ:** Tư vấn đúng giá, đúng loại, đúng quà.
+**NHIỆM VỤ:** Tư vấn đúng giá, đúng loại, đúng quà, đúng phí ship.
 
 **LỊCH SỬ CHAT:**
 ${historyText}
@@ -316,6 +334,7 @@ ${imageUrl ? "[Khách gửi ảnh]" : ""}
     } catch (e) { console.error("Gemini Error:", e); return { response_message: "Dạ Bác chờ Shop xíu nha." }; }
 }
 
+// ... (HELPER FUNCTIONS GIỮ NGUYÊN) ...
 async function setBotStatus(uid, status) { try { await db.collection('users').doc(uid).set({ is_paused: status }, { merge: true }); } catch(e){} }
 async function loadState(uid) { try { let d = await db.collection('users').doc(uid).get(); return d.exists ? d.data() : { history: [], is_paused: false }; } catch(e){ return { history: [], is_paused: false }; } }
 async function saveHistory(uid, role, content) { try { await db.collection('users').doc(uid).set({ history: admin.firestore.FieldValue.arrayUnion({ role, content }), last_updated: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); } catch(e){} }
@@ -328,4 +347,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v19.11 (Fixed Logic & UI) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v19.13 (Smart Shipping > 500k) chạy tại port ${PORT}`));
