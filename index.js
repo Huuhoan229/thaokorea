@@ -11,7 +11,7 @@ const nodemailer = require('nodemailer');
 const path = require('path');
 
 // 👇👇👇 QUAN TRỌNG: CẬP NHẬT URL SERVER CỦA BÁC Ở ĐÂY ĐỂ FB CALLBACK ĐÚNG 👇👇👇
-const APP_URL = "https://<ten-app-koyeb-cua-bac>.koyeb.app"; 
+const APP_URL = "https://evolutionary-willie-huuhoan-3fb6aeaa.koyeb.app"; 
 // (Ví dụ: https://shop-thao-korea.koyeb.app)
 
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz80_RIYwoTmjZd3MLWrrtmO2auM_s-LHLJcPAYb_TrgbCbQbT4bz90eC5gBs24dI0/exec"; 
