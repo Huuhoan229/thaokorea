@@ -1,4 +1,4 @@
-// File: index.js (VERSION v19.13 - SMART SHIPPING > 500K)
+// File: index.js (VERSION v19.14 - BULK SAVE FEATURE)
 
 require('dotenv').config();
 const express = require('express');
@@ -45,11 +45,11 @@ async function seedDefaultGifts() {
 }
 
 const app = express();
-app.use(express.json());
+app.use(express.json()); // Quan trọng cho việc nhận JSON từ Client
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v19-13-smart-ship', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v19-14-bulk-save', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 function checkAuth(req, res, next) { if (req.session.loggedIn) next(); else res.redirect('/login'); }
 app.get('/login', (req, res) => res.render('login'));
@@ -75,11 +75,37 @@ app.get('/admin', checkAuth, async (req, res) => {
     } catch (e) { res.send("Lỗi: " + e.message); }
 });
 
-// --- ROUTES XỬ LÝ ---
+// --- ROUTE LƯU HÀNG LOẠT (MỚI) ---
+app.post('/admin/save-all-bulk', checkAuth, async (req, res) => {
+    try {
+        const products = req.body.products; // Mảng chứa dữ liệu từ Client gửi lên
+        if (!products || !Array.isArray(products)) return res.status(400).json({ error: "Dữ liệu không hợp lệ" });
+
+        const batch = db.batch(); // Dùng Batch để lưu 1 lần cho nhanh và an toàn
+
+        products.forEach(p => {
+            const docRef = db.collection('products').doc(p.id);
+            batch.update(docRef, {
+                inStock: p.inStock,
+                isFreeship: p.isFreeship,
+                allowedGifts: p.allowedGifts
+            });
+        });
+
+        await batch.commit(); // Thực thi lưu tất cả
+        res.json({ ok: true });
+    } catch (e) {
+        console.error("Lỗi Bulk Save:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- CÁC ROUTE CŨ (GIỮ NGUYÊN ĐỂ HỖ TRỢ) ---
 app.post('/admin/add-gift', checkAuth, async (req, res) => { await db.collection('customGifts').add({ name: req.body.name, inStock: true }); res.redirect('/admin'); });
 app.post('/admin/toggle-gift', checkAuth, async (req, res) => { let giftRef = db.collection('customGifts').doc(req.body.id); let doc = await giftRef.get(); if(doc.exists) await giftRef.update({ inStock: !doc.data().inStock }); res.redirect('/admin'); });
 app.post('/admin/delete-gift', checkAuth, async (req, res) => { await db.collection('customGifts').doc(req.body.id).delete(); res.redirect('/admin'); });
 
+// Route save-product lẻ vẫn giữ để dùng nếu cần (hoặc cho tương thích ngược)
 app.post('/admin/save-product', checkAuth, async (req, res) => { 
     const { id, allowedGifts, inStock, isFreeship, ...data } = req.body; 
     data.allowedGifts = allowedGifts ? (Array.isArray(allowedGifts) ? allowedGifts : [allowedGifts]) : [];
@@ -108,7 +134,7 @@ app.post('/admin/toggle-system', checkAuth, async (req, res) => {
     res.redirect('/admin'); 
 });
 
-// ... (BOT ENGINE) ...
+// ... (BOT ENGINE - GIỮ NGUYÊN LOGIC SHIP & QUÀ CỦA BẢN TRƯỚC) ...
 
 async function getPageToken(pageId) {
     let pageSnap = await db.collection('pages').where('pageId', '==', pageId).get();
@@ -243,7 +269,7 @@ async function buildKnowledgeBaseFromDB() {
     let productFull = "";
     let productSummary = "DANH SÁCH RÚT GỌN:\n";
     
-    // --- TẠO LUẬT CHUNG VỀ SHIP ---
+    // --- TẠO LUẬT CHUNG VỀ SHIP (GIỮ NGUYÊN) ---
     let shippingRules = "=== QUY ĐỊNH PHÍ SHIP (QUAN TRỌNG) ===\n";
     shippingRules += "1. NẾU tổng giá trị đơn hàng > 500k -> FREESHIP.\n";
     shippingRules += "2. NẾU tổng giá trị đơn hàng <= 500k -> Phí ship là 20k.\n";
@@ -255,13 +281,7 @@ async function buildKnowledgeBaseFromDB() {
             let stockStatus = (p.inStock === false) ? " (❌ TẠM HẾT HÀNG)" : " (✅ CÒN HÀNG)";
             let nameWithStock = p.name + stockStatus;
 
-            // XỬ LÝ TEXT SHIP (ĐỂ BOT HIỂU)
-            let shipNote = "";
-            if (p.isFreeship) {
-                shipNote = " [Đặc biệt: FREESHIP]";
-            } else {
-                shipNote = " [Tính ship theo tổng đơn]";
-            }
+            let shipNote = (p.isFreeship) ? " [Đặc biệt: FREESHIP]" : " [Tính ship theo tổng đơn]";
 
             let giftInfo = "KHÔNG tặng kèm quà";
             if (p.allowedGifts && p.allowedGifts.length > 0) {
@@ -292,17 +312,12 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const VIDEO_INTRO_KWANGDONG = "https://www.facebook.com/share/v/1aX41A7wCY/"; 
         
         let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea. Khách: '${greetingName}'.
-**DỮ LIỆU SẢN PHẨM & QUY ĐỊNH SHIP:**
+**DỮ LIỆU SẢN PHẨM (ĐỌC KỸ):**
 ${knowledgeBase}
 
-**NHIỆM VỤ TÍNH SHIP (BẮT BUỘC PHẢI TÍNH):**
-- Khi khách hỏi mua, hãy nhẩm tính tổng tiền:
-  + Nếu Tổng Tiền > 500k -> Báo Freeship.
-  + Nếu Tổng Tiền <= 500k -> Kiểm tra xem món đó có ghi "[Đặc biệt: FREESHIP]" không?
-    * Có -> Báo Freeship.
-    * Không -> Báo phí ship 20k.
-  + Ví dụ: Khách mua 1 Dầu Lạnh (50k) + 1 Dầu Nóng (89k) = 139k -> Báo ship 20k.
-  + Ví dụ: Khách mua 1 Tinh Dầu Thông (1150k) -> Báo Freeship.
+**QUY TẮC SHIP & QUÀ (TUÂN THỦ 100%):**
+1. **Phí Ship:** Nếu Tổng Tiền > 500k -> Freeship. Nếu <= 500k -> Phí 20k (Trừ khi món đó ghi [Đặc biệt: FREESHIP]).
+2. **Quà Tặng:** Chỉ tặng những món trong ngoặc vuông [ ].
 
 **QUY TẮC CHỐNG NHẦM SẢN PHẨM (CAO HỒNG SÂM):**
 - Hộp **2 lọ**: Giá **470k**.
@@ -347,4 +362,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v19.13 (Smart Shipping > 500k) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v19.14 (Bulk Save & Smart Ship) chạy tại port ${PORT}`));

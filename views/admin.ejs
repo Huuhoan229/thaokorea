@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Shop Thảo Korea (v19.13)</title>
+    <title>Admin Shop Thảo Korea (v19.14)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
-        body { background-color: #f0f2f5; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f0f2f5; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding-bottom: 80px; }
         .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 24px; }
         .card-header { border-radius: 12px 12px 0 0 !important; font-weight: 700; padding: 15px 20px; }
         .btn-sm { border-radius: 6px; }
@@ -17,6 +17,14 @@
         .form-check-input:checked { background-color: #1cc88a; border-color: #1cc88a; }
         .gift-tag { font-size: 0.75rem; background: #e3f2fd; color: #0d6efd; padding: 2px 6px; border-radius: 4px; margin-right: 2px; display: inline-block; margin-bottom: 2px;}
         .gift-selector { max-height: 150px; overflow-y: auto; border: 1px solid #e3e6f0; padding: 8px; border-radius: 6px; background: #fff; }
+        
+        /* Floating Save Button */
+        .floating-save-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: white; border-top: 1px solid #ddd;
+            padding: 15px; box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+            z-index: 1000; display: flex; justify-content: flex-end; align-items: center;
+        }
     </style>
 </head>
 <body>
@@ -45,82 +53,68 @@
         </div>
 
         <div class="card">
-            <div class="card-header bg-gradient-primary">📦 CÀI ĐẶT SẢN PHẨM</div>
+            <div class="card-header bg-gradient-primary d-flex justify-content-between align-items-center">
+                <span>📦 CÀI ĐẶT SẢN PHẨM (GIÁ - SHIP - QUÀ)</span>
+                <span class="badge bg-light text-primary">Chế độ sửa hàng loạt</span>
+            </div>
             <div class="card-body">
                 <div class="alert alert-info py-2 small">
-                    <i class="bi bi-info-circle"></i> <strong>Quy tắc Ship:</strong>
-                    <ul class="mb-0 ps-3">
-                        <li>Mặc định: Đơn <strong>&gt;500k</strong> tự động Freeship. Dưới 500k ship <strong>20k</strong>.</li>
-                        <li>Nếu muốn <strong>Freeship đặc biệt</strong> cho món dưới 500k (ví dụ Cao dán), hãy tích vào ô "Ưu tiên Freeship".</li>
-                    </ul>
+                    <i class="bi bi-info-circle"></i> Bác có thể chỉnh sửa nhiều sản phẩm cùng lúc (Kho, Freeship, Quà tặng) rồi bấm nút <strong>"LƯU TOÀN BỘ CẤU HÌNH"</strong> ở dưới cùng màn hình.
                 </div>
-                <table class="table table-hover align-middle">
+                <table class="table table-hover align-middle" id="productTable">
                     <thead class="table-light">
                         <tr>
                             <th style="width: 25%">Tên SP</th>
                             <th style="width: 15%">Giá & Ship</th>
                             <th style="width: 10%">Kho</th>
-                            <th style="width: 30%">Cài Đặt Quà Tặng</th>
-                            <th style="width: 20%">Hành động</th>
+                            <th style="width: 35%">Chọn Quà Tặng</th>
+                            <th style="width: 15%">Hành động</th>
                         </tr>
                     </thead>
                     <tbody>
                         <% products.forEach(p => { %>
-                        <tr>
-                            <form action="/admin/save-product" method="POST">
-                                <input type="hidden" name="id" value="<%= p.id %>">
-                                <input type="hidden" name="name" value="<%= p.name %>">
-                                <input type="hidden" name="price" value="<%= p.price %>">
-                                <input type="hidden" name="desc" value="<%= p.desc %>">
-                                <input type="hidden" name="image" value="<%= p.image %>">
-                                <input type="hidden" name="inStock" value="<%= p.inStock %>">
-                                
-                                <td>
-                                    <strong><%= p.name %></strong><br>
-                                    <% if (p.image) { %><img src="<%= p.image %>" class="product-thumb mt-1"><% } %>
-                                </td>
-                                
-                                <td>
-                                    <div class="text-danger fw-bold mb-2" style="font-size: 1.1em;"><%= p.price %></div>
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" name="isFreeship" value="true" <%= p.isFreeship ? 'checked' : '' %>>
-                                        <label class="form-check-label small fw-bold <%= p.isFreeship ? 'text-success' : 'text-secondary' %>">
-                                            <%= p.isFreeship ? '✅ Ưu tiên Freeship' : '⛔ Tính theo đơn' %>
-                                        </label>
-                                    </div>
-                                </td>
-                                
-                                <td><% if(p.inStock) { %> <span class="badge bg-success">CÒN</span> <% } else { %> <span class="badge bg-danger">HẾT</span> <% } %></td>
+                        <tr class="product-row" data-id="<%= p.id %>">
+                            <td>
+                                <strong><%= p.name %></strong><br>
+                                <% if (p.image) { %><img src="<%= p.image %>" class="product-thumb mt-1"><% } %>
+                            </td>
+                            
+                            <td>
+                                <div class="text-danger fw-bold mb-2" style="font-size: 1.1em;"><%= p.price %></div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input input-freeship" type="checkbox" <%= p.isFreeship ? 'checked' : '' %>>
+                                    <label class="form-check-label small fw-bold text-success">Ưu tiên Freeship</label>
+                                </div>
+                            </td>
+                            
+                            <td>
+                                <select class="form-select form-select-sm input-stock <%= p.inStock ? 'text-success fw-bold' : 'text-danger fw-bold' %>">
+                                    <option value="true" <%= p.inStock ? 'selected' : '' %>>✅ CÒN</option>
+                                    <option value="false" <%= !p.inStock ? 'selected' : '' %>>❌ HẾT</option>
+                                </select>
+                            </td>
 
-                                <td>
-                                    <div class="mb-2">
-                                        <% if (p.allowedGifts && p.allowedGifts.length > 0) { %>
-                                            <% p.allowedGifts.forEach(giftName => { %>
-                                                <span class="gift-tag"><%= giftName %></span>
-                                            <% }) %>
-                                        <% } else { %>
-                                            <span class="text-secondary small fst-italic">Không có quà</span>
-                                        <% } %>
-                                    </div>
-                                    <div class="gift-selector">
-                                        <% customGifts.forEach(g => { 
-                                            let isSelected = p.allowedGifts && p.allowedGifts.includes(g.name);
-                                            if (g.inStock) {
-                                        %>
-                                            <div class="form-check gift-option">
-                                                <input class="form-check-input" type="checkbox" name="allowedGifts" value="<%= g.name %>" <%= isSelected ? 'checked' : '' %>>
-                                                <label class="form-check-label"><%= g.name %></label>
-                                            </div>
-                                        <% }}) %>
-                                    </div>
-                                    <button type="submit" class="btn btn-sm btn-primary mt-2 w-100 fw-bold"><i class="bi bi-save"></i> LƯU CẤU HÌNH</button>
-                                </td>
+                            <td>
+                                <div class="gift-selector">
+                                    <% customGifts.forEach(g => { 
+                                        let isSelected = p.allowedGifts && p.allowedGifts.includes(g.name);
+                                        if (g.inStock) {
+                                    %>
+                                        <div class="form-check gift-option">
+                                            <input class="form-check-input input-gift" type="checkbox" value="<%= g.name %>" <%= isSelected ? 'checked' : '' %>>
+                                            <label class="form-check-label"><%= g.name %></label>
+                                        </div>
+                                    <% }}) %>
+                                </div>
+                            </td>
 
-                                <td>
-                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal<%= p.id %>">Sửa TT</button>
-                                    <button type="submit" formaction="/admin/delete-product" class="btn btn-sm btn-outline-danger">Xóa</button>
-                                </td>
-                            </form>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal<%= p.id %>">Sửa Tên/Giá</button>
+                                <form action="/admin/delete-product" method="POST" class="d-inline">
+                                    <input type="hidden" name="id" value="<%= p.id %>">
+                                    <button class="btn btn-sm btn-outline-danger">Xóa</button>
+                                </form>
+                            </td>
                         </tr>
 
                         <div class="modal fade" id="editModal<%= p.id %>" tabindex="-1">
@@ -132,13 +126,7 @@
                                             <input type="hidden" name="id" value="<%= p.id %>">
                                             <div class="mb-3"><label>Tên SP</label><input type="text" name="name" class="form-control" value="<%= p.name %>"></div>
                                             <div class="mb-3"><label>Giá</label><input type="text" name="price" class="form-control" value="<%= p.price %>"></div>
-                                            <div class="mb-3"><label>Kho</label>
-                                                <select name="inStock" class="form-select">
-                                                    <option value="true" <%= p.inStock ? 'selected' : '' %>>Còn</option>
-                                                    <option value="false" <%= !p.inStock ? 'selected' : '' %>>Hết</option>
-                                                </select>
-                                            </div>
-                                            <div class="mb-3"><label>Ảnh (Link)</label><input type="text" name="image" class="form-control" value="<%= p.image %>"></div>
+                                            <div class="mb-3"><label>Link Ảnh</label><input type="text" name="image" class="form-control" value="<%= p.image %>"></div>
                                         </div>
                                         <div class="modal-footer"><button type="submit" class="btn btn-primary">Lưu Thay Đổi</button></div>
                                     </form>
@@ -190,6 +178,57 @@
             </div>
         </div>
     </div>
+
+    <div class="floating-save-bar">
+        <span class="me-3 fw-bold text-secondary" id="changeCounter">Đang xem cấu hình...</span>
+        <button onclick="saveAllBulk()" class="btn btn-primary btn-lg fw-bold shadow">
+            <i class="bi bi-save-fill"></i> LƯU TOÀN BỘ CẤU HÌNH
+        </button>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        async function saveAllBulk() {
+            const btn = document.querySelector('button[onclick="saveAllBulk()"]');
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Đang lưu...';
+            btn.disabled = true;
+
+            const products = [];
+            document.querySelectorAll('.product-row').forEach(row => {
+                const id = row.getAttribute('data-id');
+                const inStock = row.querySelector('.input-stock').value === 'true';
+                const isFreeship = row.querySelector('.input-freeship').checked;
+                
+                // Lấy danh sách quà đã tích
+                const allowedGifts = [];
+                row.querySelectorAll('.input-gift:checked').forEach(cb => {
+                    allowedGifts.push(cb.value);
+                });
+
+                products.push({ id, inStock, isFreeship, allowedGifts });
+            });
+
+            try {
+                const res = await fetch('/admin/save-all-bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ products })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    alert('✅ Đã lưu thành công tất cả cấu hình!');
+                    location.reload();
+                } else {
+                    alert('❌ Lỗi khi lưu: ' + data.error);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-save-fill"></i> LƯU TOÀN BỘ CẤU HÌNH';
+                }
+            } catch (e) {
+                alert('❌ Lỗi kết nối: ' + e.message);
+                btn.disabled = false;
+            }
+        }
+    </script>
 </body>
 </html>
