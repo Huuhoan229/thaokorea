@@ -11,7 +11,7 @@ const nodemailer = require('nodemailer');
 const path = require('path');
 
 // 👇👇👇 EM ĐÃ ĐIỀN LINK KOYEB CỦA BÁC TỪ ẢNH TRƯỚC 👇👇👇
-const APP_URL = "https://evolutionary-willie-huuhoan-3fb6aeaa.koyeb.app"; 
+const APP_URL = "preferred-teodora-68chatbot86-89790f23.koyeb.app/"; 
 
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz80_RIYwoTmjZd3MLWrrtmO2auM_s-LHLJcPAYb_TrgbCbQbT4bz90eC5gBs24dI0/exec"; 
 const APPS_SCRIPT_SECRET = "VNGEN123"; 
