@@ -1,4 +1,4 @@
-// File: index.js (VERSION v20.0 - FACEBOOK LOGIN INTEGRATION + BULK SAVE + SMART LOGIC)
+// File: index.js (VERSION v20.2 - AUTO SUBSCRIBE WEBHOOK)
 
 require('dotenv').config();
 const express = require('express');
@@ -10,9 +10,8 @@ const fs = require('fs');
 const nodemailer = require('nodemailer');
 const path = require('path');
 
-// 👇👇👇 QUAN TRỌNG: CẬP NHẬT URL SERVER CỦA BÁC Ở ĐÂY ĐỂ FB CALLBACK ĐÚNG 👇👇👇
+// 👇👇👇 EM ĐÃ ĐIỀN LINK KOYEB CỦA BÁC TỪ ẢNH TRƯỚC 👇👇👇
 const APP_URL = "https://evolutionary-willie-huuhoan-3fb6aeaa.koyeb.app"; 
-// (Ví dụ: https://shop-thao-korea.koyeb.app)
 
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz80_RIYwoTmjZd3MLWrrtmO2auM_s-LHLJcPAYb_TrgbCbQbT4bz90eC5gBs24dI0/exec"; 
 const APPS_SCRIPT_SECRET = "VNGEN123"; 
@@ -51,7 +50,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v20-0-facebook-login', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v20-2-auto-sub', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 function checkAuth(req, res, next) { if (req.session.loggedIn) next(); else res.redirect('/login'); }
 app.get('/login', (req, res) => res.render('login'));
@@ -61,7 +60,7 @@ app.post('/login', (req, res) => {
 });
 app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
 
-// --- ROUTE ADMIN CENTER ---
+// --- ADMIN CENTER ---
 app.get('/admin', checkAuth, async (req, res) => {
     try {
         let aiDoc = await db.collection('settings').doc('aiConfig').get();
@@ -70,7 +69,6 @@ app.get('/admin', checkAuth, async (req, res) => {
         let configDoc = await db.collection('settings').doc('systemConfig').get();
         let systemStatus = configDoc.exists ? configDoc.data().isActive : true;
         
-        // Lấy cấu hình FB App
         let fbDoc = await db.collection('settings').doc('fbConfig').get();
         let fbConfig = fbDoc.exists ? fbDoc.data() : { appId: '', appSecret: '' };
 
@@ -82,22 +80,17 @@ app.get('/admin', checkAuth, async (req, res) => {
         let products = [];
         if (!productsSnap.empty) productsSnap.forEach(doc => products.push({ id: doc.id, ...doc.data() }));
         
-        // Lấy danh sách Pages đã kết nối
         let pagesSnap = await db.collection('pages').get();
         let pages = [];
         pagesSnap.forEach(doc => pages.push({ id: doc.id, ...doc.data() }));
 
-        // Lấy danh sách Pages vừa fetch được từ FB (lưu trong session)
         let fetchedPages = req.session.fetchedPages || [];
 
-        res.render('admin', { 
-            systemStatus, customGifts, products, aiConfig, fbConfig, 
-            pages, fetchedPages, appUrl: APP_URL 
-        });
+        res.render('admin', { systemStatus, customGifts, products, aiConfig, fbConfig, pages, fetchedPages, appUrl: APP_URL });
     } catch (e) { res.send("Lỗi: " + e.message); }
 });
 
-// --- CẤU HÌNH & XỬ LÝ FACEBOOK LOGIN (MỚI) ---
+// --- FACEBOOK LOGIN CONFIG ---
 app.post('/admin/save-fb-config', checkAuth, async (req, res) => {
     await db.collection('settings').doc('fbConfig').set({
         appId: req.body.appId.trim(),
@@ -106,7 +99,6 @@ app.post('/admin/save-fb-config', checkAuth, async (req, res) => {
     res.redirect('/admin');
 });
 
-// 1. Chuyển hướng sang Facebook Login
 app.get('/auth/facebook', async (req, res) => {
     let fbDoc = await db.collection('settings').doc('fbConfig').get();
     if (!fbDoc.exists || !fbDoc.data().appId) return res.send('Chưa cấu hình App ID!');
@@ -119,7 +111,6 @@ app.get('/auth/facebook', async (req, res) => {
     res.redirect(authUrl);
 });
 
-// 2. Xử lý Callback từ Facebook
 app.get('/auth/facebook/callback', async (req, res) => {
     const code = req.query.code;
     if (!code) return res.send('Không nhận được code từ Facebook.');
@@ -129,47 +120,49 @@ app.get('/auth/facebook/callback', async (req, res) => {
     const redirectUri = `${APP_URL}/auth/facebook/callback`;
 
     try {
-        // Đổi code lấy User Token
         const tokenRes = await axios.get(`https://graph.facebook.com/v19.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&redirect_uri=${redirectUri}&code=${code}`);
         const userToken = tokenRes.data.access_token;
-
-        // Lấy danh sách Pages
         const pagesRes = await axios.get(`https://graph.facebook.com/v19.0/me/accounts?access_token=${userToken}`);
         
-        // Lưu tạm vào session để hiển thị ra cho người dùng chọn
-        req.session.fetchedPages = pagesRes.data.data; // Mảng các page (có name, id, access_token)
+        req.session.fetchedPages = pagesRes.data.data;
         req.session.save(() => res.redirect('/admin'));
-
     } catch (e) {
         console.error(e);
         res.send('Lỗi xác thực Facebook: ' + (e.response ? JSON.stringify(e.response.data) : e.message));
     }
 });
 
-// 3. Kết nối Page (Lưu Token vào DB)
+// ⚠️⚠️⚠️ UPDATE QUAN TRỌNG: KẾT NỐI + TỰ ĐỘNG SUBSCRIBE ⚠️⚠️⚠️
 app.post('/admin/connect-page', checkAuth, async (req, res) => {
     const { name, pageId, accessToken } = req.body;
     
-    // Kiểm tra xem page đã có chưa
-    const check = await db.collection('pages').where('pageId', '==', pageId).get();
-    if (!check.empty) {
-        // Update token nếu đã có
-        await db.collection('pages').doc(check.docs[0].id).update({ token: accessToken });
-    } else {
-        // Thêm mới
-        await db.collection('pages').add({ name, pageId, token: accessToken });
+    try {
+        // 1. Lưu vào Database
+        const check = await db.collection('pages').where('pageId', '==', pageId).get();
+        if (!check.empty) await db.collection('pages').doc(check.docs[0].id).update({ token: accessToken });
+        else await db.collection('pages').add({ name, pageId, token: accessToken });
+
+        // 2. 🔥 GỌI LỆNH KÍCH HOẠT WEBHOOK (SUBSCRIBE APP) 🔥
+        // Đây là bước quan trọng để Bot bắt đầu nhận tin nhắn
+        console.log(`🔄 Đang kích hoạt Webhook cho Page: ${name} (${pageId})...`);
+        await axios.post(`https://graph.facebook.com/v19.0/${pageId}/subscribed_apps`, {
+            subscribed_fields: ['messages', 'messaging_postbacks', 'messaging_optins', 'message_deliveries', 'message_reads']
+        }, {
+            params: { access_token: accessToken }
+        });
+        console.log(`✅ Đã kích hoạt thành công cho Page: ${name}`);
+
+        req.session.fetchedPages = null;
+        res.redirect('/admin');
+    } catch (e) {
+        console.error("❌ Lỗi kích hoạt Webhook:", e.response ? e.response.data : e.message);
+        res.send(`<h3>Lỗi kích hoạt Page: ${name}</h3><p>Nguyên nhân: ${e.response ? JSON.stringify(e.response.data) : e.message}</p><a href="/admin">Quay lại</a>`);
     }
-    
-    req.session.fetchedPages = null; // Xóa danh sách tạm
-    res.redirect('/admin');
 });
 
-app.post('/admin/delete-page', checkAuth, async (req, res) => {
-    await db.collection('pages').doc(req.body.id).delete();
-    res.redirect('/admin');
-});
+app.post('/admin/delete-page', checkAuth, async (req, res) => { await db.collection('pages').doc(req.body.id).delete(); res.redirect('/admin'); });
 
-// --- CÁC ROUTE CŨ (Lưu Sản Phẩm, Quà, Bot...) GIỮ NGUYÊN ---
+// --- CÁC ROUTE CŨ (GIỮ NGUYÊN) ---
 app.post('/admin/save-all-bulk', checkAuth, async (req, res) => {
     try {
         const products = req.body.products;
@@ -193,20 +186,15 @@ app.post('/admin/delete-product', checkAuth, async (req, res) => { await db.coll
 app.post('/admin/save-ai', checkAuth, async (req, res) => { let updateData = { apiKey: req.body.apiKey.trim(), modelName: "gemini-2.0-flash" }; await db.collection('settings').doc('aiConfig').set(updateData, { merge: true }); res.redirect('/admin'); });
 app.post('/admin/toggle-system', checkAuth, async (req, res) => { const newStatus = (req.body.status === 'true'); await db.collection('settings').doc('systemConfig').set({ isActive: newStatus }, { merge: true }); res.redirect('/admin'); });
 
-// ... (BOT ENGINE GIỮ NGUYÊN) ...
-
+// --- BOT ENGINE (GIỮ NGUYÊN) ---
 async function getPageToken(pageId) {
     let pageSnap = await db.collection('pages').where('pageId', '==', pageId).get();
     if (!pageSnap.empty) return pageSnap.docs[0].data().token;
-    // Fallback nếu chưa cấu hình DB thì dùng biến môi trường cũ
     const map = new Map();
     if (process.env.PAGE_ID_THAO_KOREA) map.set(process.env.PAGE_ID_THAO_KOREA, process.env.FB_PAGE_TOKEN_THAO_KOREA);
     if (process.env.PAGE_ID_TRANG_MOI) map.set(process.env.PAGE_ID_TRANG_MOI, process.env.FB_PAGE_TOKEN_TRANG_MOI);
     return map.get(pageId);
 }
-
-// ... (GIỮ NGUYÊN CÁC HÀM GETGEMINI, WEBHOOK, PROCESSMESSAGE...) ...
-// (Phần dưới này bác giữ nguyên như bản v19.13 nhé, em chỉ paste đoạn đầu để tiết kiệm dòng)
 
 async function getGeminiModel() {
     let apiKey = process.env.GEMINI_API_KEY;
@@ -215,7 +203,7 @@ async function getGeminiModel() {
         let aiDoc = await db.collection('settings').doc('aiConfig').get();
         if (aiDoc.exists) {
             const data = aiDoc.data();
-            if (data.apiKey && data.apiKey.length > 10) apiKey = data.apiKey;
+            if (data.apiKey) apiKey = data.apiKey;
             if (data.modelName) modelName = data.modelName;
         }
         if (!apiKey) return null;
@@ -382,9 +370,7 @@ ${knowledgeBase}
 
 **TRẠNG THÁI SĐT:** ${hasPhone ? "✅ ĐÃ CÓ" : "❌ CHƯA CÓ"}. (Đã có thì KHÔNG xin lại).
 
-**NHIỆM VỤ:** Tư vấn đúng giá, đúng loại, đúng quà, đúng phí ship.
-
-**LỊCH SỬ CHAT:**
+**LỊCH SỬ:**
 ${historyText}
 **INPUT:** "${userMessage}"
 ${imageUrl ? "[Khách gửi ảnh]" : ""}
@@ -413,4 +399,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v20.0 (Facebook Login Integration) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v20.2 (Auto Subscribe) chạy tại port ${PORT}`));
