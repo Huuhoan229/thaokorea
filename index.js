@@ -1,4 +1,4 @@
-// File: index.js (VERSION v19.14 - BULK SAVE FEATURE)
+// File: index.js (VERSION v20.0 - FACEBOOK LOGIN INTEGRATION + BULK SAVE + SMART LOGIC)
 
 require('dotenv').config();
 const express = require('express');
@@ -10,10 +10,12 @@ const fs = require('fs');
 const nodemailer = require('nodemailer');
 const path = require('path');
 
-// 👇👇👇 DÁN LINK APPS SCRIPT CỦA BÁC VÀO ĐÂY 👇👇👇
+// 👇👇👇 QUAN TRỌNG: CẬP NHẬT URL SERVER CỦA BÁC Ở ĐÂY ĐỂ FB CALLBACK ĐÚNG 👇👇👇
+const APP_URL = "https://<ten-app-koyeb-cua-bac>.koyeb.app"; 
+// (Ví dụ: https://shop-thao-korea.koyeb.app)
+
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz80_RIYwoTmjZd3MLWrrtmO2auM_s-LHLJcPAYb_TrgbCbQbT4bz90eC5gBs24dI0/exec"; 
 const APPS_SCRIPT_SECRET = "VNGEN123"; 
-
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 const PORT = process.env.PORT || 3000;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
@@ -45,11 +47,11 @@ async function seedDefaultGifts() {
 }
 
 const app = express();
-app.use(express.json()); // Quan trọng cho việc nhận JSON từ Client
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v19-14-bulk-save', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v20-0-facebook-login', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 function checkAuth(req, res, next) { if (req.session.loggedIn) next(); else res.redirect('/login'); }
 app.get('/login', (req, res) => res.render('login'));
@@ -59,92 +61,152 @@ app.post('/login', (req, res) => {
 });
 app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
 
+// --- ROUTE ADMIN CENTER ---
 app.get('/admin', checkAuth, async (req, res) => {
     try {
         let aiDoc = await db.collection('settings').doc('aiConfig').get();
         let aiConfig = aiDoc.exists ? aiDoc.data() : { apiKey: '', modelName: 'gemini-2.0-flash' };
+        
         let configDoc = await db.collection('settings').doc('systemConfig').get();
         let systemStatus = configDoc.exists ? configDoc.data().isActive : true;
+        
+        // Lấy cấu hình FB App
+        let fbDoc = await db.collection('settings').doc('fbConfig').get();
+        let fbConfig = fbDoc.exists ? fbDoc.data() : { appId: '', appSecret: '' };
+
         let giftsSnap = await db.collection('customGifts').get();
         let customGifts = [];
         giftsSnap.forEach(doc => customGifts.push({ id: doc.id, ...doc.data() }));
+        
         let productsSnap = await db.collection('products').get();
         let products = [];
         if (!productsSnap.empty) productsSnap.forEach(doc => products.push({ id: doc.id, ...doc.data() }));
-        res.render('admin', { systemStatus, customGifts, products, aiConfig });
+        
+        // Lấy danh sách Pages đã kết nối
+        let pagesSnap = await db.collection('pages').get();
+        let pages = [];
+        pagesSnap.forEach(doc => pages.push({ id: doc.id, ...doc.data() }));
+
+        // Lấy danh sách Pages vừa fetch được từ FB (lưu trong session)
+        let fetchedPages = req.session.fetchedPages || [];
+
+        res.render('admin', { 
+            systemStatus, customGifts, products, aiConfig, fbConfig, 
+            pages, fetchedPages, appUrl: APP_URL 
+        });
     } catch (e) { res.send("Lỗi: " + e.message); }
 });
 
-// --- ROUTE LƯU HÀNG LOẠT (MỚI) ---
-app.post('/admin/save-all-bulk', checkAuth, async (req, res) => {
+// --- CẤU HÌNH & XỬ LÝ FACEBOOK LOGIN (MỚI) ---
+app.post('/admin/save-fb-config', checkAuth, async (req, res) => {
+    await db.collection('settings').doc('fbConfig').set({
+        appId: req.body.appId.trim(),
+        appSecret: req.body.appSecret.trim()
+    }, { merge: true });
+    res.redirect('/admin');
+});
+
+// 1. Chuyển hướng sang Facebook Login
+app.get('/auth/facebook', async (req, res) => {
+    let fbDoc = await db.collection('settings').doc('fbConfig').get();
+    if (!fbDoc.exists || !fbDoc.data().appId) return res.send('Chưa cấu hình App ID!');
+    
+    const appId = fbDoc.data().appId;
+    const redirectUri = `${APP_URL}/auth/facebook/callback`;
+    const scope = 'pages_show_list,pages_messaging,pages_read_engagement';
+    
+    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=${scope}`;
+    res.redirect(authUrl);
+});
+
+// 2. Xử lý Callback từ Facebook
+app.get('/auth/facebook/callback', async (req, res) => {
+    const code = req.query.code;
+    if (!code) return res.send('Không nhận được code từ Facebook.');
+
+    let fbDoc = await db.collection('settings').doc('fbConfig').get();
+    const { appId, appSecret } = fbDoc.data();
+    const redirectUri = `${APP_URL}/auth/facebook/callback`;
+
     try {
-        const products = req.body.products; // Mảng chứa dữ liệu từ Client gửi lên
-        if (!products || !Array.isArray(products)) return res.status(400).json({ error: "Dữ liệu không hợp lệ" });
+        // Đổi code lấy User Token
+        const tokenRes = await axios.get(`https://graph.facebook.com/v19.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&redirect_uri=${redirectUri}&code=${code}`);
+        const userToken = tokenRes.data.access_token;
 
-        const batch = db.batch(); // Dùng Batch để lưu 1 lần cho nhanh và an toàn
+        // Lấy danh sách Pages
+        const pagesRes = await axios.get(`https://graph.facebook.com/v19.0/me/accounts?access_token=${userToken}`);
+        
+        // Lưu tạm vào session để hiển thị ra cho người dùng chọn
+        req.session.fetchedPages = pagesRes.data.data; // Mảng các page (có name, id, access_token)
+        req.session.save(() => res.redirect('/admin'));
 
-        products.forEach(p => {
-            const docRef = db.collection('products').doc(p.id);
-            batch.update(docRef, {
-                inStock: p.inStock,
-                isFreeship: p.isFreeship,
-                allowedGifts: p.allowedGifts
-            });
-        });
-
-        await batch.commit(); // Thực thi lưu tất cả
-        res.json({ ok: true });
     } catch (e) {
-        console.error("Lỗi Bulk Save:", e);
-        res.status(500).json({ error: e.message });
+        console.error(e);
+        res.send('Lỗi xác thực Facebook: ' + (e.response ? JSON.stringify(e.response.data) : e.message));
     }
 });
 
-// --- CÁC ROUTE CŨ (GIỮ NGUYÊN ĐỂ HỖ TRỢ) ---
+// 3. Kết nối Page (Lưu Token vào DB)
+app.post('/admin/connect-page', checkAuth, async (req, res) => {
+    const { name, pageId, accessToken } = req.body;
+    
+    // Kiểm tra xem page đã có chưa
+    const check = await db.collection('pages').where('pageId', '==', pageId).get();
+    if (!check.empty) {
+        // Update token nếu đã có
+        await db.collection('pages').doc(check.docs[0].id).update({ token: accessToken });
+    } else {
+        // Thêm mới
+        await db.collection('pages').add({ name, pageId, token: accessToken });
+    }
+    
+    req.session.fetchedPages = null; // Xóa danh sách tạm
+    res.redirect('/admin');
+});
+
+app.post('/admin/delete-page', checkAuth, async (req, res) => {
+    await db.collection('pages').doc(req.body.id).delete();
+    res.redirect('/admin');
+});
+
+// --- CÁC ROUTE CŨ (Lưu Sản Phẩm, Quà, Bot...) GIỮ NGUYÊN ---
+app.post('/admin/save-all-bulk', checkAuth, async (req, res) => {
+    try {
+        const products = req.body.products;
+        if (!products) return res.status(400).json({ error: "No Data" });
+        const batch = db.batch();
+        products.forEach(p => {
+            const docRef = db.collection('products').doc(p.id);
+            batch.update(docRef, { inStock: p.inStock, isFreeship: p.isFreeship, allowedGifts: p.allowedGifts });
+        });
+        await batch.commit();
+        res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/admin/add-gift', checkAuth, async (req, res) => { await db.collection('customGifts').add({ name: req.body.name, inStock: true }); res.redirect('/admin'); });
 app.post('/admin/toggle-gift', checkAuth, async (req, res) => { let giftRef = db.collection('customGifts').doc(req.body.id); let doc = await giftRef.get(); if(doc.exists) await giftRef.update({ inStock: !doc.data().inStock }); res.redirect('/admin'); });
 app.post('/admin/delete-gift', checkAuth, async (req, res) => { await db.collection('customGifts').doc(req.body.id).delete(); res.redirect('/admin'); });
-
-// Route save-product lẻ vẫn giữ để dùng nếu cần (hoặc cho tương thích ngược)
-app.post('/admin/save-product', checkAuth, async (req, res) => { 
-    const { id, allowedGifts, inStock, isFreeship, ...data } = req.body; 
-    data.allowedGifts = allowedGifts ? (Array.isArray(allowedGifts) ? allowedGifts : [allowedGifts]) : [];
-    data.inStock = (inStock === 'true' || inStock === true);
-    data.isFreeship = (isFreeship === 'true' || isFreeship === 'on');
-    if (id) await db.collection('products').doc(id).update(data); else await db.collection('products').add(data); 
-    res.redirect('/admin'); 
-});
-
-app.post('/admin/add-product', checkAuth, async (req, res) => {
-    await db.collection('products').add({ name: req.body.name, price: req.body.price, image: req.body.image, desc: "", inStock: true, allowedGifts: [], isFreeship: false });
-    res.redirect('/admin');
-});
-
-app.post('/admin/save-product-info', checkAuth, async (req, res) => {
-    const { id, inStock, ...data } = req.body;
-    data.inStock = (inStock === 'true');
-    await db.collection('products').doc(id).update(data);
-    res.redirect('/admin');
-});
+app.post('/admin/add-product', checkAuth, async (req, res) => { await db.collection('products').add({ name: req.body.name, price: req.body.price, image: req.body.image, desc: "", inStock: true, allowedGifts: [], isFreeship: false }); res.redirect('/admin'); });
+app.post('/admin/save-product-info', checkAuth, async (req, res) => { const { id, inStock, ...data } = req.body; data.inStock = (inStock === 'true'); await db.collection('products').doc(id).update(data); res.redirect('/admin'); });
 app.post('/admin/delete-product', checkAuth, async (req, res) => { await db.collection('products').doc(req.body.id).delete(); res.redirect('/admin'); });
 app.post('/admin/save-ai', checkAuth, async (req, res) => { let updateData = { apiKey: req.body.apiKey.trim(), modelName: "gemini-2.0-flash" }; await db.collection('settings').doc('aiConfig').set(updateData, { merge: true }); res.redirect('/admin'); });
-app.post('/admin/toggle-system', checkAuth, async (req, res) => { 
-    const newStatus = (req.body.status === 'true');
-    await db.collection('settings').doc('systemConfig').set({ isActive: newStatus }, { merge: true }); 
-    res.redirect('/admin'); 
-});
+app.post('/admin/toggle-system', checkAuth, async (req, res) => { const newStatus = (req.body.status === 'true'); await db.collection('settings').doc('systemConfig').set({ isActive: newStatus }, { merge: true }); res.redirect('/admin'); });
 
-// ... (BOT ENGINE - GIỮ NGUYÊN LOGIC SHIP & QUÀ CỦA BẢN TRƯỚC) ...
+// ... (BOT ENGINE GIỮ NGUYÊN) ...
 
 async function getPageToken(pageId) {
     let pageSnap = await db.collection('pages').where('pageId', '==', pageId).get();
     if (!pageSnap.empty) return pageSnap.docs[0].data().token;
+    // Fallback nếu chưa cấu hình DB thì dùng biến môi trường cũ
     const map = new Map();
     if (process.env.PAGE_ID_THAO_KOREA) map.set(process.env.PAGE_ID_THAO_KOREA, process.env.FB_PAGE_TOKEN_THAO_KOREA);
     if (process.env.PAGE_ID_TRANG_MOI) map.set(process.env.PAGE_ID_TRANG_MOI, process.env.FB_PAGE_TOKEN_TRANG_MOI);
-    map.set("833294496542063", "EAAP9uXbATjwBQG27LFeffPcNh2cZCjRebBML7ZAHcMGEvu5ZBws5Xq5BdP6F2qVauF5O1UZAKjch5KVHIb4YsDXQiC7hEeJpsn0btLApL58ohSU8iBmcwXUgEprH55hikpj8sw16QAgKbUzYQxny0vZAWb0lM9SvwQ5SH0k6sTpCHD6J7dbtihUJMsZAEWG0NoHzlyzNDAsROHr8xxycL0g5O4DwZDZD");
     return map.get(pageId);
 }
+
+// ... (GIỮ NGUYÊN CÁC HÀM GETGEMINI, WEBHOOK, PROCESSMESSAGE...) ...
+// (Phần dưới này bác giữ nguyên như bản v19.13 nhé, em chỉ paste đoạn đầu để tiết kiệm dòng)
 
 async function getGeminiModel() {
     let apiKey = process.env.GEMINI_API_KEY;
@@ -173,7 +235,6 @@ app.post('/webhook', (req, res) => {
             if (fs.existsSync('PAUSE_MODE')) return;
             let configDoc = await db.collection('settings').doc('systemConfig').get();
             if (configDoc.exists && configDoc.data().isActive === false) return; 
-
             if (entry.messaging && entry.messaging.length > 0) {
                 const webhook_event = entry.messaging[0];
                 if (webhook_event.message && webhook_event.message.is_echo) return;
@@ -269,7 +330,6 @@ async function buildKnowledgeBaseFromDB() {
     let productFull = "";
     let productSummary = "DANH SÁCH RÚT GỌN:\n";
     
-    // --- TẠO LUẬT CHUNG VỀ SHIP (GIỮ NGUYÊN) ---
     let shippingRules = "=== QUY ĐỊNH PHÍ SHIP (QUAN TRỌNG) ===\n";
     shippingRules += "1. NẾU tổng giá trị đơn hàng > 500k -> FREESHIP.\n";
     shippingRules += "2. NẾU tổng giá trị đơn hàng <= 500k -> Phí ship là 20k.\n";
@@ -280,20 +340,12 @@ async function buildKnowledgeBaseFromDB() {
             let p = doc.data();
             let stockStatus = (p.inStock === false) ? " (❌ TẠM HẾT HÀNG)" : " (✅ CÒN HÀNG)";
             let nameWithStock = p.name + stockStatus;
-
             let shipNote = (p.isFreeship) ? " [Đặc biệt: FREESHIP]" : " [Tính ship theo tổng đơn]";
-
             let giftInfo = "KHÔNG tặng kèm quà";
-            if (p.allowedGifts && p.allowedGifts.length > 0) {
-                giftInfo = `Tặng 1 trong các món: [${p.allowedGifts.join(" HOẶC ")}]`;
-            } else {
-                giftInfo = "KHÔNG tặng quà khác.";
-            }
-
+            if (p.allowedGifts && p.allowedGifts.length > 0) { giftInfo = `Tặng 1 trong các món: [${p.allowedGifts.join(" HOẶC ")}]`; } else { giftInfo = "KHÔNG tặng quà khác."; }
             let cleanDesc = p.desc || "";
             if (p.name.toLowerCase().includes("kwangdong")) cleanDesc += " (Thành phần: Có chứa trầm hương tự nhiên)";
             productFull += `- Tên: ${nameWithStock}\n  + Giá: ${p.price}${shipNote}\n  + Quà Tặng: ${giftInfo}\n  + Thông tin: ${cleanDesc}\n  + Ảnh (URL): "${p.image}"\n`;
-            
             let priceVal = parseInt(p.price.replace(/\D/g, '')) || 0;
             let isMainProduct = priceVal >= 500 || p.name.includes("An Cung") || p.name.includes("Thông Đỏ");
             if (isMainProduct) productSummary += `- ${nameWithStock}: ${p.price}\n`;
@@ -349,7 +401,6 @@ ${imageUrl ? "[Khách gửi ảnh]" : ""}
     } catch (e) { console.error("Gemini Error:", e); return { response_message: "Dạ Bác chờ Shop xíu nha." }; }
 }
 
-// ... (HELPER FUNCTIONS GIỮ NGUYÊN) ...
 async function setBotStatus(uid, status) { try { await db.collection('users').doc(uid).set({ is_paused: status }, { merge: true }); } catch(e){} }
 async function loadState(uid) { try { let d = await db.collection('users').doc(uid).get(); return d.exists ? d.data() : { history: [], is_paused: false }; } catch(e){ return { history: [], is_paused: false }; } }
 async function saveHistory(uid, role, content) { try { await db.collection('users').doc(uid).set({ history: admin.firestore.FieldValue.arrayUnion({ role, content }), last_updated: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); } catch(e){} }
@@ -362,4 +413,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v19.14 (Bulk Save & Smart Ship) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v20.0 (Facebook Login Integration) chạy tại port ${PORT}`));

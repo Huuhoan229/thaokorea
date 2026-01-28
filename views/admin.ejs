@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Shop Thảo Korea (v19.14)</title>
+    <title>Admin Shop Thảo Korea (v20.0)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
@@ -13,18 +13,24 @@
         .form-control, .form-select { border-radius: 8px; }
         .bg-gradient-primary { background: linear-gradient(45deg, #4e73df, #224abe); color: white; }
         .bg-gradient-warning { background: linear-gradient(45deg, #f6c23e, #dda20a); color: #333; }
+        .bg-gradient-facebook { background: linear-gradient(45deg, #1877f2, #0d5cb8); color: white; }
+        
         .product-thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6; background-color: #fff; }
         .form-check-input:checked { background-color: #1cc88a; border-color: #1cc88a; }
-        .gift-tag { font-size: 0.75rem; background: #e3f2fd; color: #0d6efd; padding: 2px 6px; border-radius: 4px; margin-right: 2px; display: inline-block; margin-bottom: 2px;}
-        .gift-selector { max-height: 150px; overflow-y: auto; border: 1px solid #e3e6f0; padding: 8px; border-radius: 6px; background: #fff; }
+        .status-indicator { width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .status-on { background-color: #1cc88a; box-shadow: 0 0 10px #1cc88a; }
+        .status-off { background-color: #e74a3b; box-shadow: 0 0 10px #e74a3b; }
         
-        /* Floating Save Button */
         .floating-save-bar {
             position: fixed; bottom: 0; left: 0; right: 0;
             background: white; border-top: 1px solid #ddd;
             padding: 15px; box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
             z-index: 1000; display: flex; justify-content: flex-end; align-items: center;
         }
+        
+        /* Page List Item */
+        .page-item-card { border: 1px solid #e3e6f0; border-radius: 8px; padding: 15px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; background: #fff; }
+        .page-avatar { width: 50px; height: 50px; border-radius: 50%; background: #eee; margin-right: 15px; }
     </style>
 </head>
 <body>
@@ -53,14 +59,96 @@
         </div>
 
         <div class="card">
-            <div class="card-header bg-gradient-primary d-flex justify-content-between align-items-center">
-                <span>📦 CÀI ĐẶT SẢN PHẨM (GIÁ - SHIP - QUÀ)</span>
-                <span class="badge bg-light text-primary">Chế độ sửa hàng loạt</span>
+            <div class="card-header bg-gradient-facebook">
+                <i class="bi bi-facebook"></i> TÍCH HỢP FANPAGE (FACEBOOK LOGIN)
             </div>
             <div class="card-body">
-                <div class="alert alert-info py-2 small">
-                    <i class="bi bi-info-circle"></i> Bác có thể chỉnh sửa nhiều sản phẩm cùng lúc (Kho, Freeship, Quà tặng) rồi bấm nút <strong>"LƯU TOÀN BỘ CẤU HÌNH"</strong> ở dưới cùng màn hình.
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="alert alert-light border">
+                            <strong>Bước 1: Cấu hình Facebook App</strong> (Lấy tại <code>developers.facebook.com</code>)
+                            <br><small class="text-muted">Callback URL của bác là: <strong><%= appUrl %>/auth/facebook/callback</strong> (Hãy dán link này vào phần "Valid OAuth Redirect URIs" trên Facebook Developer)</small>
+                        </div>
+                        <form action="/admin/save-fb-config" method="POST" class="row g-2 align-items-end">
+                            <div class="col-md-4">
+                                <label class="small fw-bold">App ID:</label>
+                                <input type="text" name="appId" class="form-control" value="<%= fbConfig.appId %>" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="small fw-bold">App Secret:</label>
+                                <input type="password" name="appSecret" class="form-control" value="<%= fbConfig.appSecret %>" required>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-save"></i> Lưu Cấu Hình FB</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
+
+                <hr>
+
+                <div class="row">
+                    <div class="col-md-12 text-center">
+                        <% if (!fbConfig.appId || !fbConfig.appSecret) { %>
+                            <div class="alert alert-warning">⚠️ Vui lòng nhập App ID và App Secret trước khi kết nối.</div>
+                        <% } else { %>
+                            <a href="/auth/facebook" class="btn btn-lg btn-outline-primary fw-bold mb-3">
+                                <i class="bi bi-facebook"></i> ĐĂNG NHẬP FACEBOOK ĐỂ LẤY PAGE
+                            </a>
+                        <% } %>
+                    </div>
+                </div>
+
+                <% if (fetchedPages && fetchedPages.length > 0) { %>
+                    <h5 class="fw-bold mt-3">Danh sách Fanpage của bạn:</h5>
+                    <div class="list-group">
+                        <% fetchedPages.forEach(page => { %>
+                            <div class="page-item-card">
+                                <div class="d-flex align-items-center">
+                                    <div class="page-avatar d-flex align-items-center justify-content-center fw-bold fs-4 text-white bg-primary">
+                                        <%= page.name.charAt(0) %>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-0 fw-bold"><%= page.name %></h5>
+                                        <small class="text-muted">ID: <%= page.id %></small>
+                                    </div>
+                                </div>
+                                <form action="/admin/connect-page" method="POST">
+                                    <input type="hidden" name="name" value="<%= page.name %>">
+                                    <input type="hidden" name="pageId" value="<%= page.id %>">
+                                    <input type="hidden" name="accessToken" value="<%= page.access_token %>">
+                                    <button type="submit" class="btn btn-success fw-bold">
+                                        <i class="bi bi-check-circle"></i> KẾT NỐI NGAY
+                                    </button>
+                                </form>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } %>
+
+                <% if (pages && pages.length > 0) { %>
+                    <h6 class="fw-bold mt-4 text-success"><i class="bi bi-link-45deg"></i> Các Fanpage đang hoạt động:</h6>
+                    <table class="table table-bordered table-sm">
+                        <% pages.forEach(p => { %>
+                            <tr>
+                                <td class="align-middle fw-bold"><%= p.name %></td>
+                                <td class="align-middle"><small><%= p.pageId %></small></td>
+                                <td class="align-middle text-end">
+                                    <form action="/admin/delete-page" method="POST" class="d-inline">
+                                        <input type="hidden" name="id" value="<%= p.id %>">
+                                        <button class="btn btn-sm btn-outline-danger">Ngắt kết nối</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </table>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header bg-gradient-primary">📦 CÀI ĐẶT SẢN PHẨM (GIÁ - SHIP - QUÀ)</div>
+            <div class="card-body">
                 <table class="table table-hover align-middle" id="productTable">
                     <thead class="table-light">
                         <tr>
@@ -78,45 +166,38 @@
                                 <strong><%= p.name %></strong><br>
                                 <% if (p.image) { %><img src="<%= p.image %>" class="product-thumb mt-1"><% } %>
                             </td>
-                            
                             <td>
-                                <div class="text-danger fw-bold mb-2" style="font-size: 1.1em;"><%= p.price %></div>
+                                <div class="text-danger fw-bold mb-2"><%= p.price %></div>
                                 <div class="form-check form-switch">
                                     <input class="form-check-input input-freeship" type="checkbox" <%= p.isFreeship ? 'checked' : '' %>>
-                                    <label class="form-check-label small fw-bold text-success">Ưu tiên Freeship</label>
+                                    <label class="form-check-label small fw-bold text-success">Freeship</label>
                                 </div>
                             </td>
-                            
                             <td>
                                 <select class="form-select form-select-sm input-stock <%= p.inStock ? 'text-success fw-bold' : 'text-danger fw-bold' %>">
-                                    <option value="true" <%= p.inStock ? 'selected' : '' %>>✅ CÒN</option>
-                                    <option value="false" <%= !p.inStock ? 'selected' : '' %>>❌ HẾT</option>
+                                    <option value="true" <%= p.inStock ? 'selected' : '' %>>CÒN</option>
+                                    <option value="false" <%= !p.inStock ? 'selected' : '' %>>HẾT</option>
                                 </select>
                             </td>
-
                             <td>
                                 <div class="gift-selector">
                                     <% customGifts.forEach(g => { 
                                         let isSelected = p.allowedGifts && p.allowedGifts.includes(g.name);
                                         if (g.inStock) {
                                     %>
-                                        <div class="form-check gift-option">
+                                        <div class="form-check">
                                             <input class="form-check-input input-gift" type="checkbox" value="<%= g.name %>" <%= isSelected ? 'checked' : '' %>>
                                             <label class="form-check-label"><%= g.name %></label>
                                         </div>
                                     <% }}) %>
                                 </div>
                             </td>
-
                             <td>
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal<%= p.id %>">Sửa Tên/Giá</button>
-                                <form action="/admin/delete-product" method="POST" class="d-inline">
-                                    <input type="hidden" name="id" value="<%= p.id %>">
-                                    <button class="btn btn-sm btn-outline-danger">Xóa</button>
-                                </form>
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal<%= p.id %>">Sửa</button>
+                                <form action="/admin/delete-product" method="POST" class="d-inline"><input type="hidden" name="id" value="<%= p.id %>"><button class="btn btn-sm btn-outline-danger">Xóa</button></form>
                             </td>
                         </tr>
-
+                        
                         <div class="modal fade" id="editModal<%= p.id %>" tabindex="-1">
                             <div class="modal-dialog">
                                 <div class="modal-content">
@@ -128,7 +209,7 @@
                                             <div class="mb-3"><label>Giá</label><input type="text" name="price" class="form-control" value="<%= p.price %>"></div>
                                             <div class="mb-3"><label>Link Ảnh</label><input type="text" name="image" class="form-control" value="<%= p.image %>"></div>
                                         </div>
-                                        <div class="modal-footer"><button type="submit" class="btn btn-primary">Lưu Thay Đổi</button></div>
+                                        <div class="modal-footer"><button type="submit" class="btn btn-primary">Lưu</button></div>
                                     </form>
                                 </div>
                             </div>
@@ -166,7 +247,7 @@
             </div>
             <div class="col-md-6 mb-5">
                 <div class="card h-100">
-                    <div class="card-header bg-secondary text-white">⚙️ CẤU HÌNH API</div>
+                    <div class="card-header bg-secondary text-white">⚙️ CẤU HÌNH API GEMINI</div>
                     <div class="card-body">
                         <form action="/admin/save-ai" method="POST">
                             <label>Gemini API Key:</label>
@@ -180,54 +261,29 @@
     </div>
 
     <div class="floating-save-bar">
-        <span class="me-3 fw-bold text-secondary" id="changeCounter">Đang xem cấu hình...</span>
-        <button onclick="saveAllBulk()" class="btn btn-primary btn-lg fw-bold shadow">
-            <i class="bi bi-save-fill"></i> LƯU TOÀN BỘ CẤU HÌNH
-        </button>
+        <button onclick="saveAllBulk()" class="btn btn-primary btn-lg fw-bold shadow"><i class="bi bi-save-fill"></i> LƯU TOÀN BỘ CẤU HÌNH</button>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
     <script>
         async function saveAllBulk() {
             const btn = document.querySelector('button[onclick="saveAllBulk()"]');
-            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Đang lưu...';
-            btn.disabled = true;
-
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Đang lưu...'; btn.disabled = true;
             const products = [];
             document.querySelectorAll('.product-row').forEach(row => {
                 const id = row.getAttribute('data-id');
                 const inStock = row.querySelector('.input-stock').value === 'true';
                 const isFreeship = row.querySelector('.input-freeship').checked;
-                
-                // Lấy danh sách quà đã tích
                 const allowedGifts = [];
-                row.querySelectorAll('.input-gift:checked').forEach(cb => {
-                    allowedGifts.push(cb.value);
-                });
-
+                row.querySelectorAll('.input-gift:checked').forEach(cb => allowedGifts.push(cb.value));
                 products.push({ id, inStock, isFreeship, allowedGifts });
             });
-
             try {
-                const res = await fetch('/admin/save-all-bulk', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ products })
-                });
+                const res = await fetch('/admin/save-all-bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ products }) });
                 const data = await res.json();
-                if (data.ok) {
-                    alert('✅ Đã lưu thành công tất cả cấu hình!');
-                    location.reload();
-                } else {
-                    alert('❌ Lỗi khi lưu: ' + data.error);
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="bi bi-save-fill"></i> LƯU TOÀN BỘ CẤU HÌNH';
-                }
-            } catch (e) {
-                alert('❌ Lỗi kết nối: ' + e.message);
-                btn.disabled = false;
-            }
+                if (data.ok) { alert('✅ Đã lưu thành công!'); location.reload(); }
+                else { alert('❌ Lỗi: ' + data.error); btn.disabled = false; btn.innerHTML = 'LƯU TOÀN BỘ CẤU HÌNH'; }
+            } catch (e) { alert('❌ Lỗi kết nối'); btn.disabled = false; }
         }
     </script>
 </body>
