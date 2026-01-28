@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Shop Thảo Korea (v19.8)</title>
+    <title>Admin Shop Thảo Korea (v19.11)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
@@ -11,19 +11,12 @@
         .card-header { border-radius: 12px 12px 0 0 !important; font-weight: 700; padding: 15px 20px; }
         .btn-sm { border-radius: 6px; }
         .form-control, .form-select { border-radius: 8px; }
-        
         .bg-gradient-primary { background: linear-gradient(45deg, #4e73df, #224abe); color: white; }
         .bg-gradient-warning { background: linear-gradient(45deg, #f6c23e, #dda20a); color: #333; }
-        
         .product-thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6; background-color: #fff; }
         .form-check-input:checked { background-color: #1cc88a; border-color: #1cc88a; }
-        .text-instock { color: #1cc88a; font-weight: bold; }
-        .text-outstock { color: #e74a3b; font-weight: bold; }
-        
-        /* Status Card */
-        .status-indicator { width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin-right: 8px; }
-        .status-on { background-color: #1cc88a; box-shadow: 0 0 10px #1cc88a; }
-        .status-off { background-color: #e74a3b; box-shadow: 0 0 10px #e74a3b; }
+        .gift-tag { font-size: 0.75rem; background: #e3f2fd; color: #0d6efd; padding: 2px 6px; border-radius: 4px; margin-right: 2px; display: inline-block; margin-bottom: 2px;}
+        .gift-selector { max-height: 150px; overflow-y: auto; border: 1px solid #e3e6f0; padding: 8px; border-radius: 6px; background: #fff; }
     </style>
 </head>
 <body>
@@ -37,82 +30,34 @@
             <div class="card-body d-flex justify-content-between align-items-center">
                 <div>
                     <h5 class="fw-bold text-secondary mb-1">TRẠNG THÁI HỆ THỐNG</h5>
-                    <div class="d-flex align-items-center">
-                        <span class="status-indicator <%= systemStatus ? 'status-on' : 'status-off' %>"></span>
-                        <h4 class="m-0 fw-bold <%= systemStatus ? 'text-success' : 'text-danger' %>">
-                            <%= systemStatus ? 'BOT ĐANG HOẠT ĐỘNG' : 'BOT ĐANG TẠM DỪNG' %>
-                        </h4>
-                    </div>
-                    <small class="text-muted"><%= systemStatus ? 'Bot sẽ tự động trả lời khách hàng.' : 'Bot sẽ im lặng, không trả lời tin nhắn.' %></small>
+                    <h4 class="m-0 fw-bold <%= systemStatus ? 'text-success' : 'text-danger' %>">
+                        <%= systemStatus ? 'BOT ĐANG HOẠT ĐỘNG' : 'BOT ĐANG TẠM DỪNG' %>
+                    </h4>
                 </div>
-                
                 <form action="/admin/toggle-system" method="POST" style="min-width: 200px;">
                     <% if(systemStatus) { %>
-                        <button type="submit" name="status" value="false" class="btn btn-danger w-100 fw-bold py-3 rounded-3 shadow-sm">
-                            <i class="bi bi-power"></i> TẮT BOT NGAY
-                        </button>
+                        <button type="submit" name="status" value="false" class="btn btn-danger w-100 fw-bold py-3"><i class="bi bi-power"></i> TẮT BOT NGAY</button>
                     <% } else { %>
-                        <button type="submit" name="status" value="true" class="btn btn-success w-100 fw-bold py-3 rounded-3 shadow-sm">
-                            <i class="bi bi-power"></i> BẬT BOT LÊN
-                        </button>
+                        <button type="submit" name="status" value="true" class="btn btn-success w-100 fw-bold py-3"><i class="bi bi-power"></i> BẬT BOT LÊN</button>
                     <% } %>
                 </form>
             </div>
         </div>
 
         <div class="card">
-            <div class="card-header bg-gradient-warning">🎁 1. KHO QUÀ TẶNG (Tạo danh sách quà để chọn)</div>
-            <div class="card-body">
-                <table class="table align-middle">
-                    <thead class="table-light"><tr><th>Tên Quà</th><th>Trạng Thái Kho</th><th>Hành Động</th></tr></thead>
-                    <tbody>
-                        <% customGifts.forEach(g => { %>
-                        <tr>
-                            <td class="fw-bold"><%= g.name %></td>
-                            <td>
-                                <form action="/admin/toggle-gift" method="POST">
-                                    <input type="hidden" name="id" value="<%= g.id %>">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" onchange="this.form.submit()" <%= g.inStock ? 'checked' : '' %>>
-                                        <label class="form-check-label <%= g.inStock ? 'text-instock' : 'text-outstock' %>">
-                                            <%= g.inStock ? 'CÒN HÀNG' : 'HẾT HÀNG' %>
-                                        </label>
-                                    </div>
-                                </form>
-                            </td>
-                            <td>
-                                <form action="/admin/delete-gift" method="POST">
-                                    <input type="hidden" name="id" value="<%= g.id %>">
-                                    <button class="btn btn-sm btn-outline-danger">Xóa</button>
-                                </form>
-                            </td>
-                        </tr>
-                        <% }) %>
-                    </tbody>
-                </table>
-                <form action="/admin/add-gift" method="POST" class="row g-2 mt-2 border-top pt-3">
-                    <div class="col-auto"><label class="col-form-label fw-bold">Thêm Quà:</label></div>
-                    <div class="col-md-6"><input type="text" name="name" class="form-control" placeholder="Ví dụ: Dầu lạnh, Kẹo sâm..." required></div>
-                    <div class="col-auto"><button type="submit" class="btn btn-warning fw-bold">Thêm Mới</button></div>
-                </form>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header bg-gradient-primary">📦 2. DANH SÁCH SẢN PHẨM</div>
+            <div class="card-header bg-gradient-primary">📦 CÀI ĐẶT SẢN PHẨM & QUÀ TẶNG</div>
             <div class="card-body">
                 <div class="alert alert-info py-2 small">
-                    <i class="bi bi-info-circle"></i> <strong>Lưu ý:</strong> Tích vào những món quà mà sản phẩm đó ĐƯỢC PHÉP tặng.
+                    <i class="bi bi-info-circle"></i> <strong>Lưu ý:</strong> Tích vào những món quà muốn tặng. Sau khi tích xong nhớ bấm nút <strong>"LƯU CẤU HÌNH QUÀ"</strong> màu xanh dương.
                 </div>
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
-                            <th style="width: 8%" class="text-center">Ảnh</th>
                             <th style="width: 25%">Tên SP</th>
-                            <th style="width: 12%">Giá</th>
-                            <th style="width: 12%">Kho</th>
-                            <th style="width: 28%">Chọn Quà Tặng Kèm (Tích chọn)</th>
-                            <th style="width: 15%">Hành động</th>
+                            <th style="width: 10%">Giá</th>
+                            <th style="width: 10%">Kho</th>
+                            <th style="width: 35%">Chọn Quà Tặng (Tích & Lưu)</th>
+                            <th style="width: 20%">Hành động</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -126,41 +71,38 @@
                                 <input type="hidden" name="image" value="<%= p.image %>">
                                 <input type="hidden" name="inStock" value="<%= p.inStock %>">
                                 
-                                <td class="text-center">
-                                    <% if (p.image && p.image.includes('http')) { %>
-                                        <img src="<%= p.image %>" class="product-thumb">
-                                    <% } else { %>
-                                        <span class="badge bg-secondary">No Img</span>
-                                    <% } %>
+                                <td>
+                                    <strong><%= p.name %></strong><br>
+                                    <% if (p.image) { %><img src="<%= p.image %>" class="product-thumb mt-1"><% } %>
                                 </td>
-                                
-                                <td><strong><%= p.name %></strong></td>
                                 <td class="text-danger fw-bold"><%= p.price %></td>
                                 
-                                <td>
-                                    <% if(p.inStock) { %> 
-                                        <span class="badge bg-success">CÒN</span> 
-                                    <% } else { %> 
-                                        <span class="badge bg-danger">HẾT</span> 
-                                    <% } %>
-                                </td>
+                                <td><% if(p.inStock) { %> <span class="badge bg-success">CÒN</span> <% } else { %> <span class="badge bg-danger">HẾT</span> <% } %></td>
 
                                 <td>
-                                    <div class="gift-selector" style="max-height: 100px; overflow-y: auto; border: 1px solid #e3e6f0; padding: 5px; border-radius: 5px; background: #fff;">
+                                    <div class="mb-2">
+                                        <% if (p.allowedGifts && p.allowedGifts.length > 0) { %>
+                                            <span class="small text-muted">Đang áp dụng:</span><br>
+                                            <% p.allowedGifts.forEach(giftName => { %>
+                                                <span class="gift-tag"><%= giftName %></span>
+                                            <% }) %>
+                                        <% } else { %>
+                                            <span class="text-danger small fw-bold">⚠️ Chưa cài quà (Bot sẽ báo: Chỉ Freeship)</span>
+                                        <% } %>
+                                    </div>
+                                    
+                                    <div class="gift-selector">
                                         <% customGifts.forEach(g => { 
                                             let isSelected = p.allowedGifts && p.allowedGifts.includes(g.name);
                                             if (g.inStock) {
                                         %>
-                                            <div class="form-check gift-option" style="font-size: 0.85em; margin-bottom: 2px;">
+                                            <div class="form-check gift-option">
                                                 <input class="form-check-input" type="checkbox" name="allowedGifts" value="<%= g.name %>" <%= isSelected ? 'checked' : '' %>>
                                                 <label class="form-check-label"><%= g.name %></label>
                                             </div>
                                         <% }}) %>
-                                        <% if (customGifts.filter(g => g.inStock).length === 0) { %>
-                                            <small class="text-muted fst-italic">Kho quà đang trống</small>
-                                        <% } %>
                                     </div>
-                                    <button type="submit" class="btn btn-sm btn-link text-decoration-none p-0 mt-1">💾 Lưu Quà</button>
+                                    <button type="submit" class="btn btn-sm btn-primary mt-2 w-100 fw-bold"><i class="bi bi-save"></i> LƯU CẤU HÌNH QUÀ</button>
                                 </td>
 
                                 <td>
@@ -177,18 +119,17 @@
                                         <div class="modal-header bg-primary text-white"><h5 class="modal-title">Sửa Thông Tin SP</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                                         <div class="modal-body">
                                             <input type="hidden" name="id" value="<%= p.id %>">
-                                            <div class="mb-3"><label class="fw-bold">Tên SP</label><input type="text" name="name" class="form-control" value="<%= p.name %>"></div>
-                                            <div class="mb-3"><label class="fw-bold">Giá</label><input type="text" name="price" class="form-control" value="<%= p.price %>"></div>
-                                            <div class="mb-3"><label class="fw-bold">Trạng thái kho</label>
+                                            <div class="mb-3"><label>Tên SP</label><input type="text" name="name" class="form-control" value="<%= p.name %>"></div>
+                                            <div class="mb-3"><label>Giá</label><input type="text" name="price" class="form-control" value="<%= p.price %>"></div>
+                                            <div class="mb-3"><label>Kho</label>
                                                 <select name="inStock" class="form-select">
-                                                    <option value="true" <%= p.inStock ? 'selected' : '' %>>Còn hàng</option>
-                                                    <option value="false" <%= !p.inStock ? 'selected' : '' %>>Hết hàng</option>
+                                                    <option value="true" <%= p.inStock ? 'selected' : '' %>>Còn</option>
+                                                    <option value="false" <%= !p.inStock ? 'selected' : '' %>>Hết</option>
                                                 </select>
                                             </div>
-                                            <div class="mb-3"><label class="fw-bold">Link Ảnh</label><input type="text" name="image" class="form-control" value="<%= p.image %>"></div>
-                                            <div class="mb-3"><label class="fw-bold">Mô tả thêm</label><textarea name="desc" class="form-control" rows="3"><%= p.desc %></textarea></div>
+                                            <div class="mb-3"><label>Ảnh (Link)</label><input type="text" name="image" class="form-control" value="<%= p.image %>"></div>
                                         </div>
-                                        <div class="modal-footer"><button type="submit" class="btn btn-primary w-100">Lưu Thông Tin</button></div>
+                                        <div class="modal-footer"><button type="submit" class="btn btn-primary">Lưu Thay Đổi</button></div>
                                     </form>
                                 </div>
                             </div>
@@ -196,26 +137,45 @@
                         <% }) %>
                     </tbody>
                 </table>
-
-                <div class="bg-light p-3 rounded mt-3 border">
-                    <h6 class="fw-bold mb-3">➕ Thêm Sản Phẩm Mới</h6>
-                    <form action="/admin/add-product" method="POST" class="row g-2">
-                        <div class="col-md-3"><input type="text" name="name" class="form-control" placeholder="Tên Sản Phẩm" required></div>
-                        <div class="col-md-2"><input type="text" name="price" class="form-control" placeholder="Giá bán" required></div>
-                        <div class="col-md-4"><input type="text" name="image" class="form-control" placeholder="Link Ảnh (URL)..."></div>
-                        <div class="col-md-3"><button type="submit" class="btn btn-success w-100">Thêm Ngay</button></div>
-                    </form>
-                </div>
             </div>
         </div>
         
-        <div class="card mb-5">
-            <div class="card-body">
-                <form action="/admin/save-ai" method="POST" class="row g-2">
-                    <div class="col-auto"><label>Gemini API:</label></div>
-                    <div class="col-md-6"><input type="text" name="apiKey" class="form-control" value="<%= aiConfig.apiKey %>"></div>
-                    <div class="col-auto"><button type="submit" class="btn btn-sm btn-dark">Lưu</button></div>
-                </form>
+        <div class="row">
+            <div class="col-md-6 mb-5">
+                <div class="card h-100">
+                    <div class="card-header bg-warning text-dark">🎁 QUẢN LÝ KHO QUÀ GỐC</div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <% customGifts.forEach(g => { %>
+                            <tr>
+                                <td><%= g.name %></td>
+                                <td>
+                                    <form action="/admin/toggle-gift" method="POST" class="d-inline">
+                                        <input type="hidden" name="id" value="<%= g.id %>">
+                                        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" onchange="this.form.submit()" <%= g.inStock ? 'checked' : '' %>></div>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form action="/admin/delete-gift" method="POST" class="d-inline"><input type="hidden" name="id" value="<%= g.id %>"><button class="btn btn-sm btn-outline-danger">Xóa</button></form>
+                                </td>
+                            </tr>
+                            <% }) %>
+                        </table>
+                        <form action="/admin/add-gift" method="POST" class="mt-2 d-flex"><input type="text" name="name" class="form-control me-2" placeholder="Thêm quà mới..." required><button class="btn btn-warning">Thêm</button></form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-5">
+                <div class="card h-100">
+                    <div class="card-header bg-secondary text-white">⚙️ CẤU HÌNH API</div>
+                    <div class="card-body">
+                        <form action="/admin/save-ai" method="POST">
+                            <label>Gemini API Key:</label>
+                            <input type="text" name="apiKey" class="form-control mb-2" value="<%= aiConfig.apiKey %>">
+                            <button class="btn btn-dark w-100">Lưu API</button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

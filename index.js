@@ -1,4 +1,4 @@
-// File: index.js (VERSION v19.10 - FIX PRICE/GIFT LOGIC & CONVERSATION FLOW)
+// File: index.js (VERSION v19.11 - FIX CONFUSED PRODUCT & GIFT LIST)
 
 require('dotenv').config();
 const express = require('express');
@@ -49,7 +49,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(session({ secret: 'bot-v19-10-fix-logic', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
+app.use(session({ secret: 'bot-v19-11-final-fix', resave: false, saveUninitialized: true, cookie: { maxAge: 3600000 } }));
 
 function checkAuth(req, res, next) { if (req.session.loggedIn) next(); else res.redirect('/login'); }
 app.get('/login', (req, res) => res.render('login'));
@@ -182,8 +182,6 @@ async function processMessage(pageId, senderId, userMessage, imageUrl, userState
         const phoneRegex = /0\d{9}/; 
         const cleanMsg = userMessage.replace(/\s+/g, '').replace(/\./g, '').replace(/-/g, '');
         let hasPhoneNow = phoneRegex.test(cleanMsg);
-        
-        // Check lịch sử xem có sđt chưa
         let hasPhoneInHistory = userState.history.some(h => h.role === 'Khách' && phoneRegex.test(h.content.replace(/\s+/g, '').replace(/\./g, '')));
         let customerHasProvidedPhone = hasPhoneNow || hasPhoneInHistory;
 
@@ -247,15 +245,20 @@ async function buildKnowledgeBaseFromDB() {
             let p = doc.data();
             let stockStatus = (p.inStock === false) ? " (❌ TẠM HẾT HÀNG)" : " (✅ CÒN HÀNG)";
             let nameWithStock = p.name + stockStatus;
+
+            // --- FIX HIỂN THỊ QUÀ ---
             let giftInfo = "KHÔNG tặng kèm quà";
             if (p.allowedGifts && p.allowedGifts.length > 0) {
-                giftInfo = `Được chọn 1 trong các món: [${p.allowedGifts.join(", ")}] + Freeship`;
+                // Nối bằng "HOẶC" để Bot không tự ý tóm tắt
+                giftInfo = `Tặng 1 trong các món: [${p.allowedGifts.join(" HOẶC ")}] + Freeship`;
             } else {
                 giftInfo = "Chỉ Freeship, KHÔNG tặng quà khác.";
             }
+
             let cleanDesc = p.desc || "";
             if (p.name.toLowerCase().includes("kwangdong")) cleanDesc += " (Thành phần: Có chứa trầm hương tự nhiên)";
             productFull += `- Tên: ${nameWithStock}\n  + Giá CHUẨN: ${p.price}\n  + Quà Tặng: ${giftInfo}\n  + Thông tin: ${cleanDesc}\n  + Ảnh (URL): "${p.image}"\n`;
+            
             let priceVal = parseInt(p.price.replace(/\D/g, '')) || 0;
             let isMainProduct = priceVal >= 500 || p.name.includes("An Cung") || p.name.includes("Thông Đỏ");
             if (isMainProduct) productSummary += `- ${nameWithStock}: ${p.price}\n`;
@@ -264,7 +267,6 @@ async function buildKnowledgeBaseFromDB() {
     return `=== LUẬT CHUNG ===\n${rules}\n\n=== DANH SÁCH SẢN PHẨM & QUÀ TẶNG CỤ THỂ ===\n${productFull}\n=== DATA RÚT GỌN ===\n${productSummary}`;
 }
 
-// ⚠️ UPDATE PROMPT MỚI ĐỂ SỬA LỖI ⚠️
 async function callGeminiRetail(userMessage, userName, history, knowledgeBase, imageUrl = null, hasPhone = false) {
     const model = await getGeminiModel();
     if (!model) return { response_message: "Dạ Bác chờ Shop xíu nha." };
@@ -275,32 +277,27 @@ async function callGeminiRetail(userMessage, userName, history, knowledgeBase, i
         const VIDEO_INTRO_KWANGDONG = "https://www.facebook.com/share/v/1aX41A7wCY/"; 
         
         let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea. Khách: '${greetingName}'.
-**DỮ LIỆU SẢN PHẨM:**
+**DỮ LIỆU SẢN PHẨM (ĐỌC KỸ):**
 ${knowledgeBase}
 
-**QUY TẮC SỐ 1: VỀ GIÁ VÀ QUÀ (AN CUNG NGƯU HOÀNG SAMSUNG):**
-- Giá chuẩn 1 hộp: 780k (Có quà).
-- Nếu mua 2 hộp (Combo):
-  + Giá 1.560k (780k x 2) -> CÓ TẶNG QUÀ.
-  + Nếu giảm còn 1.500k (tức 750k/hộp) -> **BẮT BUỘC CẮT HẾT QUÀ**.
-- **CẤM TUYỆT ĐỐI:** Không bao giờ được nói "Giá 1.500k tặng kèm quà đầy đủ". Đây là lỗi nghiêm trọng.
-- Nếu bán giá 750k/hộp, phải nói: "Dạ giá này bên con đã cắt hết quà tặng rồi ạ, chỉ còn Freeship thôi Bác nhé".
+**QUY TẮC CHỐNG NHẦM SẢN PHẨM (CAO HỒNG SÂM):**
+- Có 2 loại Cao Hồng Sâm 365:
+  1. Hộp **2 lọ**: Giá **470k**.
+  2. Hộp **4 lọ**: Giá **850k**.
+- Nếu khách hỏi "2 lọ", phải báo giá 470k. Tuyệt đối không được lấy giá 850k báo cho khách.
 
-**QUY TẮC SỐ 2: VỀ SỐ ĐIỆN THOẠI (SĐT):**
-- Trạng thái hiện tại: ${hasPhone ? "✅ ĐÃ CÓ SĐT (Khách đã đưa rồi)" : "❌ CHƯA CÓ SĐT"}.
-- **Nếu ĐÃ CÓ SĐT:** + CÂM MIỆNG, KHÔNG ĐƯỢC XIN LẠI SĐT dưới mọi hình thức.
-  + Nếu khách chốt, chỉ cần báo: "Dạ Shop đã nhận thông tin, sẽ có nhân viên gọi chốt đơn cho Bác ạ".
-- **Nếu CHƯA CÓ SĐT:** + Chỉ xin khi khách xác nhận mua ("Lấy cho bác", "Gửi về...").
-  + Nếu khách đang hỏi giá/tư vấn -> Tư vấn tiếp, đừng vội xin số.
+**QUY TẮC QUÀ TẶNG:**
+- Đọc kỹ dòng "+ Quà Tặng" của từng sản phẩm.
+- Nếu ghi "Tặng 1 trong các món: [A HOẶC B HOẶC C]", bạn phải liệt kê đủ cả A, B, C ra cho khách chọn. Không được tự ý cắt bớt.
+- Nếu ghi "KHÔNG tặng quà", thì trả lời là chỉ Freeship.
 
-**QUY TẮC SỐ 3: KHÔNG ĐƯỢC ÉP KHÁCH:**
-- Nếu khách chưa nói "Mua", "Chốt", đừng nói câu "Bác ưng mã này rồi thì cho xin sđt". Nghe rất vô duyên.
-- Thay vào đó, hãy hỏi: "Bác cần tư vấn thêm gì về sản phẩm không ạ?" hoặc "Bác thấy giá này hợp lý chưa ạ?".
+**LUẬT GIÁ AN CUNG SAMSUNG (QUAN TRỌNG):**
+- Giá 780k -> Có quà.
+- Giá 750k -> CẮT HẾT QUÀ.
 
-**NHIỆM VỤ:**
-- Tư vấn bán hàng.
-- AI Vision: Nhìn ảnh SP -> Tư vấn. Sticker -> Cười.
-- Video: Hỏi Samsung gửi "${VIDEO_CHECK_SAMSUNG}". Hỏi Kwangdong gửi "${VIDEO_INTRO_KWANGDONG}".
+**TRẠNG THÁI SĐT:** ${hasPhone ? "✅ ĐÃ CÓ" : "❌ CHƯA CÓ"}. (Đã có thì KHÔNG xin lại).
+
+**NHIỆM VỤ:** Tư vấn đúng giá, đúng loại, đúng quà.
 
 **LỊCH SỬ CHAT:**
 ${historyText}
@@ -331,4 +328,4 @@ async function sendImage(token, id, url) { try { await axios.post(`https://graph
 async function sendVideo(token, id, url) { try { await axios.post(`https://graph.facebook.com/v19.0/me/messages?access_token=${token}`, { recipient: { id }, message: { attachment: { type: "video", payload: { url, is_reusable: true } }, metadata: "FROM_BOT_AUTO" } }); } catch(e){} }
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
-app.listen(PORT, () => console.log(`🚀 Bot v19.10 (Fix Logic Gift & Context) chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Bot v19.11 (Fixed Logic & UI) chạy tại port ${PORT}`));
