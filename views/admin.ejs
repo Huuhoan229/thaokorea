@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Shop Thảo Korea (v20.0)</title>
+    <title>Admin Shop Thảo Korea (v20.3)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
@@ -14,12 +14,12 @@
         .bg-gradient-primary { background: linear-gradient(45deg, #4e73df, #224abe); color: white; }
         .bg-gradient-warning { background: linear-gradient(45deg, #f6c23e, #dda20a); color: #333; }
         .bg-gradient-facebook { background: linear-gradient(45deg, #1877f2, #0d5cb8); color: white; }
+        .bg-gradient-success { background: linear-gradient(45deg, #1cc88a, #13855c); color: white; }
         
         .product-thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6; background-color: #fff; }
         .form-check-input:checked { background-color: #1cc88a; border-color: #1cc88a; }
-        .status-indicator { width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin-right: 8px; }
-        .status-on { background-color: #1cc88a; box-shadow: 0 0 10px #1cc88a; }
-        .status-off { background-color: #e74a3b; box-shadow: 0 0 10px #e74a3b; }
+        
+        .gift-selector { max-height: 150px; overflow-y: auto; border: 1px solid #e3e6f0; padding: 8px; border-radius: 6px; background: #fff; }
         
         .floating-save-bar {
             position: fixed; bottom: 0; left: 0; right: 0;
@@ -27,8 +27,6 @@
             padding: 15px; box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
             z-index: 1000; display: flex; justify-content: flex-end; align-items: center;
         }
-        
-        /* Page List Item */
         .page-item-card { border: 1px solid #e3e6f0; border-radius: 8px; padding: 15px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; background: #fff; }
         .page-avatar { width: 50px; height: 50px; border-radius: 50%; background: #eee; margin-right: 15px; }
     </style>
@@ -43,9 +41,9 @@
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body d-flex justify-content-between align-items-center">
                 <div>
-                    <h5 class="fw-bold text-secondary mb-1">TRẠNG THÁI HỆ THỐNG</h5>
+                    <h5 class="fw-bold text-secondary mb-1">TRẠNG THÁI BOT</h5>
                     <h4 class="m-0 fw-bold <%= systemStatus ? 'text-success' : 'text-danger' %>">
-                        <%= systemStatus ? 'BOT ĐANG HOẠT ĐỘNG' : 'BOT ĐANG TẠM DỪNG' %>
+                        <%= systemStatus ? 'ĐANG HOẠT ĐỘNG' : 'ĐANG TẠM DỪNG' %>
                     </h4>
                 </div>
                 <form action="/admin/toggle-system" method="POST" style="min-width: 200px;">
@@ -58,68 +56,35 @@
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header bg-gradient-facebook">
-                <i class="bi bi-facebook"></i> TÍCH HỢP FANPAGE (FACEBOOK LOGIN)
-            </div>
+        <div class="card mb-4">
+            <div class="card-header bg-gradient-facebook"><i class="bi bi-facebook"></i> QUẢN LÝ FANPAGE</div>
             <div class="card-body">
-                <div class="row mb-4">
+                <div class="row mb-3">
                     <div class="col-md-12">
-                        <div class="alert alert-light border">
-                            <strong>Bước 1: Cấu hình Facebook App</strong> (Lấy tại <code>developers.facebook.com</code>)
-                            <br><small class="text-muted">Callback URL của bác là: <strong><%= appUrl %>/auth/facebook/callback</strong> (Hãy dán link này vào phần "Valid OAuth Redirect URIs" trên Facebook Developer)</small>
-                        </div>
                         <form action="/admin/save-fb-config" method="POST" class="row g-2 align-items-end">
-                            <div class="col-md-4">
-                                <label class="small fw-bold">App ID:</label>
-                                <input type="text" name="appId" class="form-control" value="<%= fbConfig.appId %>" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="small fw-bold">App Secret:</label>
-                                <input type="password" name="appSecret" class="form-control" value="<%= fbConfig.appSecret %>" required>
-                            </div>
-                            <div class="col-md-4">
-                                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-save"></i> Lưu Cấu Hình FB</button>
-                            </div>
+                            <div class="col-md-4"><label class="small fw-bold">App ID:</label><input type="text" name="appId" class="form-control" value="<%= fbConfig.appId %>"></div>
+                            <div class="col-md-4"><label class="small fw-bold">App Secret:</label><input type="password" name="appSecret" class="form-control" value="<%= fbConfig.appSecret %>"></div>
+                            <div class="col-md-4"><button type="submit" class="btn btn-primary w-100">Lưu Config</button></div>
                         </form>
                     </div>
                 </div>
-
-                <hr>
-
-                <div class="row">
-                    <div class="col-md-12 text-center">
-                        <% if (!fbConfig.appId || !fbConfig.appSecret) { %>
-                            <div class="alert alert-warning">⚠️ Vui lòng nhập App ID và App Secret trước khi kết nối.</div>
-                        <% } else { %>
-                            <a href="/auth/facebook" class="btn btn-lg btn-outline-primary fw-bold mb-3">
-                                <i class="bi bi-facebook"></i> ĐĂNG NHẬP FACEBOOK ĐỂ LẤY PAGE
-                            </a>
-                        <% } %>
-                    </div>
+                <div class="text-center mb-3">
+                    <a href="/auth/facebook" class="btn btn-outline-primary fw-bold"><i class="bi bi-facebook"></i> ĐĂNG NHẬP FACEBOOK & LẤY PAGE</a>
                 </div>
-
+                
                 <% if (fetchedPages && fetchedPages.length > 0) { %>
-                    <h5 class="fw-bold mt-3">Danh sách Fanpage của bạn:</h5>
-                    <div class="list-group">
+                    <div class="list-group mb-3">
                         <% fetchedPages.forEach(page => { %>
                             <div class="page-item-card">
                                 <div class="d-flex align-items-center">
-                                    <div class="page-avatar d-flex align-items-center justify-content-center fw-bold fs-4 text-white bg-primary">
-                                        <%= page.name.charAt(0) %>
-                                    </div>
-                                    <div>
-                                        <h5 class="mb-0 fw-bold"><%= page.name %></h5>
-                                        <small class="text-muted">ID: <%= page.id %></small>
-                                    </div>
+                                    <div class="page-avatar d-flex align-items-center justify-content-center fw-bold fs-4 text-white bg-primary"><%= page.name.charAt(0) %></div>
+                                    <div><h5 class="mb-0 fw-bold"><%= page.name %></h5><small>ID: <%= page.id %></small></div>
                                 </div>
                                 <form action="/admin/connect-page" method="POST">
                                     <input type="hidden" name="name" value="<%= page.name %>">
                                     <input type="hidden" name="pageId" value="<%= page.id %>">
                                     <input type="hidden" name="accessToken" value="<%= page.access_token %>">
-                                    <button type="submit" class="btn btn-success fw-bold">
-                                        <i class="bi bi-check-circle"></i> KẾT NỐI NGAY
-                                    </button>
+                                    <button type="submit" class="btn btn-success fw-bold">KẾT NỐI</button>
                                 </form>
                             </div>
                         <% }) %>
@@ -127,35 +92,32 @@
                 <% } %>
 
                 <% if (pages && pages.length > 0) { %>
-                    <h6 class="fw-bold mt-4 text-success"><i class="bi bi-link-45deg"></i> Các Fanpage đang hoạt động:</h6>
-                    <table class="table table-bordered table-sm">
+                    <h6 class="fw-bold text-success">Đang kết nối:</h6>
+                    <ul class="list-group">
                         <% pages.forEach(p => { %>
-                            <tr>
-                                <td class="align-middle fw-bold"><%= p.name %></td>
-                                <td class="align-middle"><small><%= p.pageId %></small></td>
-                                <td class="align-middle text-end">
-                                    <form action="/admin/delete-page" method="POST" class="d-inline">
-                                        <input type="hidden" name="id" value="<%= p.id %>">
-                                        <button class="btn btn-sm btn-outline-danger">Ngắt kết nối</button>
-                                    </form>
-                                </td>
-                            </tr>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><strong><%= p.name %></strong> <small class="text-muted">(<%= p.pageId %>)</small></span>
+                                <form action="/admin/delete-page" method="POST"><input type="hidden" name="id" value="<%= p.id %>"><button class="btn btn-sm btn-outline-danger">Ngắt</button></form>
+                            </li>
                         <% }) %>
-                    </table>
+                    </ul>
                 <% } %>
             </div>
         </div>
 
-        <div class="card mt-4">
-            <div class="card-header bg-gradient-primary">📦 CÀI ĐẶT SẢN PHẨM (GIÁ - SHIP - QUÀ)</div>
+        <div class="card mb-4">
+            <div class="card-header bg-gradient-primary d-flex justify-content-between align-items-center">
+                <span>📦 DANH SÁCH SẢN PHẨM</span>
+                <span class="badge bg-light text-primary">Sửa hàng loạt</span>
+            </div>
             <div class="card-body">
-                <table class="table table-hover align-middle" id="productTable">
+                <table class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
                             <th style="width: 25%">Tên SP</th>
                             <th style="width: 15%">Giá & Ship</th>
                             <th style="width: 10%">Kho</th>
-                            <th style="width: 35%">Chọn Quà Tặng</th>
+                            <th style="width: 35%">Quà Tặng (Tích chọn)</th>
                             <th style="width: 15%">Hành động</th>
                         </tr>
                     </thead>
@@ -170,7 +132,7 @@
                                 <div class="text-danger fw-bold mb-2"><%= p.price %></div>
                                 <div class="form-check form-switch">
                                     <input class="form-check-input input-freeship" type="checkbox" <%= p.isFreeship ? 'checked' : '' %>>
-                                    <label class="form-check-label small fw-bold text-success">Freeship</label>
+                                    <label class="form-check-label small text-success fw-bold">Freeship</label>
                                 </div>
                             </td>
                             <td>
@@ -185,7 +147,7 @@
                                         let isSelected = p.allowedGifts && p.allowedGifts.includes(g.name);
                                         if (g.inStock) {
                                     %>
-                                        <div class="form-check">
+                                        <div class="form-check gift-option">
                                             <input class="form-check-input input-gift" type="checkbox" value="<%= g.name %>" <%= isSelected ? 'checked' : '' %>>
                                             <label class="form-check-label"><%= g.name %></label>
                                         </div>
@@ -219,40 +181,58 @@
                 </table>
             </div>
         </div>
-        
+
+        <div class="card mb-4 border-success">
+            <div class="card-header bg-gradient-success text-white">
+                <i class="bi bi-plus-circle-fill"></i> THÊM SẢN PHẨM MỚI
+            </div>
+            <div class="card-body bg-light">
+                <form action="/admin/add-product" method="POST" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Tên Sản Phẩm:</label>
+                        <input type="text" name="name" class="form-control" placeholder="Ví dụ: Sâm nước gói..." required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">Giá bán:</label>
+                        <input type="text" name="price" class="form-control" placeholder="500k" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Link Ảnh (URL):</label>
+                        <input type="text" name="image" class="form-control" placeholder="https://...">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-success w-100 fw-bold py-2">THÊM NGAY</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="row">
-            <div class="col-md-6 mb-5">
+            <div class="col-md-6">
                 <div class="card h-100">
-                    <div class="card-header bg-warning text-dark">🎁 QUẢN LÝ KHO QUÀ GỐC</div>
+                    <div class="card-header bg-warning text-dark">🎁 KHO QUÀ TẶNG</div>
                     <div class="card-body">
                         <table class="table table-sm">
                             <% customGifts.forEach(g => { %>
                             <tr>
                                 <td><%= g.name %></td>
-                                <td>
-                                    <form action="/admin/toggle-gift" method="POST" class="d-inline">
-                                        <input type="hidden" name="id" value="<%= g.id %>">
-                                        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" onchange="this.form.submit()" <%= g.inStock ? 'checked' : '' %>></div>
-                                    </form>
-                                </td>
-                                <td>
-                                    <form action="/admin/delete-gift" method="POST" class="d-inline"><input type="hidden" name="id" value="<%= g.id %>"><button class="btn btn-sm btn-outline-danger">Xóa</button></form>
-                                </td>
+                                <td><form action="/admin/toggle-gift" method="POST"><input type="hidden" name="id" value="<%= g.id %>"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" onchange="this.form.submit()" <%= g.inStock ? 'checked' : '' %>></div></form></td>
+                                <td><form action="/admin/delete-gift" method="POST"><input type="hidden" name="id" value="<%= g.id %>"><button class="btn btn-sm btn-outline-danger">Xóa</button></form></td>
                             </tr>
                             <% }) %>
                         </table>
-                        <form action="/admin/add-gift" method="POST" class="mt-2 d-flex"><input type="text" name="name" class="form-control me-2" placeholder="Thêm quà mới..." required><button class="btn btn-warning">Thêm</button></form>
+                        <form action="/admin/add-gift" method="POST" class="d-flex mt-2"><input type="text" name="name" class="form-control me-2" placeholder="Tên quà..." required><button class="btn btn-warning">Thêm</button></form>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6 mb-5">
+            <div class="col-md-6">
                 <div class="card h-100">
-                    <div class="card-header bg-secondary text-white">⚙️ CẤU HÌNH API GEMINI</div>
+                    <div class="card-header bg-secondary text-white">⚙️ CẤU HÌNH API</div>
                     <div class="card-body">
                         <form action="/admin/save-ai" method="POST">
                             <label>Gemini API Key:</label>
                             <input type="text" name="apiKey" class="form-control mb-2" value="<%= aiConfig.apiKey %>">
-                            <button class="btn btn-dark w-100">Lưu API</button>
+                            <button class="btn btn-dark w-100">Lưu</button>
                         </form>
                     </div>
                 </div>
@@ -268,7 +248,7 @@
     <script>
         async function saveAllBulk() {
             const btn = document.querySelector('button[onclick="saveAllBulk()"]');
-            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Đang lưu...'; btn.disabled = true;
+            btn.innerHTML = '⏳ Đang lưu...'; btn.disabled = true;
             const products = [];
             document.querySelectorAll('.product-row').forEach(row => {
                 const id = row.getAttribute('data-id');
