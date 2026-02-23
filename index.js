@@ -2,6 +2,7 @@
 
 require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
 const session = require('express-session');
 const axios = require('axios');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
@@ -9,7 +10,7 @@ const admin = require('firebase-admin');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
 const path = require('path');
-const cors = require('cors');
+
 
 // 👇👇👇 EM ĐÃ ĐIỀN LINK KOYEB CỦA BÁC TỪ ẢNH TRƯỚC 👇👇👇
 const APP_URL = "advisory-renie-huuhoan-16f8f8fa.koyeb.app/"; 
@@ -404,37 +405,22 @@ async function getFacebookUserName(token, id) { try { const res = await axios.ge
 // ==========================================
 // API DÀNH RIÊNG CHO WEBSITE CHAT WIDGET
 // ==========================================
+// API DÀNH RIÊNG CHO WEBSITE
 app.post('/api/webchat', async (req, res) => {
     try {
         const { message } = req.body;
-        
-        // Vẫn dùng chung bộ não dữ liệu (Sản phẩm, Luật giá, Quà tặng)
         let knowledgeBase = await buildKnowledgeBaseFromDB();
-        
-        // Tạo câu lệnh riêng cho khách Chat trên Web
-        let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea trực trên Website. Khách hàng đang chat trực tiếp trên web.
-**DỮ LIỆU SẢN PHẨM & QUY ĐỊNH:**
-${knowledgeBase}
-
-**QUY TẮC DÀNH CHO WEB:**
-- Trả lời thân thiện, ngắn gọn, súc tích (vì khung chat trên web rất nhỏ).
-- Nếu khách muốn mua, hãy xin SĐT và Địa chỉ để giao hàng.
-- LUÔN LUÔN tuân thủ quy tắc giá 750k/780k và Quà tặng như đã cài đặt.
-
-**KHÁCH HỎI:** "${message}"
-**NHIỆM VỤ:** Trả lời trực tiếp bằng văn bản thuần (Không dùng định dạng JSON).`;
+        let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea trực trên Website.\n**DỮ LIỆU:**\n${knowledgeBase}\n**KHÁCH HỎI:** "${message}"\n**NHIỆM VỤ:** Trả lời trực tiếp bằng văn bản thuần, không dùng markdown rườm rà. Xin SĐT nếu chốt đơn.`;
 
         const model = await getGeminiModel();
-        if (!model) return res.json({ reply: "Hệ thống AI đang tạm nghỉ, Bác gọi Hotline giúp Shop nhé!" });
+        if (!model) return res.json({ success: false, reply: "Hệ thống AI đang khởi động, Bác chờ xíu nhé!" });
 
         let result = await model.generateContent(prompt);
         let replyText = result.response.text().trim();
-        
-        // Trả kết quả về cho Website hiển thị
         res.json({ success: true, reply: replyText });
     } catch (e) {
-        console.error("Webchat Error:", e);
-        res.json({ success: false, reply: "Dạ Shop đang nghẽn mạng chút, Bác chờ xíu hoặc gọi Hotline nhé ạ!" });
+        console.error("Lỗi Webchat:", e);
+        res.json({ success: false, reply: "Dạ mạng đang nghẽn, Bác thử lại giúp Shop nha!" });
     }
 });
 
