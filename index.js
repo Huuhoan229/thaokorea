@@ -12,7 +12,7 @@ const path = require('path');
 const cors = require('cors');
 
 // 👇👇👇 EM ĐÃ ĐIỀN LINK KOYEB CỦA BÁC TỪ ẢNH TRƯỚC 👇👇👇
-const APP_URL = "preferred-teodora-68chatbot86-89790f23.koyeb.app/"; 
+const APP_URL = "advisory-renie-huuhoan-16f8f8fa.koyeb.app/"; 
 
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz80_RIYwoTmjZd3MLWrrtmO2auM_s-LHLJcPAYb_TrgbCbQbT4bz90eC5gBs24dI0/exec"; 
 const APPS_SCRIPT_SECRET = "VNGEN123"; 
