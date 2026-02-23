@@ -13,7 +13,7 @@ const path = require('path');
 
 
 // 👇👇👇 EM ĐÃ ĐIỀN LINK KOYEB CỦA BÁC TỪ ẢNH TRƯỚC 👇👇👇
-const APP_URL = "advisory-renie-huuhoan-16f8f8fa.koyeb.app/"; 
+const APP_URL = "https://advisory-renie-huuhoan-16f8f8fa.koyeb.app";
 
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz80_RIYwoTmjZd3MLWrrtmO2auM_s-LHLJcPAYb_TrgbCbQbT4bz90eC5gBs24dI0/exec"; 
 const APPS_SCRIPT_SECRET = "VNGEN123"; 
@@ -48,7 +48,17 @@ async function seedDefaultGifts() {
 }
 
 const app = express();
-app.use(cors()); // Cho phép Website gửi dữ liệu về Server
+
+// 👇 ĐOẠN CẤU HÌNH MỞ CỬA CHO WEBSITE SAMVITA.VN 👇
+app.use(cors({
+    origin: '*', 
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.options('*', cors()); 
+// 👆 KẾT THÚC ĐOẠN CORS 👆
+
+app.use(express.json());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
