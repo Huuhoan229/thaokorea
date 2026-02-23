@@ -413,46 +413,56 @@ async function sendVideo(token, id, url) { try { await axios.post(`https://graph
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
 // ==========================================
-// API DÀNH RIÊNG CHO WEBSITE CHAT WIDGET (CÓ LƯU LỊCH SỬ)
+// API DÀNH RIÊNG CHO WEBSITE CHAT WIDGET (CÓ LƯU LỊCH SỬ & CHỐNG NGÁO)
 // ==========================================
 app.post('/api/webchat', async (req, res) => {
     try {
-        // Lấy câu hỏi hiện tại VÀ lịch sử chat từ Web gửi lên
         const { message, history } = req.body;
 
         const phoneRegex = /0\d{9}/; 
         const cleanMsg = message.replace(/\s+/g, '').replace(/\./g, '').replace(/-/g, '');
         let hasPhoneNow = phoneRegex.test(cleanMsg);
 
-        // 1. GOM LỊCH SỬ CHAT ĐỂ GỬI VỀ SHEET (NẾU CÓ SĐT)
+        // 1. GOM LỊCH SỬ CHAT
         let fullHistoryText = "";
         if (history && Array.isArray(history)) {
             fullHistoryText = history.map(h => `${h.role === 'user' ? 'Khách' : 'Bot'}: ${h.text}`).join('\n');
         }
-        fullHistoryText += `\nKhách: ${message}`; // Ghép thêm câu nói chứa SĐT hiện tại
+        fullHistoryText += `\nKhách: ${message}`;
 
         if (hasPhoneNow) {
             const matchedPhone = cleanMsg.match(phoneRegex)[0];
-            // Bắn TOÀN BỘ LỊCH SỬ CHAT về Google Sheet
             sendPhoneToSheet(matchedPhone, "Khách Website", `[LỊCH SỬ TRÒ CHUYỆN]:\n${fullHistoryText}`);
             console.log(`[WEBCHAT] Đã gửi đơn hàng Web về Sheet: ${matchedPhone}`);
         }
 
-        // 2. CHO AI ĐỌC LỊCH SỬ ĐỂ TƯ VẤN TIẾP
+        // 2. PROMPT THIẾT QUÂN LUẬT CHO WEB
         let knowledgeBase = await buildKnowledgeBaseFromDB();
         let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea trực Website.
 **DỮ LIỆU SẢN PHẨM:**
 ${knowledgeBase}
-**TRẠNG THÁI:** ${hasPhoneNow ? "✅ Khách đã cho SĐT, Báo sẽ có nhân viên gọi chốt đơn" : "❌ Khách chưa có SĐT, Xin SĐT nếu khách chốt mua"}
-**LỊCH SỬ TRÒ CHUYỆN TỪ ĐẦU:**
+
+**TRẠNG THÁI SĐT KHÁCH HÀNG:** ${hasPhoneNow ? "✅ ĐÃ CÓ" : "❌ CHƯA CÓ"}
+
+**QUY TẮC BẮT BUỘC (LUẬT THÉP):**
+1. **KHÔNG CHỐT ĐƠN VỘI VÀNG:** Nếu khách nhắn tin không có nghĩa (ví dụ gõ phím linh tinh), hoặc chỉ mới "alo", "hi"... thì CHỈ được hỏi: "Dạ Bác cần tư vấn sản phẩm nào ạ?". TUYỆT ĐỐI KHÔNG ĐƯỢC tự nhận là khách đã ưng và xin SĐT.
+2. **KHI NÀO ĐƯỢC XIN SĐT?** CHỈ XIN SĐT khi khách đã hỏi giá, đã nghe tư vấn và THỰC SỰ ĐỒNG Ý MUA (Ví dụ nói: "ok", "lấy cho tôi", "chốt", "gửi đi"...).
+3. **NẾU ĐÃ CÓ SĐT:** Tuyệt đối câm miệng, không xin lại số nữa.
+4. **VỀ GIÁ VÀ QUÀ:** Tuân thủ tuyệt đối quy tắc giá 750k (Cắt quà) và 780k (Có quà) của An Cung.
+5. **VĂN PHONG (QUAN TRỌNG):** Trả lời bằng văn bản thuần, NGẮN GỌN. KHÔNG BAO GIỜ được dùng các ký tự in đậm như ** hay * trong câu trả lời.
+
+**LỊCH SỬ TRÒ CHUYỆN:**
 ${fullHistoryText}
-**NHIỆM VỤ:** Trả lời trực tiếp câu vừa hỏi bằng văn bản thuần, ngắn gọn. Dựa vào lịch sử trên để biết khách muốn mua gì.`;
+
+**NHIỆM VỤ:** Trả lời tin nhắn cuối cùng của khách dựa trên các quy tắc trên.`;
 
         const model = await getGeminiModel();
         if (!model) return res.json({ success: false, reply: "Hệ thống AI đang khởi động, Bác chờ xíu nhé!" });
 
         let result = await model.generateContent(prompt);
-        let replyText = result.response.text().trim();
+        // Xóa sạch các dấu * hoặc ** nếu AI lỡ viết vào
+        let replyText = result.response.text().replace(/\*/g, '').trim(); 
+        
         res.json({ success: true, reply: replyText });
     } catch (e) {
         console.error("Lỗi Webchat:", e);
