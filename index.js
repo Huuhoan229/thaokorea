@@ -415,12 +415,25 @@ async function getFacebookUserName(token, id) { try { const res = await axios.ge
 // ==========================================
 // API DÀNH RIÊNG CHO WEBSITE CHAT WIDGET
 // ==========================================
-// API DÀNH RIÊNG CHO WEBSITE
 app.post('/api/webchat', async (req, res) => {
     try {
         const { message } = req.body;
+
+        // 🔥 BƯỚC 1: TỰ ĐỘNG BẮT SỐ ĐIỆN THOẠI TRÊN WEBSITE VÀ GỬI VỀ GOOGLE SHEET 🔥
+        const phoneRegex = /0\d{9}/; 
+        const cleanMsg = message.replace(/\s+/g, '').replace(/\./g, '').replace(/-/g, '');
+        let hasPhoneNow = phoneRegex.test(cleanMsg);
+
+        if (hasPhoneNow) {
+            const matchedPhone = cleanMsg.match(phoneRegex)[0];
+            // Bắn số về Google Sheet của bác. Để tên là "Khách Website" cho bác dễ phân biệt với Fanpage
+            sendPhoneToSheet(matchedPhone, "Khách từ Website", `[WEB CHỐT ĐƠN]: ${message}`);
+            console.log(`[WEBCHAT] Vừa bắt được SĐT từ Web: ${matchedPhone}`);
+        }
+
+        // BƯỚC 2: AI TƯ VẤN TRẢ LỜI KHÁCH
         let knowledgeBase = await buildKnowledgeBaseFromDB();
-        let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea trực trên Website.\n**DỮ LIỆU:**\n${knowledgeBase}\n**KHÁCH HỎI:** "${message}"\n**NHIỆM VỤ:** Trả lời trực tiếp bằng văn bản thuần, không dùng markdown rườm rà. Xin SĐT nếu chốt đơn.`;
+        let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea trực trên Website.\n**DỮ LIỆU:**\n${knowledgeBase}\n**TRẠNG THÁI:** ${hasPhoneNow ? "✅ Khách đã cho SĐT, Báo nhân viên sẽ gọi chốt đơn" : "❌ Khách chưa có SĐT, Xin SĐT nếu khách muốn mua"}\n**KHÁCH HỎI:** "${message}"\n**NHIỆM VỤ:** Trả lời trực tiếp bằng văn bản thuần, không dùng markdown rườm rà.`;
 
         const model = await getGeminiModel();
         if (!model) return res.json({ success: false, reply: "Hệ thống AI đang khởi động, Bác chờ xíu nhé!" });
