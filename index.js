@@ -413,7 +413,7 @@ async function sendVideo(token, id, url) { try { await axios.post(`https://graph
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
 // ==========================================
-// API DÀNH RIÊNG CHO WEBSITE CHAT WIDGET (CÓ LƯU LỊCH SỬ & CHỐNG NGÁO)
+// API DÀNH RIÊNG CHO WEBSITE CHAT WIDGET (ĐÃ SỬA LỖI NHAI LẠI)
 // ==========================================
 app.post('/api/webchat', async (req, res) => {
     try {
@@ -436,7 +436,7 @@ app.post('/api/webchat', async (req, res) => {
             console.log(`[WEBCHAT] Đã gửi đơn hàng Web về Sheet: ${matchedPhone}`);
         }
 
-        // 2. PROMPT THIẾT QUÂN LUẬT CHO WEB
+        // 2. PROMPT ĐÃ ĐƯỢC TINH CHỈNH LẠI CHO THÔNG MINH HƠN
         let knowledgeBase = await buildKnowledgeBaseFromDB();
         let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea trực Website.
 **DỮ LIỆU SẢN PHẨM:**
@@ -445,22 +445,24 @@ ${knowledgeBase}
 **TRẠNG THÁI SĐT KHÁCH HÀNG:** ${hasPhoneNow ? "✅ ĐÃ CÓ" : "❌ CHƯA CÓ"}
 
 **QUY TẮC BẮT BUỘC (LUẬT THÉP):**
-1. **KHÔNG CHỐT ĐƠN VỘI VÀNG:** Nếu khách nhắn tin không có nghĩa (ví dụ gõ phím linh tinh), hoặc chỉ mới "alo", "hi"... thì CHỈ được hỏi: "Dạ Bác cần tư vấn sản phẩm nào ạ?". TUYỆT ĐỐI KHÔNG ĐƯỢC tự nhận là khách đã ưng và xin SĐT.
-2. **KHI NÀO ĐƯỢC XIN SĐT?** CHỈ XIN SĐT khi khách đã hỏi giá, đã nghe tư vấn và THỰC SỰ ĐỒNG Ý MUA (Ví dụ nói: "ok", "lấy cho tôi", "chốt", "gửi đi"...).
-3. **NẾU ĐÃ CÓ SĐT:** Tuyệt đối câm miệng, không xin lại số nữa.
+1. **PHÂN LỌẠI TIN NHẮN (CỰC KỲ QUAN TRỌNG):**
+   - Nếu khách nhắc đến TÊN SẢN PHẨM (ví dụ: "an cung", "sâm", "bổ não"...): BẮT BUỘC phải lấy dữ liệu để BÁO GIÁ VÀ TƯ VẤN NGAY. Không được hỏi lại "Bác cần tư vấn gì".
+   - CHỈ KHI NÀO khách gõ phím hoàn toàn vô nghĩa ("123", "asdf") hoặc chỉ chào ("alo", "hi") thì mới hỏi lại "Dạ Bác cần tư vấn sản phẩm nào ạ?".
+2. **KHI NÀO ĐƯỢC XIN SĐT?** CHỈ XIN SĐT khi khách THỰC SỰ ĐỒNG Ý MUA (Ví dụ nói: "ok", "lấy cho tôi", "chốt", "gửi đi"...). Tuyệt đối không tự tiện xin SĐT khi khách mới đang hỏi giá.
+3. **NẾU ĐÃ CÓ SĐT:** Tuyệt đối không xin lại số nữa.
 4. **VỀ GIÁ VÀ QUÀ:** Tuân thủ tuyệt đối quy tắc giá 750k (Cắt quà) và 780k (Có quà) của An Cung.
-5. **VĂN PHONG (QUAN TRỌNG):** Trả lời bằng văn bản thuần, NGẮN GỌN. KHÔNG BAO GIỜ được dùng các ký tự in đậm như ** hay * trong câu trả lời.
+5. **VĂN PHONG:** Trả lời bằng văn bản thuần, NGẮN GỌN. KHÔNG dùng các ký tự in đậm như ** hoặc *.
 
 **LỊCH SỬ TRÒ CHUYỆN:**
 ${fullHistoryText}
 
-**NHIỆM VỤ:** Trả lời tin nhắn cuối cùng của khách dựa trên các quy tắc trên.`;
+**NHIỆM VỤ:** Trả lời tin nhắn cuối cùng của khách dựa trên các quy tắc trên. Đọc kỹ xem khách đang hỏi tên sản phẩm hay gõ linh tinh để trả lời cho đúng.`;
 
         const model = await getGeminiModel();
         if (!model) return res.json({ success: false, reply: "Hệ thống AI đang khởi động, Bác chờ xíu nhé!" });
 
         let result = await model.generateContent(prompt);
-        // Xóa sạch các dấu * hoặc ** nếu AI lỡ viết vào
+        // Quét sạch các dấu * rác nếu AI lỡ sinh ra
         let replyText = result.response.text().replace(/\*/g, '').trim(); 
         
         res.json({ success: true, reply: replyText });
