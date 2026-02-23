@@ -413,27 +413,40 @@ async function sendVideo(token, id, url) { try { await axios.post(`https://graph
 async function getFacebookUserName(token, id) { try { const res = await axios.get(`https://graph.facebook.com/${id}?fields=first_name,last_name&access_token=${token}`); return res.data ? res.data.last_name : "Bác"; } catch(e){ return "Bác"; } }
 
 // ==========================================
-// API DÀNH RIÊNG CHO WEBSITE CHAT WIDGET
+// API DÀNH RIÊNG CHO WEBSITE CHAT WIDGET (CÓ LƯU LỊCH SỬ)
 // ==========================================
 app.post('/api/webchat', async (req, res) => {
     try {
-        const { message } = req.body;
+        // Lấy câu hỏi hiện tại VÀ lịch sử chat từ Web gửi lên
+        const { message, history } = req.body;
 
-        // 🔥 BƯỚC 1: TỰ ĐỘNG BẮT SỐ ĐIỆN THOẠI TRÊN WEBSITE VÀ GỬI VỀ GOOGLE SHEET 🔥
         const phoneRegex = /0\d{9}/; 
         const cleanMsg = message.replace(/\s+/g, '').replace(/\./g, '').replace(/-/g, '');
         let hasPhoneNow = phoneRegex.test(cleanMsg);
 
+        // 1. GOM LỊCH SỬ CHAT ĐỂ GỬI VỀ SHEET (NẾU CÓ SĐT)
+        let fullHistoryText = "";
+        if (history && Array.isArray(history)) {
+            fullHistoryText = history.map(h => `${h.role === 'user' ? 'Khách' : 'Bot'}: ${h.text}`).join('\n');
+        }
+        fullHistoryText += `\nKhách: ${message}`; // Ghép thêm câu nói chứa SĐT hiện tại
+
         if (hasPhoneNow) {
             const matchedPhone = cleanMsg.match(phoneRegex)[0];
-            // Bắn số về Google Sheet của bác. Để tên là "Khách Website" cho bác dễ phân biệt với Fanpage
-            sendPhoneToSheet(matchedPhone, "Khách từ Website", `[WEB CHỐT ĐƠN]: ${message}`);
-            console.log(`[WEBCHAT] Vừa bắt được SĐT từ Web: ${matchedPhone}`);
+            // Bắn TOÀN BỘ LỊCH SỬ CHAT về Google Sheet
+            sendPhoneToSheet(matchedPhone, "Khách Website", `[LỊCH SỬ TRÒ CHUYỆN]:\n${fullHistoryText}`);
+            console.log(`[WEBCHAT] Đã gửi đơn hàng Web về Sheet: ${matchedPhone}`);
         }
 
-        // BƯỚC 2: AI TƯ VẤN TRẢ LỜI KHÁCH
+        // 2. CHO AI ĐỌC LỊCH SỬ ĐỂ TƯ VẤN TIẾP
         let knowledgeBase = await buildKnowledgeBaseFromDB();
-        let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea trực trên Website.\n**DỮ LIỆU:**\n${knowledgeBase}\n**TRẠNG THÁI:** ${hasPhoneNow ? "✅ Khách đã cho SĐT, Báo nhân viên sẽ gọi chốt đơn" : "❌ Khách chưa có SĐT, Xin SĐT nếu khách muốn mua"}\n**KHÁCH HỎI:** "${message}"\n**NHIỆM VỤ:** Trả lời trực tiếp bằng văn bản thuần, không dùng markdown rườm rà.`;
+        let prompt = `**VAI TRÒ:** Chuyên viên tư vấn Shop Thảo Korea trực Website.
+**DỮ LIỆU SẢN PHẨM:**
+${knowledgeBase}
+**TRẠNG THÁI:** ${hasPhoneNow ? "✅ Khách đã cho SĐT, Báo sẽ có nhân viên gọi chốt đơn" : "❌ Khách chưa có SĐT, Xin SĐT nếu khách chốt mua"}
+**LỊCH SỬ TRÒ CHUYỆN TỪ ĐẦU:**
+${fullHistoryText}
+**NHIỆM VỤ:** Trả lời trực tiếp câu vừa hỏi bằng văn bản thuần, ngắn gọn. Dựa vào lịch sử trên để biết khách muốn mua gì.`;
 
         const model = await getGeminiModel();
         if (!model) return res.json({ success: false, reply: "Hệ thống AI đang khởi động, Bác chờ xíu nhé!" });
